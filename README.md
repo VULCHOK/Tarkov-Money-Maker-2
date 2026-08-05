@@ -14,9 +14,11 @@ docker compose -f docker/docker-compose.yml up --build
 ```
 
 The app will be available at:
-- **Frontend:** http://localhost:3001
-- **Backend API:** http://localhost:3000
-- **API Docs (Swagger):** http://localhost:3000/docs
+- **Frontend:** http://YOUR-SERVER-IP-OR-DOMAIN:3001
+- **Backend API (direct):** http://YOUR-SERVER-IP-OR-DOMAIN:3000
+- **API Docs (Swagger):** http://YOUR-SERVER-IP-OR-DOMAIN:3000/docs
+
+> ℹ️ The frontend talks to the backend via the internal nginx proxy (`/api/`), so **no domain configuration is needed** — it works on any IP or domain out of the box.
 
 ---
 
@@ -25,11 +27,18 @@ The app will be available at:
 ```
 Tarkov-Money-Maker-2/
 ├── backend/          # Python FastAPI — data fetching, price diff calculations
-├── frontend/         # React + TailwindCSS — interactive table, filters, export
-├── database/         # PostgreSQL schema + migrations
-├── docker/           # Dockerfile + docker-compose.yml + .env.example
-├── docs/             # Additional documentation
+├── frontend/         # React + TailwindCSS + nginx proxy
+├── database/         # PostgreSQL schema
+├── docker/           # docker-compose.yml + .env.example
+├── docs/             # Architecture notes
 └── .github/workflows # CI/CD (GitHub Actions)
+```
+
+### Request Flow
+```
+Browser → :3001 (nginx)
+                ├── /api/*  → proxy → backend:3000 (FastAPI)
+                └── /*     → React app (index.html)
 ```
 
 ---
@@ -38,68 +47,18 @@ Tarkov-Money-Maker-2/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/items` | All items with trader + flea prices |
-| GET | `/items/{id}` | Single item details |
-| GET | `/traders` | All trader price lists |
-| GET | `/market` | Flea Market prices |
-| POST | `/refresh` | Force data refresh from tarkov.dev |
-| GET | `/health` | Health check |
-
-### Example Response (`/items`)
-
-```json
-[
-  {
-    "id": "5c0a840b86f7742ffa4f2482",
-    "name": "Sugar",
-    "category": "Provisions",
-    "trader_prices": {
-      "Therapist": 5000,
-      "Prapor": 6000
-    },
-    "flea_price": 12000,
-    "best_trader_price": 5000,
-    "best_trader": "Therapist",
-    "difference": 7000,
-    "difference_pct": 140.0,
-    "recommendation": "BUY_FROM_TRADER"
-  }
-]
-```
-
----
-
-## 🗄️ Database Schema
-
-```sql
-CREATE TABLE items (
-  id          VARCHAR(24) PRIMARY KEY,
-  name        VARCHAR(255) NOT NULL,
-  category    VARCHAR(100),
-  updated_at  TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE trader_prices (
-  item_id     VARCHAR(24) REFERENCES items(id),
-  trader_name VARCHAR(50),
-  price       INT,
-  currency    VARCHAR(3) DEFAULT 'RUB',
-  updated_at  TIMESTAMP DEFAULT NOW(),
-  PRIMARY KEY (item_id, trader_name)
-);
-
-CREATE TABLE market_prices (
-  item_id     VARCHAR(24) PRIMARY KEY REFERENCES items(id),
-  price       INT,
-  updated_at  TIMESTAMP DEFAULT NOW()
-);
-```
+| GET | `/api/items/` | All items with trader + flea prices |
+| GET | `/api/items/{id}` | Single item details |
+| GET | `/api/traders/` | All trader price lists |
+| GET | `/api/market/` | Flea Market prices |
+| POST | `/api/refresh/` | Force data refresh from tarkov.dev |
+| GET | `/api/health` | Health check |
 
 ---
 
 ## ⚙️ Configuration
 
-Copy `docker/.env.example` to `docker/.env` and adjust:
+Copy `docker/.env.example` to `docker/.env`:
 
 ```env
 DATABASE_URL=postgresql://user:pass@db:5432/tarkov
@@ -113,11 +72,11 @@ PROFIT_THRESHOLD_PCT=20
 ## 🧪 Running Tests
 
 ```bash
-# Backend tests
-cd backend && pip install -r requirements-dev.txt && pytest --cov
+# Backend
+cd backend && pip install -r requirements-dev.txt && pytest -v
 
-# Frontend tests
-cd frontend && npm test
+# Frontend
+cd frontend && npm install && npm test
 ```
 
 ---
@@ -125,16 +84,16 @@ cd frontend && npm test
 ## 🛠️ Useful Commands
 
 ```bash
-# Stop all containers
+# Stop
 docker compose -f docker/docker-compose.yml down
 
-# Stop and wipe database volume
+# Wipe DB volume
 docker compose -f docker/docker-compose.yml down -v
 
-# View backend logs
+# Follow backend logs
 docker compose -f docker/docker-compose.yml logs -f backend
 
-# Force data refresh
+# Force refresh via API
 curl -X POST http://localhost:3000/refresh/
 ```
 

@@ -6,7 +6,9 @@ import { ExportButtons } from './components/ExportButtons';
 import { RefreshButton } from './components/RefreshButton';
 import { StatsBar } from './components/StatsBar';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+// Always use relative path — nginx proxies /api/ → backend:3000
+// Works on any domain/IP without rebuild
+const API_BASE = '/api';
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -21,10 +23,11 @@ export default function App() {
       const params = {};
       if (filters.category) params.category = filters.category;
       if (filters.minProfitPct) params.min_profit_pct = filters.minProfitPct;
-      const { data } = await axios.get(`${API_URL}/items/`, { params });
+      const { data } = await axios.get(`${API_BASE}/items/`, { params });
       setItems(data);
     } catch (err) {
-      setError('Failed to load items. Is the backend running?');
+      console.error('API error:', err);
+      setError(`Failed to load items: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -33,8 +36,12 @@ export default function App() {
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const handleRefresh = async () => {
-    await axios.post(`${API_URL}/refresh/`);
-    setTimeout(fetchItems, 2000);
+    try {
+      await axios.post(`${API_BASE}/refresh/`);
+      setTimeout(fetchItems, 2000);
+    } catch (err) {
+      console.error('Refresh error:', err);
+    }
   };
 
   return (

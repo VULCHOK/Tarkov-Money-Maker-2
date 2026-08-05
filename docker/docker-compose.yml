@@ -23,8 +23,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:80"
-    environment:
-      - REACT_APP_API_URL=http://localhost:3000
+    # No REACT_APP_API_URL needed — all calls go through nginx proxy /api/
     depends_on:
       - backend
     restart: unless-stopped
