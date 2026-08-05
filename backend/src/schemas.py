@@ -13,6 +13,10 @@ class ItemSchema(BaseModel):
     difference: Optional[int] = None
     difference_pct: Optional[float] = None
     recommendation: Optional[str] = None
+    icon_link: Optional[str] = None
+    wiki_link: Optional[str] = None
+    change_48h_pct: Optional[float] = None
+    base_price: Optional[int] = None
 
     class Config:
         from_attributes = True
