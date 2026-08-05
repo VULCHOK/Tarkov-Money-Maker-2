@@ -10,7 +10,7 @@ A Dockerized web tool that compares **Escape from Tarkov** item prices between t
 git clone https://github.com/VULCHOK/Tarkov-Money-Maker-2.git
 cd Tarkov-Money-Maker-2
 cp docker/.env.example docker/.env
-docker-compose -f docker/docker-compose.yml up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 The app will be available at:
@@ -118,6 +118,24 @@ cd backend && pip install -r requirements-dev.txt && pytest --cov
 
 # Frontend tests
 cd frontend && npm test
+```
+
+---
+
+## 🛠️ Useful Commands
+
+```bash
+# Stop all containers
+docker compose -f docker/docker-compose.yml down
+
+# Stop and wipe database volume
+docker compose -f docker/docker-compose.yml down -v
+
+# View backend logs
+docker compose -f docker/docker-compose.yml logs -f backend
+
+# Force data refresh
+curl -X POST http://localhost:3000/refresh/
 ```
 
 ---
