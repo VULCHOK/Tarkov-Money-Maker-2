@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
-import { Filters, defaultTraderFilters, defaultIntelLevel } from './components/Filters';
+import { Filters, defaultTraderFilters, defaultIntelLevel, ALL_TRADERS } from './components/Filters';
 import { ExportButtons } from './components/ExportButtons';
 import { StatsBar } from './components/StatsBar';
 import { ApiStatus } from './components/ApiStatus';
@@ -22,6 +22,29 @@ function defaultMinProfitRub() {
 function defaultPlayerLevel() {
   const saved = localStorage.getItem('playerLevel');
   return saved !== null ? Number(saved) : 15;
+}
+
+/**
+ * Réplique la logique de computeRow pour le pré-filtre visibleItems.
+ * On calcule le meilleur prix d'achat trader accessible selon le niveau joueur
+ * en parsant trader_buy_prices (structure par niveau), exactement comme ItemTable.
+ */
+function getBestBuyPrice(item, traderFilters) {
+  try {
+    const buyByLevel = JSON.parse(item.trader_buy_prices || '{}');
+    let best = null;
+    for (const t of ALL_TRADERS) {
+      if (!traderFilters[t]?.enabled) continue;
+      const levels = buyByLevel[t];
+      if (!levels || typeof levels !== 'object') continue;
+      const userLevel = traderFilters[t]?.level ?? 1;
+      for (let lvl = 1; lvl <= userLevel; lvl++) {
+        const p = levels[String(lvl)];
+        if (p != null && (best === null || p < best)) best = p;
+      }
+    }
+    return best;
+  } catch { return null; }
 }
 
 export default function App() {
@@ -67,15 +90,21 @@ export default function App() {
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
 
     try {
-      const prices       = JSON.parse(item.trader_prices || '{}');
-      const fleaPrice    = item.flea_price ?? item.last_low_price ?? 0;
-      const activePrices = Object.entries(prices).filter(([t]) => traderFilters[t]?.enabled).map(([, p]) => p);
-      const bestTrader   = activePrices.length > 0 ? Math.max(...activePrices) : 0;
-      const ftsProfit    = bestTrader - fleaPrice;
-      const btfFee       = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
-      const traderBuy    = item.best_trader_buy_price || 0;
-      const btfProfit    = traderBuy > 0 ? (fleaPrice - btfFee - traderBuy) : -Infinity;
-      const bestProfit   = Math.max(ftsProfit, btfProfit);
+      const fleaPrice = item.flea_price ?? item.last_low_price ?? 0;
+
+      // FTS : flea → trader (trader rachète au joueur)
+      const sellPrices  = JSON.parse(item.trader_prices || '{}');
+      const activeSell  = Object.entries(sellPrices).filter(([t]) => traderFilters[t]?.enabled).map(([, p]) => p);
+      const bestSell    = activeSell.length > 0 ? Math.max(...activeSell) : 0;
+      const ftsProfit   = bestSell - fleaPrice;
+
+      // BTF : trader → flea (joueur achète chez trader puis revend sur flea)
+      // Utilise la structure par niveau, filtrée selon traderFilters[t].level
+      const bestBuy   = getBestBuyPrice(item, traderFilters);
+      const btfFee    = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
+      const btfProfit = bestBuy != null ? (fleaPrice - btfFee - bestBuy) : -Infinity;
+
+      const bestProfit = Math.max(ftsProfit, btfProfit);
       return minRub > 0 ? bestProfit >= minRub : bestProfit > 0;
     } catch { return true; }
   });
