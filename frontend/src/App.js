@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
-import { Filters, defaultTraderFilters } from './components/Filters';
+import { Filters, defaultTraderFilters, defaultIntelLevel } from './components/Filters';
 import { ExportButtons } from './components/ExportButtons';
 import { RefreshButton } from './components/RefreshButton';
 import { StatsBar } from './components/StatsBar';
@@ -26,6 +26,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ minProfitRub: defaultMinProfitRub() });
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
+  const [intelLevel, setIntelLevel] = useState(defaultIntelLevel);
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'fr');
   const [mode, setMode] = useState(() => localStorage.getItem('gameMode') || 'regular');
 
@@ -58,20 +59,32 @@ export default function App() {
   };
 
   const minRub = parseFloat(filters.minProfitRub) || 0;
-  const visibleItems = minRub > 0
-    ? items.filter((item) => {
-        try {
-          const prices = JSON.parse(item.trader_prices || '{}');
-          const activePrices = Object.entries(prices)
-            .filter(([t]) => traderFilters[t]?.enabled)
-            .map(([, p]) => p);
-          if (activePrices.length === 0) return false;
-          const bestPrice = Math.max(...activePrices);
-          const fleaPrice = item.flea_price ?? item.last_low_price ?? 0;
-          return (bestPrice - fleaPrice) >= minRub;
-        } catch { return true; }
-      })
-    : items;
+
+  // Intel Center fee discount (mirrors price_calculator.py INTEL_DISCOUNTS)
+  const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
+  const feeDiscount = INTEL_DISCOUNTS[intelLevel] ?? 0;
+
+  const visibleItems = items.filter((item) => {
+    try {
+      const prices      = JSON.parse(item.trader_prices || '{}');
+      const fleaPrice   = item.flea_price ?? item.last_low_price ?? 0;
+      const activePrices = Object.entries(prices)
+        .filter(([t]) => traderFilters[t]?.enabled)
+        .map(([, p]) => p);
+
+      // BUY_FLEA_SELL_TRADER profit
+      const bestTrader  = activePrices.length > 0 ? Math.max(...activePrices) : 0;
+      const ftsProfit   = bestTrader - fleaPrice;
+
+      // BUY_TRADER_SELL_FLEA profit (approximate: use flea_fee from item if present)
+      const btfFee      = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
+      const traderBuy   = item.best_trader_buy_price || 0;
+      const btfProfit   = traderBuy > 0 ? (fleaPrice - btfFee - traderBuy) : -Infinity;
+
+      const bestProfit  = Math.max(ftsProfit, btfProfit);
+      return minRub > 0 ? bestProfit >= minRub : bestProfit > 0;
+    } catch { return true; }
+  });
 
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
@@ -104,16 +117,10 @@ export default function App() {
 
             {/* Sélecteur de langue */}
             <div className="flex items-center gap-1 bg-tarkov-card border border-tarkov-border rounded px-2 py-1">
-              <button
-                onClick={() => setLang('en')}
-                title="English"
-                className={`text-lg transition-opacity ${lang === 'en' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}
-              >🇬🇧</button>
-              <button
-                onClick={() => setLang('fr')}
-                title="Français"
-                className={`text-lg transition-opacity ${lang === 'fr' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}
-              >🇫🇷</button>
+              <button onClick={() => setLang('en')} title="English"
+                className={`text-lg transition-opacity ${lang === 'en' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}>🇬🇧</button>
+              <button onClick={() => setLang('fr')} title="Français"
+                className={`text-lg transition-opacity ${lang === 'fr' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}>🇫🇷</button>
             </div>
 
             <ApiStatus />
@@ -122,6 +129,7 @@ export default function App() {
           </div>
         </div>
       </header>
+
       <main className="px-6 py-4">
         <StatsBar items={visibleItems} />
         <Filters
@@ -129,14 +137,18 @@ export default function App() {
           onChange={setFilters}
           traderFilters={traderFilters}
           onTraderFiltersChange={setTraderFilters}
+          intelLevel={intelLevel}
+          onIntelLevelChange={setIntelLevel}
         />
         {loading && <p className="text-center py-8 text-gray-400">Chargement des items ({mode})...</p>}
-        {error && <p className="text-center py-8 text-red-400">{error}</p>}
+        {error   && <p className="text-center py-8 text-red-400">{error}</p>}
         {!loading && !error && (
           <ItemTable
             items={visibleItems}
             lang={lang}
             traderFilters={traderFilters}
+            intelLevel={intelLevel}
+            feeDiscount={feeDiscount}
           />
         )}
       </main>
