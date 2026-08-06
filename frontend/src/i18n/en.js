@@ -37,6 +37,10 @@ const en = {
   colBuyTrader:  'Buy (Trader)',
   colSellTrader: 'Sell (Trader)',
   colAction:     'Action',
+  colBestProfit: '\u2605 Best Profit',
+  colTraderFlea: 'Trader\u2192Flea',
+  colFleaTrader: 'Flea\u2192Trader',
+  colFlea:       'Flea',
 
   // ItemTable — tooltips
   tooltipBuyPrices:  'Buy prices by trader (your level)',

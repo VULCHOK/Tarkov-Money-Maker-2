@@ -37,6 +37,10 @@ const fr = {
   colBuyTrader:  'Achat Trader',
   colSellTrader: 'Vente Trader',
   colAction:     'Action',
+  colBestProfit: '\u2605 Meilleur profit',
+  colTraderFlea: 'Trader\u2192Flea',
+  colFleaTrader: 'Flea\u2192Trader',
+  colFlea:       'Flea',
 
   // ItemTable — tooltips
   tooltipBuyPrices:  "Prix d'achat chez les traders",
