@@ -9,31 +9,27 @@ import { ApiStatus } from './components/ApiStatus';
 
 const API_BASE = '/api';
 
+// Valeur par défaut du profit minimum : 20 000 ₽, ou ce qui est en localStorage
+function defaultMinProfitRub() {
+  const saved = localStorage.getItem('minProfitRub');
+  return saved !== null ? saved : '20000';
+}
+
 export default function App() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({ category: '', minProfitRub: '' });
+  const [filters, setFilters] = useState({ minProfitRub: defaultMinProfitRub() });
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
-  const [categories, setCategories] = useState([]);
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'fr');
 
   useEffect(() => { localStorage.setItem('lang', lang); }, [lang]);
-
-  useEffect(() => {
-    axios.get(`${API_BASE}/items/categories`)
-      .then(({ data }) => setCategories(data))
-      .catch((err) => console.error('Failed to load categories:', err));
-  }, []);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = {};
-      if (filters.category) params.category = filters.category;
-      const { data } = await axios.get(`${API_BASE}/items/`, { params });
-      // Filtre minProfitRub côté client (recalcul dynamique selon traders)
+      const { data } = await axios.get(`${API_BASE}/items/`);
       setItems(data);
     } catch (err) {
       console.error('API error:', err);
@@ -41,7 +37,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [filters.category]);
+  }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -54,8 +50,22 @@ export default function App() {
     }
   };
 
-  // Filtrage minProfitRub côté client après recalcul trader
-  const minRub = parseFloat(filters.minProfitRub) || null;
+  // Filtrage côté client : on recalcule le meilleur prix selon les traders actifs
+  const minRub = parseFloat(filters.minProfitRub) || 0;
+  const visibleItems = minRub > 0
+    ? items.filter((item) => {
+        try {
+          const prices = JSON.parse(item.trader_prices || '{}');
+          const activePrices = Object.entries(prices)
+            .filter(([t]) => traderFilters[t]?.enabled)
+            .map(([, p]) => p);
+          if (activePrices.length === 0) return false;
+          const bestPrice = Math.max(...activePrices);
+          const fleaPrice = item.flea_price ?? item.last_low_price ?? 0;
+          return (bestPrice - fleaPrice) >= minRub;
+        } catch { return true; }
+      })
+    : items;
 
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
@@ -79,40 +89,24 @@ export default function App() {
               >🇫🇷</button>
             </div>
             <ApiStatus />
-            <ExportButtons items={items} lang={lang} />
+            <ExportButtons items={visibleItems} lang={lang} />
             <RefreshButton onRefresh={handleRefresh} />
           </div>
         </div>
       </header>
       <main className="px-6 py-4">
-        <StatsBar items={items} />
+        <StatsBar items={visibleItems} />
         <Filters
           filters={filters}
           onChange={setFilters}
-          categories={categories}
           traderFilters={traderFilters}
           onTraderFiltersChange={setTraderFilters}
         />
-        {loading && <p className="text-center py-8 text-gray-400">Loading items...</p>}
+        {loading && <p className="text-center py-8 text-gray-400">Chargement des items...</p>}
         {error && <p className="text-center py-8 text-red-400">{error}</p>}
         {!loading && !error && (
           <ItemTable
-            items={
-              minRub
-                ? items.filter((item) => {
-                    try {
-                      const prices = JSON.parse(item.trader_prices || '{}');
-                      const bestPrice = Math.max(
-                        ...Object.entries(prices)
-                          .filter(([t]) => traderFilters[t]?.enabled)
-                          .map(([, p]) => p)
-                      );
-                      const diff = bestPrice - (item.flea_price ?? item.last_low_price ?? 0);
-                      return diff >= minRub;
-                    } catch { return true; }
-                  })
-                : items
-            }
+            items={visibleItems}
             lang={lang}
             traderFilters={traderFilters}
           />

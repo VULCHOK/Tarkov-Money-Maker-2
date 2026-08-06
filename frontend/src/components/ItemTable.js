@@ -11,21 +11,6 @@ import { ALL_TRADERS } from './Filters';
 const col = createColumnHelper();
 const fmt = (n) => n != null ? `${n.toLocaleString('fr-FR')} ₽` : '—';
 
-// Prix minimum par trader selon son niveau de loyauté
-// Basé sur les seuils officiels EFT :
-const TRADER_LEVEL_MIN_PRICE = {
-  Prapor:      { 1: 0,        2: 100000,   3: 300000,   4: 1000000  },
-  Therapist:   { 1: 0,        2: 150000,   3: 400000,   4: 1500000  },
-  Skier:       { 1: 0,        2: 150000,   3: 400000,   4: 1000000  },
-  Peacekeeper: { 1: 0,        2: 150000,   3: 400000,   4: 1000000  },
-  Mechanic:    { 1: 0,        2: 150000,   3: 400000,   4: 1000000  },
-  Ragman:      { 1: 0,        2: 150000,   3: 400000,   4: 1000000  },
-  Jaeger:      { 1: 0,        2: 150000,   3: 400000,   4: 1000000  },
-  Fence:       { 1: 0 },
-  Lightkeeper: { 1: 0,        2: 150000,   3: 400000,   4: 1000000  },
-};
-
-// Trader avatars
 const TRADER_META = {
   Prapor:     { img: 'https://assets.tarkov.dev/prapor-portrait.png' },
   Therapist:  { img: 'https://assets.tarkov.dev/therapist-portrait.png' },
@@ -70,10 +55,6 @@ const REC_META = {
   NO_PROFIT:            { text: 'No profit',           cls: 'bg-gray-800 text-gray-500',     icon: '➖' },
 };
 
-/**
- * Calcule le meilleur trader disponible selon les filtres actifs.
- * Retourne { trader, price, diff, diffPct } ou null si aucun trader dispo.
- */
 function computeBestTrader(item, traderFilters) {
   let prices;
   try { prices = JSON.parse(item.trader_prices || '{}'); } catch { return null; }
@@ -103,7 +84,6 @@ function computeBestTrader(item, traderFilters) {
 }
 
 export function ItemTable({ items, lang, traderFilters }) {
-  // Enrichir chaque item avec le meilleur trader calculé côté client
   const enriched = useMemo(() => {
     if (!traderFilters) return items;
     return items.map((item) => ({
@@ -138,13 +118,7 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // Catégorie
-    col.accessor('category', {
-      header: 'Catégorie',
-      cell: (info) => <span className="text-gray-400 text-xs">{info.getValue() || '—'}</span>,
-    }),
-
-    // Colonnes trader (affichage, grisées si désactivées)
+    // Colonnes trader — vert si c'est le meilleur trader sur une ligne BUY_FLEA_SELL_TRADER
     ...ALL_TRADERS.map((trader) =>
       col.accessor(
         (row) => {
@@ -156,12 +130,29 @@ export function ItemTable({ items, lang, traderFilters }) {
           header: () => <TraderHeader trader={trader} />,
           cell: (info) => {
             const v = info.getValue();
+            const row = info.row.original;
             const tf = traderFilters?.[trader];
             const active = tf?.enabled;
+
             if (v == null) return <span className="text-gray-600 text-xs">—</span>;
+
+            // Issue #5 : vert si ce trader est le meilleur ET reco = BUY_FLEA_SELL_TRADER
+            const isBest = active
+              && row._best?.trader === trader
+              && row.recommendation === 'BUY_FLEA_SELL_TRADER';
+
+            const colorCls = !active
+              ? 'text-gray-600 line-through'
+              : isBest
+                ? 'text-green-400 font-bold'
+                : 'text-tarkov-gold';
+
             return (
-              <span className={`text-xs ${active ? 'text-tarkov-gold' : 'text-gray-600 line-through'}`}>
-                {fmt(v)}{active && tf.level > 1 ? <span className="text-gray-500 ml-1">LL{tf.level}</span> : null}
+              <span className={`text-xs ${colorCls}`}>
+                {fmt(v)}
+                {active && tf.level > 1 && (
+                  <span className="text-gray-500 ml-1">LL{tf.level}</span>
+                )}
               </span>
             );
           },
@@ -169,7 +160,7 @@ export function ItemTable({ items, lang, traderFilters }) {
       )
     ),
 
-    // Flea — last_low_price + avg24h en secondaire
+    // Flea — last_low_price principal + avg24h en secondaire
     col.accessor('flea_price', {
       id: 'flea',
       header: () => <FleaHeader />,
@@ -189,14 +180,13 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // ★ Diff ₽ — valeur principale (issue #1)
+    // Diff ₽ — valeur principale, % en secondaire
     col.accessor((row) => row._best?.diff ?? null, {
       id: 'diff_rub',
       header: 'Diff ₽',
       cell: (info) => {
         const v = info.getValue();
-        const row = info.row.original;
-        const best = row._best;
+        const best = info.row.original._best;
         if (v == null) return <span className="text-gray-600 text-xs">—</span>;
         const isProfit = v > 0;
         const color = isProfit ? 'text-green-400' : 'text-red-400';
@@ -222,7 +212,7 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // Meilleur trader (recalculé)
+    // Meilleur trader
     col.accessor((row) => row._best?.trader ?? null, {
       id: 'best_trader',
       header: 'Meilleur trader',
@@ -252,7 +242,7 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // Action / Recommendation
+    // Action
     col.accessor('recommendation', {
       id: 'action',
       header: 'Action',
@@ -279,7 +269,7 @@ export function ItemTable({ items, lang, traderFilters }) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     initialState: {
-      sorting: [{ id: 'diff_rub', desc: true }],  // tri par défaut : meilleur profit ₽
+      sorting: [{ id: 'diff_rub', desc: true }],
     },
   });
 
@@ -321,7 +311,7 @@ export function ItemTable({ items, lang, traderFilters }) {
         </tbody>
       </table>
       {enriched.length === 0 && (
-        <p className="text-center py-8 text-gray-500">No items found. Try refreshing data.</p>
+        <p className="text-center py-8 text-gray-500">Aucun item trouvé. Essaie de diminuer le seuil de profit.</p>
       )}
     </div>
   );

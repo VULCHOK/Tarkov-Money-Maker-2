@@ -1,6 +1,5 @@
 import React from 'react';
 
-// Niveaux de loyauté disponibles par trader
 export const TRADER_LEVELS = {
   Prapor:      [1, 2, 3, 4],
   Therapist:   [1, 2, 3, 4],
@@ -15,7 +14,6 @@ export const TRADER_LEVELS = {
 
 export const ALL_TRADERS = Object.keys(TRADER_LEVELS);
 
-// Valeur par défaut : tous les traders activés, niveau 1
 export function defaultTraderFilters() {
   const saved = localStorage.getItem('traderFilters');
   if (saved) {
@@ -26,7 +24,7 @@ export function defaultTraderFilters() {
   );
 }
 
-export function Filters({ filters, onChange, categories, traderFilters, onTraderFiltersChange }) {
+export function Filters({ filters, onChange, traderFilters, onTraderFiltersChange }) {
   const handleTraderToggle = (trader) => {
     const next = {
       ...traderFilters,
@@ -47,23 +45,17 @@ export function Filters({ filters, onChange, categories, traderFilters, onTrader
 
   return (
     <div className="flex flex-col gap-3 mb-4">
-      {/* Filtres catégorie + profit min */}
+      {/* Filtre profit minimum */}
       <div className="flex flex-wrap gap-3">
-        <select
-          value={filters.category}
-          onChange={(e) => onChange({ ...filters, category: e.target.value })}
-          className="bg-tarkov-card border border-tarkov-border rounded px-3 py-2 text-sm focus:outline-none focus:border-tarkov-gold w-48"
-        >
-          <option value="">All categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
         <input
           type="number"
-          placeholder="Min profit ₽ (ex: 1000)"
+          placeholder="Min profit ₽"
           value={filters.minProfitRub}
-          onChange={(e) => onChange({ ...filters, minProfitRub: e.target.value })}
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange({ ...filters, minProfitRub: v });
+            localStorage.setItem('minProfitRub', v);
+          }}
           className="bg-tarkov-card border border-tarkov-border rounded px-3 py-2 text-sm focus:outline-none focus:border-tarkov-gold w-44"
         />
       </div>
