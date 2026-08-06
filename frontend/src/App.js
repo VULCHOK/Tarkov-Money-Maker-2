@@ -128,23 +128,21 @@ export default function App() {
   const feeDiscount  = INTEL_DISCOUNTS[intelLevel] ?? 0;
   const minRub       = parseFloat(filters.minProfitRub) || 0;
   const searchTerm   = (filters.search || '').toLowerCase().trim();
-  // minOffers : si 1 (désactivé), on ne filtre pas du tout
   const minOffers    = Number(filters.minOffers ?? 1);
   const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
   const t            = I18N[lang] || I18N.fr;
 
   const visibleItems = items.filter((item) => {
-
-    // ── Filtre nombre minimum d'offres actives sur le flea ──
-    // last_offer_count peut être null (item hors flea) ou un entier.
-    // On applique le filtre seulement si minOffers > 1.
     if (minOffers > 1) {
       const count = item.last_offer_count;
-      // Si la valeur est absente (null/undefined), on considère 0 offres → exclu
-      if (count == null || count < minOffers) return false;
+      const hasFleaPresence = (item.flea_price ?? item.last_low_price ?? 0) > 0;
+      if (count != null) {
+        if (count < minOffers) return false;
+      } else if (!hasFleaPresence) {
+        return false;
+      }
     }
 
-    // ── Filtre texte ──
     if (searchTerm) {
       const nameEn  = (item.name_en  || item.name  || '').toLowerCase();
       const nameFr  = (item.name_fr  || '').toLowerCase();
@@ -154,11 +152,9 @@ export default function App() {
         && !shortEn.includes(searchTerm) && !shortFr.includes(searchTerm)) return false;
     }
 
-    // ── Filtre niveau flea ──
     const minFleaLevel = item.min_level_flea ?? 0;
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
 
-    // ── Filtre profit ──
     try {
       const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const sellPrices = JSON.parse(item.trader_prices || '{}');
@@ -183,7 +179,6 @@ export default function App() {
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
       <header className={`bg-gradient-to-r ${activeMeta.headerBg} border-b ${activeMeta.borderColor} px-5 py-3`}>
         <div className="flex items-center justify-between flex-wrap gap-2">
-
           <div className="flex items-center gap-3">
             <img src={activeMeta.icon} alt={activeMeta.label} className="w-10 h-10 object-contain" />
             <div>

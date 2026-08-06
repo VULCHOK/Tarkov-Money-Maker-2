@@ -36,7 +36,6 @@ def _get_data(resp_json: dict) -> dict:
 
 
 def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]:
-    """Prix auxquels les traders ACHTENT l'item au joueur (sellToTrader)."""
     best_name  = None
     best_price = 0
     for entry in sell_list:
@@ -52,7 +51,6 @@ def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]
 
 
 def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
-    """Tous les prix auxquels les traders ACHTENT l'item (sell = joueur vend au trader)."""
     result: dict[str, int] = {}
     for entry in sell_list:
         trader_id   = entry.get("trader", "")
@@ -67,12 +65,6 @@ def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
 def _best_buy_from_trader(
     buy_list: list[dict], trader_levels: dict[str, int] | None = None
 ) -> tuple[str | None, int | None]:
-    """
-    Prix auxquels les traders VENDENT l'item au joueur.
-    On cherche le MOINS CHER parmi les offres accessibles au niveau du joueur.
-    Ignore Fence et les barters.
-    trader_levels : {"Mechanic": 3, ...} — si None, accepte tous les niveaux.
-    """
     best_name  = None
     best_price = None
     for entry in buy_list:
@@ -84,7 +76,6 @@ def _best_buy_from_trader(
         price_rub = entry.get("priceRUB") or 0
         if currency not in ("RUB", "") or price_rub <= 0:
             continue
-        # Vérifier le niveau requis
         min_level = entry.get("minTraderLevel") or 1
         if trader_levels is not None:
             user_level = trader_levels.get(trader_name, 1)
@@ -97,14 +88,6 @@ def _best_buy_from_trader(
 
 
 def _all_buy_prices_by_level(buy_list: list[dict]) -> dict[str, dict[str, int]]:
-    """
-    Retourne les prix d'achat trader VENTILÉS PAR NIVEAU :
-    { "Mechanic": { "1": 25000, "2": 23000, "3": 22997 }, ... }
-
-    Pour chaque trader+niveau, on garde le prix le moins cher.
-    Cela permet au frontend de filtrer selon le niveau sélectionné par le joueur.
-    """
-    # Accumulation : result[trader][level] = min_price
     result: dict[str, dict[int, int]] = {}
     for entry in buy_list:
         trader_id   = entry.get("trader", "")
@@ -119,8 +102,6 @@ def _all_buy_prices_by_level(buy_list: list[dict]) -> dict[str, dict[str, int]]:
         trader_dict = result.setdefault(trader_name, {})
         if price_rub < trader_dict.get(min_level, float("inf")):
             trader_dict[min_level] = price_rub
-
-    # Convertir les clés de niveau en str pour JSON
     return {
         trader: {str(lvl): price for lvl, price in levels.items()}
         for trader, levels in result.items()
@@ -142,25 +123,25 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
             category_slug = cat.get("normalizedName")
             break
 
-    # --- Trader SELL prices (trader rachète l'item AU joueur) ---
     sell_list = item.get("sellToTrader", [])
     best_trader, best_trader_price = _best_sell_to_trader(sell_list)
     trader_prices_json = _json.dumps(_all_sell_prices(sell_list))
 
-    # --- Trader BUY prices (trader VEND l'item AU joueur) ---
     buy_list = item.get("buyFor") or item.get("buyFromTrader") or []
     buy_list_traders = [
         e for e in buy_list
         if TRADER_ID_TO_NAME.get(e.get("trader", "")) not in (None, "Fence")
     ]
 
-    # best_buy = prix accessible au niveau 1 par défaut (le plus conservateur)
     best_buy_trader, best_buy_trader_price = _best_buy_from_trader(
         buy_list_traders, trader_levels={t: 1 for t in TRADER_ID_TO_NAME.values()}
     )
-    # Structure complète par niveau pour le filtrage frontend
     trader_buy_prices_by_level = _all_buy_prices_by_level(buy_list_traders)
     trader_buy_prices_json = _json.dumps(trader_buy_prices_by_level)
+
+    last_offer_count = item.get("lastOfferCount")
+    if last_offer_count is None:
+        last_offer_count = item.get("offerCount")
 
     return {
         "id":               item_id,
@@ -178,7 +159,7 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
         "low24h_price":     item.get("low24hPrice"),
         "high24h_price":    item.get("high24hPrice"),
         "last_low_price":   item.get("lastLowPrice"),
-        "last_offer_count": item.get("lastOfferCount"),
+        "last_offer_count": last_offer_count,
         "change_48h":       item.get("changeLast48h"),
         "change_48h_pct":   item.get("changeLast48hPercent"),
         "min_level_flea":   item.get("minLevelForFlea"),
@@ -186,11 +167,9 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
         "width":            item.get("width"),
         "height":           item.get("height"),
         "weight":           item.get("weight"),
-        # Trader SELL (trader rachète AU joueur)
         "best_trader":           best_trader,
         "best_trader_price":     best_trader_price,
         "trader_prices":         trader_prices_json,
-        # Trader BUY (trader VEND AU joueur) — structuré par niveau
         "best_trader_buy":       best_buy_trader,
         "best_trader_buy_price": best_buy_trader_price,
         "trader_buy_prices":     trader_buy_prices_json,
@@ -199,7 +178,6 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
 
 
 async def _fetch_one_mode(client: httpx.AsyncClient, mode: str) -> list[dict]:
-    """Fetch et normalise tous les items pour un mode donné."""
     resp_items, resp_en, resp_fr = await asyncio.gather(
         client.get(f"{BASE_URL}/{mode}/items",    headers={"Accept": "application/json"}),
         client.get(f"{BASE_URL}/{mode}/items_en", headers={"Accept": "application/json"}),
@@ -222,15 +200,18 @@ async def _fetch_one_mode(client: httpx.AsyncClient, mode: str) -> list[dict]:
         _normalize_item(item, trans_en, trans_fr, item_categories, mode)
         for item in items_dict.values()
     ]
+
+    with_offer_count = sum(1 for x in result if x.get("last_offer_count") is not None)
+    if with_offer_count == 0:
+        logger.warning("[tarkov_api] Mode '%s': aucun item avec last_offer_count/offerCount renseigné", mode)
+    else:
+        logger.info("[tarkov_api] Mode '%s': %s items avec offer count", mode, with_offer_count)
+
     logger.info(f"[tarkov_api] Mode '{mode}': {len(result)} items récupérés")
     return result
 
 
 async def fetch_items(modes: list[str] | None = None) -> list[dict]:
-    """
-    Fetch tous les items pour les modes demandés (défaut : les 3).
-    Retourne une liste plate de dicts prêts pour l'upsert DB.
-    """
     global last_api_source
     if modes is None:
         modes = GAME_MODES
