@@ -8,9 +8,9 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { ALL_TRADERS } from './Filters';
+import { ActionCell } from './ActionCell';
 
 const col = createColumnHelper();
-
 const fmt = (n) => n != null ? `${n.toLocaleString('fr-FR')} ₽` : '—';
 
 const TRADER_META = {
@@ -23,11 +23,6 @@ const TRADER_META = {
   Jaeger:      { img: 'https://assets.tarkov.dev/jaeger-portrait.png' },
   Fence:       { img: 'https://assets.tarkov.dev/fence-portrait.png' },
   Lightkeeper: { img: 'https://assets.tarkov.dev/lightkeeper-portrait.png' },
-};
-
-const REC_META = {
-  BUY_FLEA_SELL_TRADER: { cls: 'bg-green-900 text-green-200', icon: '💰' },
-  BUY_TRADER_SELL_FLEA: { cls: 'bg-blue-900  text-blue-200',  icon: '🔄' },
 };
 
 const PAGE_SIZES = [10, 25, 50];
@@ -116,7 +111,7 @@ function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) 
 function ProfitCell({ value, pct, isBest }) {
   if (value == null) return <span className="text-gray-600 text-xs">—</span>;
   const color = value > 0 ? 'text-green-400' : 'text-red-400';
-  const fire  = isBest && value >= 5000 ? ' 🔥' : '';
+  const fire  = isBest && value >= 50000 ? ' 🔥' : '';
   const bold  = isBest ? 'font-bold text-sm' : 'text-xs';
   return (
     <span className="flex flex-col leading-tight">
@@ -126,27 +121,19 @@ function ProfitCell({ value, pct, isBest }) {
   );
 }
 
-// #9 — computeRow respecte le niveau LL sélectionné pour chaque trader
 function computeRow(item, traderFilters, feeDiscount) {
   const flea = item.flea_price ?? item.last_low_price ?? null;
 
-  // SELL prices : trader rachète au joueur
-  // On n'a pas de notion de niveau minimum côté sell (le trader achète tout)
   let bestSellTrader = null, bestSellPrice = null;
   try {
     const sell = JSON.parse(item.trader_prices || '{}');
     for (const t of ALL_TRADERS) {
       if (!traderFilters[t]?.enabled) continue;
       const p = sell[t];
-      if (p && (bestSellPrice === null || p > bestSellPrice)) {
-        bestSellPrice = p; bestSellTrader = t;
-      }
+      if (p && (bestSellPrice === null || p > bestSellPrice)) { bestSellPrice = p; bestSellTrader = t; }
     }
   } catch {}
 
-  // BUY prices : trader vend au joueur — filtré par niveau LL (#9)
-  // trader_buy_prices est un JSON { trader: { 1: price, 2: price, ... } }
-  // ou { trader: price } selon la version. On gère les deux formats.
   let bestBuyTrader = null, bestBuyPrice = null;
   try {
     const buyRaw = JSON.parse(item.trader_buy_prices || '{}');
@@ -155,49 +142,35 @@ function computeRow(item, traderFilters, feeDiscount) {
       const userLevel = traderFilters[t]?.level ?? 1;
       const traderEntry = buyRaw[t];
       if (traderEntry == null) continue;
-
       let price = null;
       if (typeof traderEntry === 'object') {
-        // Format { "1": 5000, "2": 4500, ... } — prendre le meilleur prix accessible
         for (let lvl = 1; lvl <= userLevel; lvl++) {
           const p = traderEntry[String(lvl)] ?? traderEntry[lvl];
           if (p != null && (price === null || p < price)) price = p;
         }
-      } else {
-        // Format plat : prix unique sans notion de niveau
-        price = traderEntry;
-      }
-
-      if (price != null && (bestBuyPrice === null || price < bestBuyPrice)) {
-        bestBuyPrice = price; bestBuyTrader = t;
-      }
+      } else { price = traderEntry; }
+      if (price != null && (bestBuyPrice === null || price < bestBuyPrice)) { bestBuyPrice = price; bestBuyTrader = t; }
     }
   } catch {}
 
   let profitFTS = null, pctFTS = null;
-  if (flea != null && bestSellPrice != null) {
-    profitFTS = bestSellPrice - flea;
-    pctFTS    = flea > 0 ? (profitFTS / flea) * 100 : null;
-  }
+  if (flea != null && bestSellPrice != null) { profitFTS = bestSellPrice - flea; pctFTS = flea > 0 ? (profitFTS / flea) * 100 : null; }
 
   let profitBTF = null, pctBTF = null;
   if (flea != null && bestBuyPrice != null) {
-    const rawFee = item.flea_fee ?? 0;
-    const fee    = Math.round(rawFee * (1 - (feeDiscount ?? 0)));
-    profitBTF    = flea - fee - bestBuyPrice;
-    pctBTF       = bestBuyPrice > 0 ? (profitBTF / bestBuyPrice) * 100 : null;
+    const fee = Math.round((item.flea_fee ?? 0) * (1 - (feeDiscount ?? 0)));
+    profitBTF = flea - fee - bestBuyPrice;
+    pctBTF = bestBuyPrice > 0 ? (profitBTF / bestBuyPrice) * 100 : null;
   }
 
   let bestProfit = null, bestPct = null, bestRec = null;
   const ftsOk = profitFTS != null && profitFTS > 0;
   const btfOk = profitBTF != null && profitBTF > 0;
-  if (ftsOk && (!btfOk || profitFTS >= profitBTF)) {
-    bestProfit = profitFTS; bestPct = pctFTS; bestRec = 'BUY_FLEA_SELL_TRADER';
-  } else if (btfOk) {
-    bestProfit = profitBTF; bestPct = pctBTF; bestRec = 'BUY_TRADER_SELL_FLEA';
-  }
+  if (ftsOk && (!btfOk || profitFTS >= profitBTF)) { bestProfit = profitFTS; bestPct = pctFTS; bestRec = 'BUY_FLEA_SELL_TRADER'; }
+  else if (btfOk) { bestProfit = profitBTF; bestPct = pctBTF; bestRec = 'BUY_TRADER_SELL_FLEA'; }
 
-  return { flea, bestSellTrader, bestSellPrice, bestBuyTrader, bestBuyPrice, profitFTS, pctFTS, profitBTF, pctBTF, bestProfit, bestPct, bestRec };
+  const bestActionTrader = bestRec === 'BUY_FLEA_SELL_TRADER' ? bestSellTrader : bestBuyTrader;
+  return { flea, bestSellTrader, bestSellPrice, bestBuyTrader, bestBuyPrice, profitFTS, pctFTS, profitBTF, pctBTF, bestProfit, bestPct, bestRec, bestActionTrader };
 }
 
 export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
@@ -205,11 +178,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     () => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })),
     [items, traderFilters, feeDiscount]
   );
-
-  const filtered = useMemo(
-    () => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0),
-    [rows]
-  );
+  const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
 
   const columns = useMemo(() => [
     col.accessor((row) => lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en, {
@@ -230,70 +199,41 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     }),
     col.accessor((row) => row._c.bestBuyPrice, {
       id: 'buy_trader', header: 'Achat Trader',
-      cell: (info) => {
-        const row = info.row.original;
-        return <TraderPricesTooltip pricesJson={row.trader_buy_prices} highlight={row._c.bestBuyTrader} label="Prix d'achat chez les traders" />;
-      },
+      cell: (info) => <TraderPricesTooltip pricesJson={info.row.original.trader_buy_prices} highlight={info.row.original._c.bestBuyTrader} label="Prix d'achat chez les traders" />,
       sortingFn: (a, b) => (a.original._c.bestBuyPrice ?? Infinity) - (b.original._c.bestBuyPrice ?? Infinity),
     }),
     col.accessor((row) => row._c.flea, {
-      id: 'flea_price',
-      header: () => <span className="flex items-center gap-1">🛒 Flea</span>,
+      id: 'flea_price', header: () => <span>🛒 Flea</span>,
       cell: (info) => {
-        const row = info.row.original;
-        return <FleaPriceTooltip current={row._c.flea} low24h={row.low24h_price} avg24h={row.avg24h_price} high24h={row.high24h_price} lastOfferCount={row.last_offer_count} />;
+        const r = info.row.original;
+        return <FleaPriceTooltip current={r._c.flea} low24h={r.low24h_price} avg24h={r.avg24h_price} high24h={r.high24h_price} lastOfferCount={r.last_offer_count} />;
       },
     }),
     col.accessor((row) => row._c.bestSellPrice, {
       id: 'sell_trader', header: 'Vente Trader',
-      cell: (info) => {
-        const row = info.row.original;
-        return <TraderPricesTooltip pricesJson={row.trader_prices} highlight={row._c.bestSellTrader} label="Prix de rachat par les traders" />;
-      },
+      cell: (info) => <TraderPricesTooltip pricesJson={info.row.original.trader_prices} highlight={info.row.original._c.bestSellTrader} label="Prix de rachat par les traders" />,
       sortingFn: (a, b) => (a.original._c.bestSellPrice ?? -Infinity) - (b.original._c.bestSellPrice ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitBTF, {
       id: 'profit_btf', header: 'Profit Trader→Flea',
-      cell: (info) => {
-        const row = info.row.original;
-        return <ProfitCell value={row._c.profitBTF} pct={row._c.pctBTF} isBest={row._c.bestRec === 'BUY_TRADER_SELL_FLEA'} />;
-      },
+      cell: (info) => <ProfitCell value={info.row.original._c.profitBTF} pct={info.row.original._c.pctBTF} isBest={info.row.original._c.bestRec === 'BUY_TRADER_SELL_FLEA'} />,
       sortingFn: (a, b) => (a.original._c.profitBTF ?? -Infinity) - (b.original._c.profitBTF ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitFTS, {
       id: 'profit_fts', header: 'Profit Flea→Trader',
-      cell: (info) => {
-        const row = info.row.original;
-        return <ProfitCell value={row._c.profitFTS} pct={row._c.pctFTS} isBest={row._c.bestRec === 'BUY_FLEA_SELL_TRADER'} />;
-      },
+      cell: (info) => <ProfitCell value={info.row.original._c.profitFTS} pct={info.row.original._c.pctFTS} isBest={info.row.original._c.bestRec === 'BUY_FLEA_SELL_TRADER'} />,
       sortingFn: (a, b) => (a.original._c.profitFTS ?? -Infinity) - (b.original._c.profitFTS ?? -Infinity),
     }),
     col.accessor((row) => row._c.bestProfit, {
       id: 'best_profit', header: '⭐ Best Profit',
-      cell: (info) => {
-        const row = info.row.original;
-        return <ProfitCell value={row._c.bestProfit} pct={row._c.bestPct} isBest={true} />;
-      },
+      cell: (info) => <ProfitCell value={info.row.original._c.bestProfit} pct={info.row.original._c.bestPct} isBest={true} />,
       sortingFn: (a, b) => (a.original._c.bestProfit ?? -Infinity) - (b.original._c.bestProfit ?? -Infinity),
     }),
     col.accessor((row) => row._c.bestRec, {
       id: 'action', header: 'Action', enableSorting: false,
       cell: (info) => {
-        const row = info.row.original;
-        const rec = row._c.bestRec;
-        if (!rec) return <span className="text-gray-600 text-xs">—</span>;
-        const meta   = REC_META[rec];
-        const isFTS  = rec === 'BUY_FLEA_SELL_TRADER';
-        const isBTF  = rec === 'BUY_TRADER_SELL_FLEA';
-        const buyName  = isBTF ? row._c.bestBuyTrader  : null;
-        const sellName = isFTS ? row._c.bestSellTrader : null;
-        return (
-          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${meta.cls}`}>
-            <span>{meta.icon}</span>
-            {isFTS && (<><span>Flea</span><span className="opacity-60">→</span>{sellName && TRADER_META[sellName]?.img && <img src={TRADER_META[sellName].img} alt={sellName} className="w-4 h-4 rounded-full object-cover border border-green-700" onError={(e) => { e.target.style.display = 'none'; }} />}<span>{sellName || 'Trader'}</span></>)}
-            {isBTF && (<>{buyName && TRADER_META[buyName]?.img && <img src={TRADER_META[buyName].img} alt={buyName} className="w-4 h-4 rounded-full object-cover border border-blue-700" onError={(e) => { e.target.style.display = 'none'; }} />}<span>{buyName || 'Trader'}</span><span className="opacity-60">→</span><span>Flea</span></>)}
-          </span>
-        );
+        const r = info.row.original;
+        return <ActionCell rec={r._c.bestRec} traderName={r._c.bestActionTrader} profit={r._c.bestProfit} />;
       },
     }),
   ], [lang, traderFilters, feeDiscount]);
@@ -337,8 +277,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
               } hover:bg-tarkov-border transition-colors`}>
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-3 py-2">
-                    {flexRender(cell.column.columnDef.def, cell.getContext()) ||
-                     flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
               </tr>
