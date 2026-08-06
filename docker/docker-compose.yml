@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -23,7 +21,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:80"
-    # No REACT_APP_API_URL needed — all calls go through nginx proxy /api/
     depends_on:
       - backend
     restart: unless-stopped
