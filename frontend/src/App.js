@@ -113,6 +113,7 @@ export default function App() {
   const [items, setItems]                 = useState([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [filters, setFilters]             = useState({
     minProfitRub: defaultMinProfitRub(),
     minOffers: defaultMinOffers(),
@@ -134,17 +135,34 @@ export default function App() {
     setPlayerLevel(n);
   };
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true); setError(null);
+  // silent=true → refresh en arrière-plan sans spinner (données actuelles restent affichées)
+  // silent=false → premier chargement, affiche le spinner
+  const fetchItems = useCallback(async (silent = false) => {
+    if (!silent) { setLoading(true); }
+    setError(null);
     try {
       const { data } = await axios.get(`${API_BASE}/items/`, { params: { mode } });
       setItems(data);
+      setInitialLoaded(true);
     } catch (err) {
       setError(`Failed to load items: ${err.message}`);
-    } finally { setLoading(false); }
+    } finally {
+      if (!silent) { setLoading(false); }
+    }
   }, [mode]);
 
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+  // Premier chargement (avec spinner)
+  useEffect(() => {
+    setInitialLoaded(false);
+    fetchItems(false);
+  }, [fetchItems]);
+
+  // Refresh silencieux toutes les 5 min — données remplacées en arrière-plan, zéro flash
+  useEffect(() => {
+    if (!initialLoaded) return;
+    const id = setInterval(() => fetchItems(true), 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [fetchItems, initialLoaded]);
 
   const offerCountAvailable = useMemo(() => {
     if (loading || items.length === 0) return true;
