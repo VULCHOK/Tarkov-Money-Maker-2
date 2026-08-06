@@ -47,26 +47,20 @@ export function defaultIntelLevel() {
 const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 30 };
 
 const INTEL_OPTIONS = [
-  { level: 0, label: 'Non construit', sub: 'Pas de réduction' },
-  { level: 1, label: 'Intel Center L1', sub: 'Pas de réduction' },
-  { level: 2, label: 'Intel Center L2', sub: 'Pas de réduction' },
-  { level: 3, label: 'Intel Center L3', sub: '-30% de taxe flea' },
+  { level: 0, label: '\u2715',  sub: 'Non construit — pas de réduction' },
+  { level: 1, label: 'L1', sub: 'Niveau 1 — pas de réduction' },
+  { level: 2, label: 'L2', sub: 'Niveau 2 — pas de réduction' },
+  { level: 3, label: 'L3', sub: 'Niveau 3 — -30% taxe flea' },
 ];
 
-/**
- * Carte trader redesignée :
- * ┌─────────────────────────────┐
- * │  [Portrait 56x56]  [1]      │
- * │                    [2]      │
- * │   Nom du trader    [3] ←LL  │
- * │                    [4]      │
- * └─────────────────────────────┘
- * Clic sur la carte → toggle enabled
- * Clic sur un bouton LL → change le niveau (sans stopper le toggle)
- */
+// ─── Carte trader ────────────────────────────────────────────────────────────
+// Dimensions fixes : 110 x 96px
+// Portrait : 72px large, hauteur totale, object-cover + object-[center_15%]
+// pour centrer sur le visage (les portraits EFT ont le visage à ~15-25% du haut)
+// ─────────────────────────────────────────────────────────────────────────────
 function TraderCard({ trader, tf, onToggle, onLevel }) {
-  const meta     = TRADER_META[trader];
-  const levels   = TRADER_LEVELS[trader];
+  const meta      = TRADER_META[trader];
+  const levels    = TRADER_LEVELS[trader];
   const isEnabled = tf.enabled;
 
   const handleImgError = (e) => {
@@ -80,31 +74,32 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   return (
     <div
       onClick={() => onToggle(trader)}
-      className={`relative flex items-stretch gap-0 rounded-lg border overflow-hidden cursor-pointer select-none transition-all ${
+      className={`relative flex items-stretch rounded-lg border overflow-hidden cursor-pointer select-none transition-all ${
         isEnabled
           ? 'border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40'
           : 'border-tarkov-border bg-tarkov-bg opacity-40 grayscale'
       }`}
-      style={{ width: 110 }}
-      title={`${trader} — cliquer pour ${isEnabled ? 'désactiver' : 'activer'}`}
+      style={{ width: 110, height: 96 }}
+      title={`${trader} — ${isEnabled ? 'désactiver' : 'activer'}`}
     >
-      {/* Portrait grand format */}
-      <div className="relative flex-shrink-0" style={{ width: 72, height: 80 }}>
+      {/* Portrait — 72px large, pleine hauteur, visage centré */}
+      <div className="relative flex-shrink-0" style={{ width: 72 }}>
         <img
           src={meta.img}
           alt={trader}
-          className="w-full h-full object-cover object-top"
+          className="w-full h-full object-cover"
+          style={{ objectPosition: 'center 15%' }}
           onError={handleImgError}
         />
-        {/* Overlay nom en bas du portrait */}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+        {/* Nom en overlay bas */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1 pt-3 pb-0.5">
           <span className={`text-[10px] font-bold leading-none block truncate ${
             isEnabled ? 'text-tarkov-gold' : 'text-gray-400'
           }`}>{trader}</span>
         </div>
       </div>
 
-      {/* Boutons LL verticaux */}
+      {/* Boutons LL verticaux — 38px large */}
       <div
         className="flex flex-col justify-around items-center px-1 py-1 bg-black/30"
         style={{ width: 38 }}
@@ -120,7 +115,7 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
                 if (!isEnabled) onToggle(trader);
                 onLevel(trader, lvl);
               }}
-              className={`w-7 h-6 rounded text-xs font-bold transition-colors ${
+              className={`w-7 h-5 rounded text-xs font-bold transition-colors ${
                 isActive
                   ? 'bg-tarkov-gold text-tarkov-bg'
                   : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
@@ -135,6 +130,51 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   );
 }
 
+// ─── Carte Intel Center ───────────────────────────────────────────────────────
+// Design unifié avec les cartes traders : même hauteur 96px, même bordure
+// ─────────────────────────────────────────────────────────────────────────────
+function IntelCard({ intelLevel, onIntelLevelChange }) {
+  const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
+
+  return (
+    <div
+      className="flex items-stretch rounded-lg border border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40 overflow-hidden select-none"
+      style={{ height: 96 }}
+    >
+      {/* Label + icône */}
+      <div className="flex flex-col justify-center items-center bg-black/30 px-2" style={{ width: 56 }}>
+        <span className="text-lg leading-none">\uD83D\uDCD0</span>
+        <span className="text-[9px] text-gray-400 text-center mt-1 leading-tight">Intel\nCenter</span>
+        {discount > 0 && (
+          <span className="text-[9px] text-green-400 font-bold mt-1">-{discount}%</span>
+        )}
+      </div>
+
+      {/* Boutons niveau verticaux */}
+      <div className="flex flex-col justify-around items-center px-1 py-1" style={{ width: 44 }}>
+        {INTEL_OPTIONS.map(({ level, label, sub }) => {
+          const isActive = intelLevel === level;
+          return (
+            <button
+              key={level}
+              onClick={() => onIntelLevelChange(level)}
+              title={sub}
+              className={`w-8 h-5 rounded text-xs font-bold transition-colors ${
+                isActive
+                  ? 'bg-tarkov-gold text-tarkov-bg'
+                  : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Filters ─────────────────────────────────────────────────────────────────
 export function Filters({ filters, onChange, traderFilters, onTraderFiltersChange, intelLevel, onIntelLevelChange }) {
   const handleTraderToggle = (trader) => {
     const next = { ...traderFilters, [trader]: { ...traderFilters[trader], enabled: !traderFilters[trader].enabled } };
@@ -153,54 +193,27 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
     onIntelLevelChange(level);
   };
 
-  const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
-
   return (
-    <div className="flex flex-col gap-4 mb-6">
+    <div className="flex flex-col gap-3 mb-6">
 
-      {/* Ligne 1 : Profit min + Intel Center */}
-      <div className="flex flex-wrap gap-4 items-end">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-400">Profit minimum (₽)</span>
-          <input
-            type="number"
-            placeholder="ex: 20000"
-            value={filters.minProfitRub}
-            onChange={(e) => {
-              const v = e.target.value;
-              onChange({ ...filters, minProfitRub: v });
-              localStorage.setItem('minProfitRub', v);
-            }}
-            className="bg-tarkov-card border border-tarkov-border rounded px-3 py-2 text-sm focus:outline-none focus:border-tarkov-gold w-44"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-400">Intelligence Center</span>
-          <div className="flex gap-1">
-            {INTEL_OPTIONS.map(({ level, label, sub }) => (
-              <button
-                key={level}
-                onClick={() => handleIntelLevel(level)}
-                title={sub}
-                className={`px-2 py-1 rounded border text-xs transition-colors ${
-                  intelLevel === level
-                    ? 'border-tarkov-gold bg-tarkov-card text-tarkov-gold'
-                    : 'border-tarkov-border bg-tarkov-bg text-gray-500 hover:border-gray-400'
-                }`}
-              >
-                {level === 0 ? '✕' : `L${level}`}
-              </button>
-            ))}
-            {discount > 0 && (
-              <span className="ml-1 self-center text-xs text-green-400">-{discount}% taxe</span>
-            )}
-          </div>
-        </div>
+      {/* Ligne 1 : Profit minimum */}
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-gray-400">Profit minimum (\u20BD)</span>
+        <input
+          type="number"
+          placeholder="ex: 20000"
+          value={filters.minProfitRub}
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange({ ...filters, minProfitRub: v });
+            localStorage.setItem('minProfitRub', v);
+          }}
+          className="bg-tarkov-card border border-tarkov-border rounded px-3 py-2 text-sm focus:outline-none focus:border-tarkov-gold w-44"
+        />
       </div>
 
-      {/* Cartes traders */}
-      <div className="flex flex-wrap gap-2">
+      {/* Ligne 2 : Traders + Intel Center — même rangée, même hauteur */}
+      <div className="flex flex-wrap gap-2 items-start">
         {ALL_TRADERS.map((trader) => (
           <TraderCard
             key={trader}
@@ -210,6 +223,8 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
             onLevel={handleTraderLevel}
           />
         ))}
+        {/* Intel Center — même ligne, même hauteur */}
+        <IntelCard intelLevel={intelLevel} onIntelLevelChange={handleIntelLevel} />
       </div>
     </div>
   );
