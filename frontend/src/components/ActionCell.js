@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { TRADER_META, FLEA_META } from './Filters';
 
-// Portrait circulaire réutilisable (trader ou flea)
-function Portrait({ meta, name, size = 20 }) {
+// Portrait circulaire — taille augmentée, exploit pleine hauteur du badge
+function Portrait({ meta, name, size = 26 }) {
   if (!meta?.img) {
     return (
       <span
@@ -16,7 +16,7 @@ function Portrait({ meta, name, size = 20 }) {
       src={meta.img}
       alt={name}
       title={name}
-      className="rounded-full object-cover border border-tarkov-border flex-shrink-0"
+      className="rounded-full object-cover border border-white/20 flex-shrink-0"
       style={{ width: size, height: size, objectPosition: 'center 15%' }}
       onError={(e) => {
         if (meta.fallback && e.target.src !== meta.fallback) e.target.src = meta.fallback;
@@ -27,8 +27,8 @@ function Portrait({ meta, name, size = 20 }) {
 }
 
 const Arrow = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="flex-shrink-0 text-gray-400">
-    <path d="M1 5h8M6 2l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="flex-shrink-0 opacity-60">
+    <path d="M1 5h8M6 2l3 3-3 3" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -44,16 +44,14 @@ export function ActionCell({ rec, traderName, profit }) {
   const fleaMeta   = FLEA_META;
 
   const bgCls = isFTS
-    ? 'bg-green-900/50 border-green-800/60'
-    : 'bg-blue-900/50 border-blue-800/60';
+    ? 'bg-green-900/50 border-green-700/50'
+    : 'bg-blue-900/50 border-blue-700/50';
 
   const tooltipText = isFTS
     ? `Acheter sur la Flea → Vendre à ${traderName}`
     : `Acheter chez ${traderName} → Vendre sur la Flea`;
 
-  const profitStr = profit != null
-    ? `+${profit.toLocaleString('fr-FR')} ₽`
-    : '';
+  const profitStr = profit != null ? `+${profit.toLocaleString('fr-FR')} ₽` : '';
 
   return (
     <div
@@ -61,24 +59,13 @@ export function ActionCell({ rec, traderName, profit }) {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
+      {/* Badge — hauteur 32px, portraits 26px, gap réduit */}
       <span
-        className={`inline-flex items-center justify-center gap-1 rounded border px-1.5 py-1 ${bgCls}`}
-        style={{ width: 72, height: 28 }}
+        className={`inline-flex items-center justify-center gap-1 rounded border px-1.5 ${bgCls}`}
+        style={{ width: 76, height: 32 }}
       >
-        {isFTS && (
-          <>
-            <Portrait meta={fleaMeta}   name="Flea"      size={18} />
-            <Arrow />
-            <Portrait meta={traderMeta} name={traderName} size={18} />
-          </>
-        )}
-        {isBTF && (
-          <>
-            <Portrait meta={traderMeta} name={traderName} size={18} />
-            <Arrow />
-            <Portrait meta={fleaMeta}   name="Flea"      size={18} />
-          </>
-        )}
+        {isFTS && (<><Portrait meta={fleaMeta}   name="Flea"       size={26} /><Arrow /><Portrait meta={traderMeta} name={traderName} size={26} /></>)}
+        {isBTF && (<><Portrait meta={traderMeta} name={traderName} size={26} /><Arrow /><Portrait meta={fleaMeta}   name="Flea"       size={26} /></>)}
       </span>
 
       {open && (

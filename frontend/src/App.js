@@ -9,33 +9,9 @@ import { ApiStatus } from './components/ApiStatus';
 const API_BASE = '/api';
 
 const MODES = [
-  {
-    key: 'regular',
-    label: 'PVP',
-    emoji: '⚔️',
-    headerBg: 'from-[#2a0a0a] to-[#111]',
-    borderColor: 'border-red-900/60',
-    accentColor: 'text-red-300',
-    badge: 'Permanent',
-  },
-  {
-    key: 'pve',
-    label: 'PVE',
-    emoji: '🤖',
-    headerBg: 'from-[#0a2010] to-[#111]',
-    borderColor: 'border-green-900/60',
-    accentColor: 'text-green-300',
-    badge: 'Co-op',
-  },
-  {
-    key: 'pvp-season',
-    label: 'Kord Breach',
-    emoji: '❄️',
-    headerBg: 'from-[#071525] to-[#111]',
-    borderColor: 'border-blue-900/60',
-    accentColor: 'text-blue-300',
-    badge: 'Season 1',
-  },
+  { key: 'regular',    label: 'PVP',         emoji: '⚔️', headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badge: 'Permanent' },
+  { key: 'pve',        label: 'PVE',         emoji: '🤖', headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badge: 'Co-op'     },
+  { key: 'pvp-season', label: 'Kord Breach', emoji: '❄️', headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Season 1'  },
 ];
 
 function defaultMinProfitRub() {
@@ -88,19 +64,21 @@ export default function App() {
     } catch { return true; }
   });
 
-  // Pill commune : conteneur de groupe
   const pillGroup = 'flex items-center gap-0.5 bg-black/50 border border-white/10 rounded-lg p-0.5';
-  // Pill item inactive
   const pillBase  = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer select-none';
   const pillOff   = 'text-gray-400 hover:text-white hover:bg-white/5';
   const pillOn    = 'bg-tarkov-gold text-tarkov-bg shadow-sm';
+
+  // Pills langue : drapeau seul + code ISO
+  const LANGS = [
+    { code: 'en', flag: '🇬🇧', iso: 'EN' },
+    { code: 'fr', flag: '🇫🇷', iso: 'FR' },
+  ];
 
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
       <header className={`bg-gradient-to-r ${activeMeta.headerBg} border-b ${activeMeta.borderColor} px-5 py-3`}>
         <div className="flex items-center justify-between flex-wrap gap-2">
-
-          {/* Titre */}
           <div>
             <h1 className="text-xl font-bold text-tarkov-gold leading-tight">Tarkov Money Maker 2</h1>
             <p className={`text-xs ${activeMeta.accentColor} flex items-center gap-1 mt-0.5`}>
@@ -111,38 +89,26 @@ export default function App() {
             </p>
           </div>
 
-          {/* Groupe de pills */}
           <div className="flex items-center gap-2 flex-wrap">
-
             {/* Modes */}
             <div className={pillGroup}>
               {MODES.map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setMode(m.key)}
-                  className={`${pillBase} ${mode === m.key ? pillOn : pillOff}`}
-                  title={m.badge}
-                >
-                  <span>{m.emoji}</span>
-                  <span>{m.label}</span>
+                <button key={m.key} onClick={() => setMode(m.key)} title={m.badge}
+                  className={`${pillBase} ${mode === m.key ? pillOn : pillOff}`}>
+                  <span>{m.emoji}</span><span>{m.label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Langue */}
+            {/* Langue — drapeau + code ISO */}
             <div className={pillGroup}>
-              <button
-                onClick={() => setLang('en')}
-                className={`${pillBase} ${lang === 'en' ? pillOn : pillOff}`}
-              >
-                🇬🇧 EN
-              </button>
-              <button
-                onClick={() => setLang('fr')}
-                className={`${pillBase} ${lang === 'fr' ? pillOn : pillOff}`}
-              >
-                🇫🇷 FR
-              </button>
+              {LANGS.map(({ code, flag, iso }) => (
+                <button key={code} onClick={() => setLang(code)}
+                  className={`${pillBase} ${lang === code ? pillOn : pillOff}`}>
+                  <span className="text-base leading-none">{flag}</span>
+                  <span>{iso}</span>
+                </button>
+              ))}
             </div>
 
             {/* Outils */}
@@ -151,7 +117,6 @@ export default function App() {
               <span className="w-px h-4 bg-white/10 mx-0.5" />
               <ExportButtons items={visibleItems} lang={lang} pillBase={pillBase} pillOff={pillOff} />
             </div>
-
           </div>
         </div>
       </header>
@@ -166,20 +131,10 @@ export default function App() {
           intelLevel={intelLevel}
           onIntelLevelChange={setIntelLevel}
         />
-        {loading && (
-          <p className="text-center py-8 text-gray-400">
-            Chargement <span className={activeMeta.accentColor}>({activeMeta.label})</span>...
-          </p>
-        )}
-        {error && <p className="text-center py-8 text-red-400">{error}</p>}
+        {loading && <p className="text-center py-8 text-gray-400">Chargement <span className={activeMeta.accentColor}>({activeMeta.label})</span>...</p>}
+        {error   && <p className="text-center py-8 text-red-400">{error}</p>}
         {!loading && !error && (
-          <ItemTable
-            items={visibleItems}
-            lang={lang}
-            traderFilters={traderFilters}
-            intelLevel={intelLevel}
-            feeDiscount={feeDiscount}
-          />
+          <ItemTable items={visibleItems} lang={lang} traderFilters={traderFilters} intelLevel={intelLevel} feeDiscount={feeDiscount} />
         )}
       </main>
     </div>
