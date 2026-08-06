@@ -2,16 +2,16 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..database import SessionLocal
 from ..models import Item
 from ..services.tarkov_api import fetch_items
-from ..services.price_calculator import calculate_prices
+from ..services.price_calculator import calculate_differences
 
 logger = logging.getLogger(__name__)
 
-_sync_status: dict = {
+sync_state: dict = {
     "last_sync": None,
     "item_count": 0,
     "status": "never",
@@ -20,11 +20,11 @@ _sync_status: dict = {
 
 
 def get_sync_status() -> dict:
-    return dict(_sync_status)
+    return dict(sync_state)
 
 
 async def sync_data() -> dict:
-    global _sync_status
+    global sync_state
     logger.info("[data_sync] Starting sync...")
     try:
         raw_items = await fetch_items()
@@ -38,13 +38,14 @@ async def sync_data() -> dict:
                 f"end with ' Name'). Skipping DB upsert to preserve existing data."
             )
 
-        enriched = [calculate_prices(item) for item in raw_items]
+        # calculate_differences takes the full list and returns enriched list
+        enriched = calculate_differences(raw_items)
 
         db = SessionLocal()
         try:
             upserted = 0
             for item in enriched:
-                stmt = sqlite_insert(Item).values(
+                stmt = pg_insert(Item).values(
                     id=item["id"],
                     name_en=item.get("name_en", ""),
                     name_fr=item.get("name_fr"),
@@ -99,19 +100,19 @@ async def sync_data() -> dict:
         finally:
             db.close()
 
-        _sync_status = {
+        sync_state = {
             "last_sync": datetime.now(timezone.utc).isoformat(),
             "item_count": upserted,
             "status": "ok",
             "error": None,
         }
         logger.info(f"[data_sync] Sync complete — {upserted} items upserted")
-        return _sync_status
+        return sync_state
 
     except Exception as exc:
-        _sync_status = {
+        sync_state = {
             "last_sync": datetime.now(timezone.utc).isoformat(),
-            "item_count": _sync_status.get("item_count", 0),
+            "item_count": sync_state.get("item_count", 0),
             "status": "error",
             "error": str(exc),
         }
