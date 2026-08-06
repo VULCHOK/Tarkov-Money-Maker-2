@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useT } from '../hooks/useT';
 
 const MODE_LABELS = {
-  regular:      { label: 'PVP',        emoji: '⚔️' },
-  pve:          { label: 'PVE',        emoji: '🤖' },
+  regular:      { label: 'PVP',         emoji: '⚔️' },
+  pve:          { label: 'PVE',         emoji: '🤖' },
   'pvp-season': { label: 'Kord Breach', emoji: '❄️' },
 };
 
-function fmtTime(isoString) {
-  if (!isoString) return 'jamais';
+function fmtTime(isoString, t) {
+  if (!isoString) return t('apiStatusNever');
   const d = new Date(isoString);
   const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
-  if (diffMin < 1) return 'à l’instant';
-  if (diffMin < 60) return `il y a ${diffMin}m`;
-  return `il y a ${Math.round(diffMin / 60)}h`;
+  if (diffMin < 1)  return t('apiStatusJustNow');
+  if (diffMin < 60) return `il y a ${diffMin}${t('apiStatusMinutesAgo')}`;
+  return `il y a ${Math.round(diffMin / 60)}${t('apiStatusHoursAgo')}`;
 }
 
 function fmtDate(isoString) {
@@ -23,7 +24,8 @@ function fmtDate(isoString) {
   });
 }
 
-export function ApiStatus({ pillBase = '', pillOff = '' }) {
+export function ApiStatus({ pillBase = '', pillOff = '', lang = 'fr' }) {
+  const t = useT(lang);
   const [status, setStatus]           = useState(null);
   const [open, setOpen]               = useState(false);
   const [lastChecked, setLastChecked] = useState(null);
@@ -52,12 +54,12 @@ export function ApiStatus({ pillBase = '', pillOff = '' }) {
   }, [open]);
 
   const dot = (() => {
-    if (!status) return { color: 'bg-gray-500', pulse: false, label: 'Vérification...' };
+    if (!status) return { color: 'bg-gray-500', pulse: false, label: t('apiStatusChecking') };
     switch (status.overall) {
-      case 'online':   return { color: 'bg-green-500',  pulse: true,  label: 'tarkov.dev Online' };
-      case 'degraded': return { color: 'bg-orange-400', pulse: true,  label: 'tarkov.dev Dégradé' };
-      case 'offline':  return { color: 'bg-red-500',    pulse: false, label: 'tarkov.dev Offline' };
-      default:         return { color: 'bg-gray-500',   pulse: false, label: 'Vérif...' };
+      case 'online':   return { color: 'bg-green-500',  pulse: true,  label: t('apiStatusOnline') };
+      case 'degraded': return { color: 'bg-orange-400', pulse: true,  label: t('apiStatusDegraded') };
+      case 'offline':  return { color: 'bg-red-500',    pulse: false, label: t('apiStatusOffline') };
+      default:         return { color: 'bg-gray-500',   pulse: false, label: t('apiStatusChecking') };
     }
   })();
 
@@ -66,7 +68,7 @@ export function ApiStatus({ pillBase = '', pillOff = '' }) {
       <button
         onClick={() => setOpen(true)}
         className={`${pillBase} ${pillOff}`}
-        title="Statut de synchronisation"
+        title={t('apiStatusTitle')}
       >
         <span className="relative flex h-2 w-2 flex-shrink-0">
           {dot.pulse && (
@@ -86,7 +88,7 @@ export function ApiStatus({ pillBase = '', pillOff = '' }) {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-tarkov-gold font-bold text-lg flex items-center gap-2">
                 <span className={`inline-flex rounded-full h-2.5 w-2.5 ${dot.color}`} />
-                Statut de synchronisation
+                {t('apiStatusTitle')}
               </h2>
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">×</button>
             </div>
@@ -94,21 +96,21 @@ export function ApiStatus({ pillBase = '', pillOff = '' }) {
             {status && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 text-xs">
                 {[{
-                  label: 'Statut global',
+                  label: t('apiStatusGlobal'),
                   value: status.overall ?? '—',
                   cls: status.overall === 'online' ? 'text-green-400' : status.overall === 'degraded' ? 'text-orange-400' : 'text-red-400',
                 }, {
-                  label: 'Dernière sync',
+                  label: t('apiStatusLastSync'),
                   value: fmtDate(status.last_sync),
-                  sub: fmtTime(status.last_sync),
+                  sub:   fmtTime(status.last_sync, t),
                 }, {
-                  label: 'Items synchronisés',
+                  label: t('apiStatusItems'),
                   value: status.items_synced?.toLocaleString('fr-FR') ?? '—',
-                  sub: 'total cumulé',
+                  sub:   t('apiStatusItemsSub'),
                 }, {
-                  label: 'Source API',
+                  label: t('apiStatusSource'),
                   value: status.api_source_used ?? '—',
-                  sub: 'check auto toutes les 30s',
+                  sub:   t('apiStatusSourceSub'),
                 }].map(({ label, value, sub, cls }) => (
                   <div key={label} className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
                     <div className="text-gray-400 mb-1">{label}</div>
@@ -129,10 +131,11 @@ export function ApiStatus({ pillBase = '', pillOff = '' }) {
                       <span className="text-tarkov-gold font-semibold text-sm">{meta.label}</span>
                     </div>
                     <div className="space-y-1.5 text-xs">
-                      {[['Statut', modeData?.status ?? 'N/A', modeData?.status === 'success' ? 'text-green-400' : modeData?.status === 'error' ? 'text-red-400' : 'text-gray-500'],
-                        ['Items', modeData?.items_synced?.toLocaleString('fr-FR') ?? '—', 'text-white'],
-                        ['Dernière sync', fmtTime(modeData?.last_sync), 'text-gray-300'],
-                        ['Durée', modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '—', 'text-gray-300'],
+                      {[
+                        [t('apiStatusModeStatus'),   modeData?.status ?? 'N/A', modeData?.status === 'success' ? 'text-green-400' : modeData?.status === 'error' ? 'text-red-400' : 'text-gray-500'],
+                        [t('apiStatusModeItems'),    modeData?.items_synced?.toLocaleString('fr-FR') ?? '—', 'text-white'],
+                        [t('apiStatusModeLastSync'), fmtTime(modeData?.last_sync, t), 'text-gray-300'],
+                        [t('apiStatusModeDuration'), modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '—', 'text-gray-300'],
                       ].map(([lbl, val, cls]) => (
                         <div key={lbl} className="flex justify-between gap-3">
                           <span className="text-gray-400">{lbl}</span>
@@ -151,14 +154,14 @@ export function ApiStatus({ pillBase = '', pillOff = '' }) {
             {status?.sources && (
               <div className="flex gap-3 flex-wrap text-xs">
                 <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border flex gap-2 items-center">
-                  <span className="text-gray-400">REST</span>
+                  <span className="text-gray-400">{t('apiStatusRest')}</span>
                   <span className={status.sources.rest === 'online' ? 'text-green-400' : status.sources.rest === 'degraded' ? 'text-orange-400' : 'text-red-400'}>
                     {status.sources.rest ?? '—'}
                   </span>
                 </div>
                 {lastChecked && (
                   <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border text-gray-500">
-                    Vérifié {fmtTime(lastChecked.toISOString())}
+                    {t('apiStatusCheckedAt')} {fmtTime(lastChecked.toISOString(), t)}
                   </div>
                 )}
               </div>

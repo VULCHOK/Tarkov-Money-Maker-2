@@ -1,4 +1,5 @@
 import React from 'react';
+import { useT } from '../hooks/useT';
 
 function toCSV(items, lang) {
   if (!items.length) return '';
@@ -11,6 +12,8 @@ function toCSV(items, lang) {
 }
 
 export function ExportButtons({ items, lang = 'en', pillBase = '', pillOff = '' }) {
+  const t = useT(lang);
+
   const exportCSV = () => {
     const blob = new Blob([toCSV(items, lang)], { type: 'text/csv' });
     const a = document.createElement('a');
@@ -29,10 +32,10 @@ export function ExportButtons({ items, lang = 'en', pillBase = '', pillOff = '' 
 
   return (
     <>
-      <button onClick={exportCSV}  className={`${pillBase} ${pillOff}`} title="Exporter en CSV">
+      <button onClick={exportCSV}  className={`${pillBase} ${pillOff}`} title={t('exportCSV')}>
         ↓ CSV
       </button>
-      <button onClick={exportJSON} className={`${pillBase} ${pillOff}`} title="Exporter en JSON">
+      <button onClick={exportJSON} className={`${pillBase} ${pillOff}`} title={t('exportJSON')}>
         ↓ JSON
       </button>
     </>
