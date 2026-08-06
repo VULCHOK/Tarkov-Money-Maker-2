@@ -3,7 +3,6 @@ import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
 import { Filters, defaultTraderFilters, defaultIntelLevel } from './components/Filters';
 import { ExportButtons } from './components/ExportButtons';
-import { RefreshButton } from './components/RefreshButton';
 import { StatsBar } from './components/StatsBar';
 import { ApiStatus } from './components/ApiStatus';
 
@@ -49,39 +48,24 @@ export default function App() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const handleRefresh = async () => {
-    try {
-      await axios.post(`${API_BASE}/refresh/`);
-      setTimeout(fetchItems, 2000);
-    } catch (err) {
-      console.error('Refresh error:', err);
-    }
-  };
-
-  const minRub = parseFloat(filters.minProfitRub) || 0;
-
-  // Intel Center fee discount (mirrors price_calculator.py INTEL_DISCOUNTS)
   const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
   const feeDiscount = INTEL_DISCOUNTS[intelLevel] ?? 0;
 
+  const minRub = parseFloat(filters.minProfitRub) || 0;
+
   const visibleItems = items.filter((item) => {
     try {
-      const prices      = JSON.parse(item.trader_prices || '{}');
-      const fleaPrice   = item.flea_price ?? item.last_low_price ?? 0;
+      const prices     = JSON.parse(item.trader_prices || '{}');
+      const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const activePrices = Object.entries(prices)
         .filter(([t]) => traderFilters[t]?.enabled)
         .map(([, p]) => p);
-
-      // BUY_FLEA_SELL_TRADER profit
-      const bestTrader  = activePrices.length > 0 ? Math.max(...activePrices) : 0;
-      const ftsProfit   = bestTrader - fleaPrice;
-
-      // BUY_TRADER_SELL_FLEA profit (approximate: use flea_fee from item if present)
-      const btfFee      = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
-      const traderBuy   = item.best_trader_buy_price || 0;
-      const btfProfit   = traderBuy > 0 ? (fleaPrice - btfFee - traderBuy) : -Infinity;
-
-      const bestProfit  = Math.max(ftsProfit, btfProfit);
+      const bestTrader = activePrices.length > 0 ? Math.max(...activePrices) : 0;
+      const ftsProfit  = bestTrader - fleaPrice;
+      const btfFee     = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
+      const traderBuy  = item.best_trader_buy_price || 0;
+      const btfProfit  = traderBuy > 0 ? (fleaPrice - btfFee - traderBuy) : -Infinity;
+      const bestProfit = Math.max(ftsProfit, btfProfit);
       return minRub > 0 ? bestProfit >= minRub : bestProfit > 0;
     } catch { return true; }
   });
@@ -95,26 +79,18 @@ export default function App() {
             <p className="text-sm text-gray-400">Compare trader prices vs Flea Market</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-
-            {/* Sélecteur de mode de jeu */}
+            {/* Sélecteur de mode */}
             <div className="flex items-center gap-1 bg-tarkov-card border border-tarkov-border rounded px-1 py-1">
               {MODES.map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setMode(m.key)}
-                  title={m.label}
+                <button key={m.key} onClick={() => setMode(m.key)} title={m.label}
                   className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all ${
-                    mode === m.key
-                      ? 'bg-tarkov-gold text-tarkov-bg'
-                      : 'text-gray-400 hover:text-tarkov-gold'
-                  }`}
-                >
+                    mode === m.key ? 'bg-tarkov-gold text-tarkov-bg' : 'text-gray-400 hover:text-tarkov-gold'
+                  }`}>
                   <span>{m.emoji}</span>
                   <span>{m.label}</span>
                 </button>
               ))}
             </div>
-
             {/* Sélecteur de langue */}
             <div className="flex items-center gap-1 bg-tarkov-card border border-tarkov-border rounded px-2 py-1">
               <button onClick={() => setLang('en')} title="English"
@@ -122,10 +98,8 @@ export default function App() {
               <button onClick={() => setLang('fr')} title="Français"
                 className={`text-lg transition-opacity ${lang === 'fr' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}>🇫🇷</button>
             </div>
-
             <ApiStatus />
             <ExportButtons items={visibleItems} lang={lang} />
-            <RefreshButton onRefresh={handleRefresh} />
           </div>
         </div>
       </header>
