@@ -19,18 +19,27 @@ from .price_calculator import enrich
 
 logger = logging.getLogger(__name__)
 
+GAME_MODES = ["regular", "pve", "pvp-season"]
+
+# État par mode : { "regular": {...}, "pve": {...}, "pvp-season": {...} }
 sync_state: dict = {
-    "status":          "idle",
-    "last_sync":       None,
-    "items_synced":    0,
-    "elapsed_seconds": None,
-    "error":           None,
+    mode: {
+        "status":          "idle",
+        "last_sync":       None,
+        "items_synced":    0,
+        "elapsed_seconds": None,
+        "error":           None,
+    }
+    for mode in GAME_MODES
 }
 
 
 async def sync_data() -> dict:
-    sync_state["status"] = "running"
-    sync_state["error"]  = None
+    # Marquer tous les modes comme "running"
+    for mode in GAME_MODES:
+        sync_state[mode]["status"] = "running"
+        sync_state[mode]["error"]  = None
+
     started_at = datetime.now(timezone.utc)
     logger.info("[data_sync] Starting sync (3 modes)...")
 
@@ -39,25 +48,32 @@ async def sync_data() -> dict:
         enriched  = [enrich(item) for item in raw_items]
         _upsert(enriched)
 
-        elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()
-        summary = {
-            "items_synced":    len(enriched),
-            "elapsed_seconds": round(elapsed, 2),
-            "synced_at":       started_at.isoformat(),
-        }
-        sync_state.update({
-            "status":          "success",
-            "last_sync":       started_at.isoformat(),
-            "items_synced":    len(enriched),
-            "elapsed_seconds": round(elapsed, 2),
-            "error":           None,
-        })
+        elapsed = round((datetime.now(timezone.utc) - started_at).total_seconds(), 2)
+
+        # Compter les items par mode
+        counts_by_mode: dict[str, int] = {m: 0 for m in GAME_MODES}
+        for item in enriched:
+            m = item.get("mode")
+            if m in counts_by_mode:
+                counts_by_mode[m] += 1
+
+        for mode in GAME_MODES:
+            sync_state[mode].update({
+                "status":          "success",
+                "last_sync":       started_at.isoformat(),
+                "items_synced":    counts_by_mode[mode],
+                "elapsed_seconds": elapsed,
+                "error":           None,
+            })
+
+        summary = {"items_synced": len(enriched), "elapsed_seconds": elapsed}
         logger.info(f"[data_sync] Sync complete: {summary}")
         return summary
 
     except Exception as exc:
-        sync_state["status"] = "error"
-        sync_state["error"]  = str(exc)
+        for mode in GAME_MODES:
+            sync_state[mode]["status"] = "error"
+            sync_state[mode]["error"]  = str(exc)
         logger.error(f"[data_sync] Sync failed: {exc}", exc_info=True)
         raise
 
@@ -66,7 +82,6 @@ def _upsert(enriched: list[dict]) -> None:
     if not enriched:
         return
 
-    # Colonnes à mettre à jour (tout sauf la PK composite)
     update_cols = [c for c in enriched[0].keys() if c not in ("id", "mode")]
 
     with engine.begin() as conn:

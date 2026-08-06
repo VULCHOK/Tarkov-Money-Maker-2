@@ -5,12 +5,10 @@ from sqlalchemy import func
 
 from ..database import SessionLocal
 from ..models import Item
-from ..services.data_sync import sync_state
+from ..services.data_sync import sync_state, GAME_MODES
 from ..services.tarkov_api import last_api_source
 
 router = APIRouter()
-
-GAME_MODES = ["regular", "pve", "pvp-season"]
 
 
 async def _probe_rest() -> str:
@@ -39,12 +37,13 @@ def _mode_stats() -> dict:
 
     modes = {}
     for mode in GAME_MODES:
+        state = sync_state[mode]          # état propre à ce mode
         modes[mode] = {
-            "status": sync_state.get("status"),
-            "last_sync": sync_state.get("last_sync"),
-            "items_synced": counts.get(mode, 0),
-            "elapsed_seconds": sync_state.get("elapsed_seconds"),
-            "error": sync_state.get("error"),
+            "status":          state["status"],
+            "last_sync":       state["last_sync"],
+            "items_synced":    counts.get(mode, 0),
+            "elapsed_seconds": state["elapsed_seconds"],
+            "error":           state["error"],
         }
     return modes
 
@@ -53,15 +52,23 @@ def _mode_stats() -> dict:
 async def get_status():
     rest_status = await _probe_rest()
     modes = _mode_stats()
-    total_items = sum(mode["items_synced"] for mode in modes.values())
+    total_items = sum(m["items_synced"] for m in modes.values())
+
+    # overall = dégradé si au moins un mode est en erreur, sinon suit le probe REST
+    has_error = any(m["status"] == "error" for m in modes.values())
+    overall = "degraded" if has_error else rest_status
+
+    # last_sync = la plus récente parmi les modes
+    last_syncs = [m["last_sync"] for m in modes.values() if m["last_sync"]]
+    last_sync = max(last_syncs) if last_syncs else None
 
     return {
-        "overall": rest_status,
-        "sources": {"rest": rest_status},
-        "last_sync": sync_state.get("last_sync"),
-        "last_error": sync_state.get("error"),
-        "items_synced": total_items,
-        "elapsed_seconds": sync_state.get("elapsed_seconds"),
-        "api_source_used": last_api_source,
-        "modes": modes,
+        "overall":          overall,
+        "sources":          {"rest": rest_status},
+        "last_sync":        last_sync,
+        "last_error":       next((m["error"] for m in modes.values() if m["error"]), None),
+        "items_synced":     total_items,
+        "elapsed_seconds":  max((m["elapsed_seconds"] or 0) for m in modes.values()) or None,
+        "api_source_used":  last_api_source,
+        "modes":            modes,
     }
