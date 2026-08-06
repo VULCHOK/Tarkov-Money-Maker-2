@@ -11,9 +11,14 @@ import { ALL_TRADERS } from './Filters';
 import { ActionCell } from './ActionCell';
 
 const col = createColumnHelper();
-// Symbole rouble en constante UTF-8 explicite
 const RUB = '\u20BD';
-const fmt = (n) => n != null ? `${n.toLocaleString('fr-FR')} ${RUB}` : '\u2014';
+const fmt = (n) => n != null ? `${n.toLocaleString('fr-FR')} ${RUB}` : '\u2014';
+const fmtK = (n) => {
+  if (n == null) return '—';
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M ${RUB}`;
+  if (Math.abs(n) >= 1_000)     return `${(n / 1_000).toFixed(1)}k ${RUB}`;
+  return `${n} ${RUB}`;
+};
 const HOT_DEAL_THRESHOLD = 100_000;
 
 const TRADER_META = {
@@ -30,7 +35,7 @@ const TRADER_META = {
 
 const PAGE_SIZES = [10, 25, 50];
 
-// ── Hook smart tooltip ──────────────────────────────────────────────────────────────
+// ── Hook smart tooltip ─────────────────────────────────────────────────────
 function useSmartTooltip(open, tooltipWidth = 208) {
   const triggerRef = useRef(null);
   const [pos, setPos] = useState({ openUp: false, openLeft: false });
@@ -211,7 +216,7 @@ function ProfitCell({ value, pct, isBest }) {
   const bold  = isBest ? 'font-bold text-sm' : 'text-xs';
   return (
     <span className="flex flex-col leading-tight">
-      <span className={`${color} ${bold}`}>{value > 0 ? '+' : ''}{value.toLocaleString('fr-FR')} {RUB}{fire}</span>
+      <span className={`${color} ${bold}`}>{value > 0 ? '+' : ''}{value.toLocaleString('fr-FR')} {RUB}{fire}</span>
       {pct != null && <span className="text-gray-500 text-xs">{pct > 0 ? '+' : ''}{pct.toFixed(1)}%</span>}
     </span>
   );
@@ -266,89 +271,225 @@ function wikiUrl(item) {
   return `https://escapefromtarkov.fandom.com/wiki/${encodeURIComponent(slug)}`;
 }
 
-// ── Vue carte mobile ──────────────────────────────────────────────────────────────
-function ItemCard({ row, lang }) {
-  const { _c: c } = row;
-  const name = lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en;
-  const isHot = c.bestProfit != null && c.bestProfit >= HOT_DEAL_THRESHOLD;
-  const profitColor = c.bestProfit > 0 ? 'text-green-400' : 'text-red-400';
-  const recLabel = c.bestRec === 'BUY_FLEA_SELL_TRADER'
-    ? (lang === 'en' ? 'Buy Flea → Sell Trader' : 'Acheter Flea → Vendre Trader')
-    : (lang === 'en' ? 'Buy Trader → Sell Flea'  : 'Acheter Trader → Vendre Flea');
-  const recBg = c.bestRec === 'BUY_FLEA_SELL_TRADER'
-    ? 'bg-green-900/40 border-green-700/40 text-green-300'
-    : 'bg-blue-900/40 border-blue-700/40 text-blue-300';
-  const url = wikiUrl(row);
+// ── Barre de tri sticky (mobile uniquement) ────────────────────────────────
+const MOBILE_SORTS = [
+  { id: 'best_profit', label: '★ Profit',   desc: true  },
+  { id: 'profit_btf', label: 'Trader→Flea', desc: true  },
+  { id: 'profit_fts', label: 'Flea→Trader', desc: true  },
+  { id: 'flea_price', label: 'Flea',        desc: false },
+  { id: 'buy_trader', label: 'Achat',       desc: false },
+];
+
+function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
   return (
-    <div className="bg-tarkov-card border border-tarkov-border rounded-lg p-3 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        {row.icon_link
-          ? <img src={row.icon_link} alt="" className="w-10 h-10 rounded object-contain bg-tarkov-bg border border-tarkov-border flex-shrink-0" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
-          : <span className="w-10 h-10 rounded bg-tarkov-bg border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
-        }
-        <div className="flex-1 min-w-0">
-          {url
-            ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-sm leading-tight truncate text-tarkov-text hover:text-tarkov-gold hover:underline block">{name || row.id}</a>
-            : <p className="font-semibold text-sm leading-tight truncate text-tarkov-text">{name || row.id}</p>
-          }
-          {c.bestProfit != null && (
-            <p className={`text-sm font-bold ${profitColor}`}>
-              {c.bestProfit > 0 ? '+' : ''}{c.bestProfit.toLocaleString('fr-FR')} {RUB}
-              {isHot && ' 🔥'}
-            </p>
-          )}
-        </div>
+    <div className="sticky top-0 z-20 bg-tarkov-bg border-b border-tarkov-border px-3 py-2 flex flex-col gap-2">
+      {/* compteur + résumé */}
+      <div className="flex items-center justify-between text-xs text-gray-500">
+        <span>{from}–{to} {lang === 'en' ? 'of' : 'sur'} <span className="text-tarkov-gold font-semibold">{total}</span></span>
+        <span className="text-gray-600">{lang === 'en' ? 'Tap column to sort' : 'Appuie pour trier'}</span>
       </div>
-      <div className="grid grid-cols-3 gap-1 text-xs">
-        <div className="bg-tarkov-bg rounded p-1.5">
-          <p className="text-gray-500 leading-none mb-0.5">{lang === 'en' ? 'Buy' : 'Achat'}</p>
-          <p className="text-white font-semibold">{fmt(c.bestBuyPrice)}</p>
-          {c.bestBuyTrader && <p className="text-tarkov-gold text-[10px] truncate">{c.bestBuyTrader}</p>}
-        </div>
-        <div className="bg-tarkov-bg rounded p-1.5">
-          <p className="text-gray-500 leading-none mb-0.5">Flea</p>
-          <p className="text-blue-300 font-semibold">{fmt(c.flea)}</p>
-        </div>
-        <div className="bg-tarkov-bg rounded p-1.5">
-          <p className="text-gray-500 leading-none mb-0.5">{lang === 'en' ? 'Sell' : 'Vente'}</p>
-          <p className="text-white font-semibold">{fmt(c.bestSellPrice)}</p>
-          {c.bestSellTrader && <p className="text-tarkov-gold text-[10px] truncate">{c.bestSellTrader}</p>}
-        </div>
+      {/* pills de tri */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+        {MOBILE_SORTS.map(({ id, label, desc }) => {
+          const active = sorting?.[0]?.id === id;
+          const isDesc = sorting?.[0]?.desc ?? desc;
+          return (
+            <button key={id}
+              onClick={() => onSort(id, active ? !isDesc : desc)}
+              className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-semibold transition-all ${
+                active
+                  ? 'bg-tarkov-gold text-tarkov-bg border-tarkov-gold'
+                  : 'border-tarkov-border text-gray-400 hover:border-tarkov-gold hover:text-tarkov-gold'
+              }`}>
+              {label}
+              {active && <span className="text-[10px]">{isDesc ? '↓' : '↑'}</span>}
+            </button>
+          );
+        })}
       </div>
-      <div className="grid grid-cols-2 gap-1 text-xs">
-        <div className="bg-tarkov-bg rounded p-1.5">
-          <p className="text-gray-500 leading-none mb-0.5">Flea→Trader</p>
-          <p className={c.profitFTS > 0 ? 'text-green-400 font-semibold' : 'text-red-400'}>
-            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${c.profitFTS.toLocaleString('fr-FR')} ${RUB}` : '—'}
-          </p>
-        </div>
-        <div className="bg-tarkov-bg rounded p-1.5">
-          <p className="text-gray-500 leading-none mb-0.5">Trader→Flea</p>
-          <p className={c.profitBTF > 0 ? 'text-green-400 font-semibold' : 'text-red-400'}>
-            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${c.profitBTF.toLocaleString('fr-FR')} ${RUB}` : '—'}
-          </p>
-        </div>
-      </div>
-      {c.bestRec && (
-        <div className={`inline-flex items-center self-start gap-1 rounded border px-2 py-1 text-xs font-semibold ${recBg}`}>
-          {recLabel}
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Pagination ──────────────────────────────────────────────────────────────
-function PaginationBar({ table, lang }) {
+// ── Carte mobile "cockpit" ─────────────────────────────────────────────────
+function ItemCard({ row, lang }) {
+  const { _c: c } = row;
+  const name = lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en;
+  const isHot  = c.bestProfit != null && c.bestProfit >= HOT_DEAL_THRESHOLD;
+  const url    = wikiUrl(row);
+
+  // Couleurs selon recommandation
+  const isBTF = c.bestRec === 'BUY_TRADER_SELL_FLEA';
+  const recBg    = isBTF ? 'bg-blue-900/30 border-blue-700/50'  : 'bg-green-900/30 border-green-700/50';
+  const recAccent = isBTF ? 'text-blue-300'                     : 'text-green-300';
+  const recLabel  = isBTF
+    ? (lang === 'en' ? 'Buy Trader → Sell Flea'  : 'Acheter Trader → Vendre Flea')
+    : (lang === 'en' ? 'Buy Flea → Sell Trader'  : 'Acheter Flea → Vendre Trader');
+
+  const profitColor = c.bestProfit > 0 ? 'text-green-400' : 'text-red-400';
+
+  return (
+    <div className={`rounded-xl border ${recBg} overflow-hidden`}>
+      {/* ── HEADER : icône + nom + profit best ── */}
+      <div className="flex items-center gap-3 px-3 pt-3 pb-2">
+        {row.icon_link
+          ? <img src={row.icon_link} alt="" className="w-12 h-12 rounded-lg object-contain bg-tarkov-bg border border-tarkov-border flex-shrink-0" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
+          : <span className="w-12 h-12 rounded-lg bg-tarkov-bg border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
+        }
+        <div className="flex-1 min-w-0">
+          {url
+            ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-sm leading-snug text-tarkov-text hover:text-tarkov-gold hover:underline line-clamp-2 block">{name || row.id}</a>
+            : <p className="font-semibold text-sm leading-snug text-tarkov-text line-clamp-2">{name || row.id}</p>
+          }
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            {c.bestProfit != null && (
+              <span className={`text-lg font-extrabold leading-none ${profitColor}`}>
+                {c.bestProfit > 0 ? '+' : ''}{fmtK(c.bestProfit)}{isHot ? ' 🔥' : ''}
+              </span>
+            )}
+            {c.bestPct != null && (
+              <span className={`text-xs font-semibold ${profitColor} opacity-70`}>
+                ({c.bestPct > 0 ? '+' : ''}{c.bestPct.toFixed(1)}%)
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Badge recommandation vertical */}
+        <div className={`flex-shrink-0 flex flex-col items-center justify-center rounded-lg border px-2 py-1.5 ${recBg}`}>
+          <span className={`text-[9px] font-bold uppercase tracking-wide leading-none ${recAccent}`}>
+            {isBTF ? 'Trader' : 'Flea'}
+          </span>
+          <span className="text-gray-500 text-[8px] leading-none mt-0.5">→</span>
+          <span className={`text-[9px] font-bold uppercase tracking-wide leading-none ${recAccent}`}>
+            {isBTF ? 'Flea' : 'Trader'}
+          </span>
+        </div>
+      </div>
+
+      {/* ── FLOW DE PRIX : Achat → Flea → Vente ── */}
+      <div className="grid grid-cols-5 items-center gap-0 px-3 pb-2">
+        {/* Achat trader */}
+        <div className="col-span-2 bg-tarkov-bg/60 rounded-lg px-2 py-2">
+          <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">
+            {lang === 'en' ? 'Buy' : 'Achat'}
+          </p>
+          <p className="text-white text-xs font-bold leading-none">{fmtK(c.bestBuyPrice)}</p>
+          {c.bestBuyTrader && (
+            <div className="flex items-center gap-1 mt-1">
+              <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader}
+                className="w-4 h-4 rounded-full object-cover border border-tarkov-border flex-shrink-0"
+                onError={(e) => { e.target.style.display = 'none'; }} />
+              <span className="text-tarkov-gold text-[9px] truncate">{c.bestBuyTrader}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Flèche */}
+        <div className="col-span-1 flex items-center justify-center">
+          <span className="text-gray-600 text-base">→</span>
+        </div>
+
+        {/* Flea */}
+        <div className="col-span-2 bg-tarkov-bg/60 rounded-lg px-2 py-2">
+          <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">Flea</p>
+          <p className="text-blue-300 text-xs font-bold leading-none">{fmtK(c.flea)}</p>
+          {row.last_offer_count != null && (
+            <p className="text-gray-600 text-[9px] mt-1">{row.last_offer_count} offres</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── PROFITS DÉTAILLÉS ── */}
+      <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+        {/* Flea → Trader */}
+        <div className={`rounded-lg px-2.5 py-2 border ${
+          c.bestRec === 'BUY_FLEA_SELL_TRADER'
+            ? 'border-green-700/60 bg-green-900/20'
+            : 'border-tarkov-border bg-tarkov-bg/40'
+        }`}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea → Trader</span>
+            {c.bestSellTrader && (
+              <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader}
+                className="w-4 h-4 rounded-full object-cover border border-tarkov-border"
+                onError={(e) => { e.target.style.display = 'none'; }} />
+            )}
+          </div>
+          <p className={`text-sm font-bold leading-none ${
+            c.profitFTS > 0 ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '—'}
+          </p>
+          {c.bestSellPrice != null && (
+            <p className="text-gray-500 text-[10px] mt-0.5">vente {fmtK(c.bestSellPrice)}</p>
+          )}
+        </div>
+
+        {/* Trader → Flea */}
+        <div className={`rounded-lg px-2.5 py-2 border ${
+          c.bestRec === 'BUY_TRADER_SELL_FLEA'
+            ? 'border-blue-700/60 bg-blue-900/20'
+            : 'border-tarkov-border bg-tarkov-bg/40'
+        }`}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader → Flea</span>
+            {c.bestBuyTrader && (
+              <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader}
+                className="w-4 h-4 rounded-full object-cover border border-tarkov-border"
+                onError={(e) => { e.target.style.display = 'none'; }} />
+            )}
+          </div>
+          <p className={`text-sm font-bold leading-none ${
+            c.profitBTF > 0 ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '—'}
+          </p>
+          {c.bestBuyPrice != null && (
+            <p className="text-gray-500 text-[10px] mt-0.5">achat {fmtK(c.bestBuyPrice)}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── FOOTER : label recommandation full-width ── */}
+      <div className={`flex items-center justify-center gap-1.5 px-3 py-1.5 border-t border-white/5 ${recBg}`}>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${recAccent}`}>{recLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Pagination ─────────────────────────────────────────────────────────────
+function PaginationBar({ table, lang, mobile }) {
   const { pageIndex, pageSize } = table.getState().pagination;
   const total = table.getFilteredRowModel().rows.length;
   const from  = total === 0 ? 0 : pageIndex * pageSize + 1;
   const to    = Math.min((pageIndex + 1) * pageSize, total);
+
+  if (mobile) {
+    return (
+      <div className="flex items-center justify-between gap-2 px-3 py-3 border-t border-tarkov-border">
+        <div className="flex gap-1">
+          {PAGE_SIZES.map((s) => (
+            <button key={s} onClick={() => table.setPageSize(s)}
+              className={`px-2 py-1 rounded border text-xs transition-colors ${
+                pageSize === s ? 'border-tarkov-gold text-tarkov-gold' : 'border-tarkov-border text-gray-500'
+              }`}>{s}</button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">‹</button>
+          <span className="text-xs text-gray-400 px-1">{pageIndex + 1} / {table.getPageCount()}</span>
+          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">›</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
       <span>{from}–{to} {lang === 'en' ? 'of' : 'sur'} {total}</span>
       <div className="flex items-center gap-1">
-        <span className="text-gray-500">{lang === 'en' ? 'Per page:' : 'Par page :'}</span>
+        <span className="text-gray-500">{lang === 'en' ? 'Per page:' : 'Par page :'}</span>
         {PAGE_SIZES.map((s) => (
           <button key={s} onClick={() => table.setPageSize(s)}
             className={`px-2 py-0.5 rounded border text-xs transition-colors ${
@@ -367,10 +508,13 @@ function PaginationBar({ table, lang }) {
   );
 }
 
-// ── ItemTable principal ──────────────────────────────────────────────────────────────
+// ── ItemTable principal ────────────────────────────────────────────────────
 export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const rows     = useMemo(() => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })), [items, traderFilters, feeDiscount]);
   const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
+  const [mobileSorting, setMobileSorting] = useState([{ id: 'best_profit', desc: true }]);
+
+  const handleMobileSort = (id, desc) => setMobileSorting([{ id, desc }]);
 
   const columns = useMemo(() => [
     col.accessor((row) => lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en, {
@@ -431,12 +575,24 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     }),
   ], [lang, traderFilters, feeDiscount]);
 
+  // Table desktop
   const table = useReactTable({
     data: filtered, columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { sorting: [{ id: 'best_profit', desc: true }], pagination: { pageSize: 25, pageIndex: 0 } },
+  });
+
+  // Table mobile (partage les mêmes colonnes pour le tri uniquement)
+  const mobileTable = useReactTable({
+    data: filtered, columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    state: { sorting: mobileSorting },
+    onSortingChange: setMobileSorting,
+    initialState: { pagination: { pageSize: 25, pageIndex: 0 } },
   });
 
   const noItemsMsg = lang === 'en'
@@ -447,16 +603,34 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     return <p className="text-center py-8 text-gray-500">{noItemsMsg}</p>;
   }
 
-  const pageRows = table.getRowModel().rows;
+  const desktopRows = table.getRowModel().rows;
+  const mobileRows  = mobileTable.getRowModel().rows;
+  const { pageIndex: mpi, pageSize: mps } = mobileTable.getState().pagination;
+  const mTotal = mobileTable.getFilteredRowModel().rows.length;
+  const mFrom  = mTotal === 0 ? 0 : mpi * mps + 1;
+  const mTo    = Math.min((mpi + 1) * mps, mTotal);
 
   return (
     <div className="mt-4">
-      <div className="flex flex-col gap-3 md:hidden">
-        {pageRows.map((row) => (
-          <ItemCard key={row.id} row={row.original} lang={lang} />
-        ))}
+      {/* ── VUE MOBILE ── */}
+      <div className="md:hidden rounded-xl border border-tarkov-border overflow-hidden">
+        <MobileSortBar
+          sorting={mobileSorting}
+          onSort={handleMobileSort}
+          lang={lang}
+          total={mTotal}
+          from={mFrom}
+          to={mTo}
+        />
+        <div className="flex flex-col gap-3 p-3">
+          {mobileRows.map((row) => (
+            <ItemCard key={row.id} row={row.original} lang={lang} />
+          ))}
+        </div>
+        <PaginationBar table={mobileTable} lang={lang} mobile />
       </div>
 
+      {/* ── VUE DESKTOP ── */}
       <div className="hidden md:block overflow-x-auto rounded-lg border border-tarkov-border">
         <table className="w-full text-sm">
           <thead className="bg-tarkov-card sticky top-0 z-10">
@@ -475,7 +649,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
             ))}
           </thead>
           <tbody>
-            {pageRows.map((row, i) => (
+            {desktopRows.map((row, i) => (
               <tr key={row.id} className={`border-t border-tarkov-border ${
                 i % 2 === 0 ? 'bg-tarkov-bg' : 'bg-tarkov-card'
               } hover:bg-tarkov-border transition-colors`}>
@@ -490,7 +664,9 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
         </table>
       </div>
 
-      <PaginationBar table={table} lang={lang} />
+      <div className="hidden md:block">
+        <PaginationBar table={table} lang={lang} />
+      </div>
     </div>
   );
 }
