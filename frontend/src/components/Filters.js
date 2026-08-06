@@ -58,7 +58,6 @@ const INTEL_OPTIONS = [
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
 const FLEA_UNLOCK_LEVEL = 15;
 
-// ─── TraderCard ───────────────────────────────────────────────────────────────
 function TraderCard({ trader, tf, onToggle, onLevel }) {
   const meta      = TRADER_META[trader];
   const levels    = TRADER_LEVELS[trader];
@@ -97,7 +96,6 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   );
 }
 
-// ─── IntelCard ────────────────────────────────────────────────────────────────
 function IntelCard({ intelLevel, onIntelLevelChange }) {
   const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   return (
@@ -127,7 +125,6 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
   );
 }
 
-// ─── Filters ──────────────────────────────────────────────────────────────────────
 export function Filters({
   filters, onChange,
   traderFilters, onTraderFiltersChange,
@@ -156,12 +153,16 @@ export function Filters({
 
   return (
     <div className="bg-tarkov-card border border-tarkov-border rounded-lg px-4 py-3 mb-6">
-      <div className="flex flex-wrap items-center gap-4">
 
-        {/* Recherche par nom */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+      {/* ── Ligne 1 : Recherche + Profit min + Niveau joueur
+           Desktop : flex row avec séparateurs verticaux
+           Mobile  : flex col, chaque bloc pleine largeur, séparateurs horizontaux */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3 sm:gap-4">
+
+        {/* Recherche */}
+        <div className="flex items-center gap-2">
           <span className="text-gray-400 text-sm select-none">🔍</span>
-          <div className="flex flex-col">
+          <div className="flex flex-col flex-1 sm:flex-none">
             <span className="text-[10px] text-gray-500 leading-none mb-0.5">
               {lang === 'en' ? 'Search' : 'Recherche'}
             </span>
@@ -171,7 +172,7 @@ export function Filters({
                 placeholder={t.searchPlaceholder}
                 value={filters.search || ''}
                 onChange={(e) => onChange({ ...filters, search: e.target.value })}
-                className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-44 focus:outline-none focus:border-tarkov-gold pr-6"
+                className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1.5 text-sm w-full sm:w-44 focus:outline-none focus:border-tarkov-gold pr-6"
               />
               {filters.search && (
                 <button
@@ -184,57 +185,65 @@ export function Filters({
           </div>
         </div>
 
-        <div className="w-px self-stretch bg-tarkov-border flex-shrink-0" />
+        {/* Séparateur desktop only */}
+        <div className="hidden sm:block w-px self-stretch bg-tarkov-border" />
+        {/* Séparateur mobile only */}
+        <div className="block sm:hidden h-px bg-tarkov-border" />
 
         {/* Profit minimum */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2">
           <span className="text-tarkov-gold font-bold text-sm select-none">₽</span>
-          <div className="flex flex-col">
+          <div className="flex flex-col flex-1 sm:flex-none">
             <span className="text-[10px] text-gray-500 leading-none mb-0.5">
               {lang === 'en' ? 'Min. profit' : 'Profit min.'}
             </span>
-            <input type="number" placeholder="20000" value={filters.minProfitRub}
+            <input
+              type="number" placeholder="20000" value={filters.minProfitRub}
               onChange={(e) => { const v = e.target.value; onChange({ ...filters, minProfitRub: v }); localStorage.setItem('minProfitRub', v); }}
-              className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-28 focus:outline-none focus:border-tarkov-gold" />
+              className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1.5 text-sm w-full sm:w-28 focus:outline-none focus:border-tarkov-gold"
+            />
           </div>
         </div>
 
-        <div className="w-px self-stretch bg-tarkov-border flex-shrink-0" />
+        <div className="hidden sm:block w-px self-stretch bg-tarkov-border" />
+        <div className="block sm:hidden h-px bg-tarkov-border" />
 
         {/* Niveau joueur */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-lg leading-none select-none" title="Niveau joueur">🎖️</span>
-          <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <span className="text-lg leading-none select-none">🎖️</span>
+          <div className="flex flex-col flex-1 sm:flex-none">
             <span className="text-[10px] text-gray-500 leading-none mb-0.5">
               {lang === 'en' ? 'Player level' : 'Niveau joueur'}
             </span>
             <div className="flex items-center gap-1.5">
-              <input type="number" min={1} max={79} value={playerLevel}
+              <input
+                type="number" min={1} max={79} value={playerLevel}
                 onChange={(e) => onPlayerLevelChange(e.target.value)}
-                className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-16 focus:outline-none focus:border-tarkov-gold" />
+                className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1.5 text-sm w-20 focus:outline-none focus:border-tarkov-gold"
+              />
               {fleaLocked && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-red-900/40 border-red-800/60 text-red-400"
-                  title={`Flea bloquée — débloquage au niveau ${FLEA_UNLOCK_LEVEL}`}>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-red-900/40 border-red-800/60 text-red-400">
                   Flea ✕
                 </span>
               )}
             </div>
           </div>
         </div>
-
-        <div className="w-px self-stretch bg-tarkov-border flex-shrink-0" />
-
-        {/* Traders + Intel Center */}
-        <div className="flex flex-wrap gap-2 items-start">
-          {ALL_TRADERS.map((trader) => (
-            <TraderCard key={trader} trader={trader}
-              tf={traderFilters[trader] || { enabled: true, level: 1 }}
-              onToggle={handleTraderToggle} onLevel={handleTraderLevel} />
-          ))}
-          <IntelCard intelLevel={intelLevel} onIntelLevelChange={handleIntelLevel} />
-        </div>
-
       </div>
+
+      {/* Séparateur avant traders */}
+      <div className="h-px bg-tarkov-border my-3" />
+
+      {/* ── Ligne 2 : Traders + Intel Center — centrés, gap dynamique */}
+      <div className="flex flex-wrap justify-center gap-2">
+        {ALL_TRADERS.map((trader) => (
+          <TraderCard key={trader} trader={trader}
+            tf={traderFilters[trader] || { enabled: true, level: 1 }}
+            onToggle={handleTraderToggle} onLevel={handleTraderLevel} />
+        ))}
+        <IntelCard intelLevel={intelLevel} onIntelLevelChange={handleIntelLevel} />
+      </div>
+
     </div>
   );
 }
