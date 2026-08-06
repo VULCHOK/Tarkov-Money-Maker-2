@@ -1,6 +1,6 @@
 import React from 'react';
 import { I18N } from '../App';
-import { RankBadge, getRankKey, RANK_NAMES } from './RankBadge';
+import { RankBadge, getRankThreshold, RANK_NAMES } from './RankBadge';
 
 export const TRADER_LEVELS = {
   Prapor:      [1, 2, 3, 4],
@@ -18,18 +18,18 @@ export const ALL_TRADERS = Object.keys(TRADER_LEVELS);
 const GH_RAW = 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders';
 
 export const TRADER_META = {
-  Prapor:      { img: '/images/traders-dynamic/traders/prapor-portrait.png',      fallback: `${GH_RAW}/prapor-portrait.png` },
-  Therapist:   { img: '/images/traders-dynamic/traders/therapist-portrait.png',   fallback: `${GH_RAW}/therapist-portrait.png` },
-  Skier:       { img: '/images/traders-dynamic/traders/skier-portrait.png',       fallback: `${GH_RAW}/skier-portrait.png` },
-  Peacekeeper: { img: '/images/traders-dynamic/traders/peacekeeper-portrait.png', fallback: `${GH_RAW}/peacekeeper-portrait.png` },
-  Mechanic:    { img: '/images/traders-dynamic/traders/mechanic-portrait.png',    fallback: `${GH_RAW}/mechanic-portrait.png` },
-  Ragman:      { img: '/images/traders-dynamic/traders/ragman-portrait.png',      fallback: `${GH_RAW}/ragman-portrait.png` },
-  Jaeger:      { img: '/images/traders-dynamic/traders/jaeger-portrait.png',      fallback: `${GH_RAW}/jaeger-portrait.png` },
-  Lightkeeper: { img: '/images/traders-dynamic/traders/lightkeeper-portrait.png', fallback: `${GH_RAW}/lightkeeper-portrait.png` },
+  Prapor:      { img: 'https://assets.tarkov.dev/prapor-portrait.png',      fallback: `${GH_RAW}/prapor-portrait.png` },
+  Therapist:   { img: 'https://assets.tarkov.dev/therapist-portrait.png',   fallback: `${GH_RAW}/therapist-portrait.png` },
+  Skier:       { img: 'https://assets.tarkov.dev/skier-portrait.png',       fallback: `${GH_RAW}/skier-portrait.png` },
+  Peacekeeper: { img: 'https://assets.tarkov.dev/peacekeeper-portrait.png', fallback: `${GH_RAW}/peacekeeper-portrait.png` },
+  Mechanic:    { img: 'https://assets.tarkov.dev/mechanic-portrait.png',    fallback: `${GH_RAW}/mechanic-portrait.png` },
+  Ragman:      { img: 'https://assets.tarkov.dev/ragman-portrait.png',      fallback: `${GH_RAW}/ragman-portrait.png` },
+  Jaeger:      { img: 'https://assets.tarkov.dev/jaeger-portrait.png',      fallback: `${GH_RAW}/jaeger-portrait.png` },
+  Lightkeeper: { img: 'https://assets.tarkov.dev/lightkeeper-portrait.png', fallback: `${GH_RAW}/lightkeeper-portrait.png` },
 };
 
 export const FLEA_META = {
-  img:      '/images/traders-dynamic/traders/flea-market-portrait.png',
+  img:      'https://assets.tarkov.dev/flea-market-portrait.png',
   fallback: `${GH_RAW}/flea-market-portrait.png`,
 };
 
@@ -51,10 +51,10 @@ export function defaultIntelLevel() {
 
 const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 30 };
 const INTEL_OPTIONS = [
-  { level: 0, label: 'x',  title: 'Non construit - pas de reduction' },
-  { level: 1, label: 'L1', title: 'Niveau 1 - pas de reduction' },
-  { level: 2, label: 'L2', title: 'Niveau 2 - pas de reduction' },
-  { level: 3, label: 'L3', title: 'Niveau 3 - -30% taxe flea' },
+  { level: 0, label: 'x',  title: 'Non construit' },
+  { level: 1, label: 'L1', title: 'Niveau 1' },
+  { level: 2, label: 'L2', title: 'Niveau 2' },
+  { level: 3, label: 'L3', title: '-30% taxe flea' },
 ];
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
 const FLEA_UNLOCK_LEVEL = 15;
@@ -70,73 +70,113 @@ const MODE_FILTER_BORDER = {
   'pvp-season': 'border-blue-900/40',
 };
 
-// ── Icône loupe SVG inline (16x16, aligné texte) ──────────────────────────────
-function IconSearch() {
+// ── Card Search ──────────────────────────────────────────────────────────────
+function SearchCard({ value, onChange, lang }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-      className="text-gray-500 flex-shrink-0 self-center">
-      <circle cx="11" cy="11" r="7" />
-      <line x1="16.5" y1="16.5" x2="22" y2="22" />
-    </svg>
-  );
-}
-
-// ── Icône rouble SVG inline (14x14) ───────────────────────────────────────────
-function IconRuble() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14"
-      className="text-tarkov-gold flex-shrink-0 self-center" fill="currentColor">
-      {/* Lettre P / signe rouble stylisé */}
-      <text x="1" y="12" fontSize="13" fontWeight="700" fontFamily="serif">&#8381;</text>
-    </svg>
-  );
-}
-
-// ── PlayerLevelSelector ──────────────────────────────────────────────────────
-function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocked }) {
-  const key      = getRankKey(playerLevel);
-  const rankName = RANK_NAMES[key]?.[lang] ?? RANK_NAMES[key]?.en ?? '';
-
-  const decrement = () => onPlayerLevelChange(Math.max(1, playerLevel - 1));
-  const increment = () => onPlayerLevelChange(Math.min(79, playerLevel + 1));
-
-  return (
-    <div className="flex items-center gap-2">
-      {/* Badge rang : taille fixe 28x28, centré verticalement */}
-      <div className="flex-shrink-0 flex items-center justify-center" style={{ width: 28, height: 28 }}>
-        <RankBadge level={playerLevel} size={28} />
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+      style={{ height: 96 }}>
+      {/* Icône loupe à gauche, même largeur que portrait trader */}
+      <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+          className="text-gray-500">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="16.5" y1="16.5" x2="22" y2="22" />
+        </svg>
       </div>
-
-      <div className="flex flex-col">
-        <span className="text-[10px] text-gray-500 leading-none mb-0.5">
-          {lang === 'en' ? 'Player level' : 'Niveau joueur'}
+      {/* Contenu */}
+      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+        <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
+          {lang === 'en' ? 'Search' : 'Recherche'}
         </span>
-        <div className="flex items-center gap-1">
-          <button onClick={decrement}
-            className="w-6 h-6 rounded border border-tarkov-border bg-tarkov-bg text-gray-400 hover:text-tarkov-gold hover:border-tarkov-gold transition-colors text-xs font-bold flex items-center justify-center flex-shrink-0"
-          >-</button>
+        <div className="relative">
           <input
-            type="number" min={1} max={79} value={playerLevel}
-            onChange={(e) => onPlayerLevelChange(e.target.value)}
-            className="bg-tarkov-bg border border-tarkov-border rounded px-1 py-1 text-sm w-12 text-center focus:outline-none focus:border-tarkov-gold"
+            type="text"
+            placeholder={lang === 'en' ? 'Item name...' : 'Nom d\'item...'}
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-xs w-full focus:outline-none focus:border-tarkov-gold pr-5"
           />
-          <button onClick={increment}
-            className="w-6 h-6 rounded border border-tarkov-border bg-tarkov-bg text-gray-400 hover:text-tarkov-gold hover:border-tarkov-gold transition-colors text-xs font-bold flex items-center justify-center flex-shrink-0"
-          >+</button>
-          <span className="text-[10px] text-tarkov-gold font-semibold leading-tight whitespace-nowrap hidden sm:block">{rankName}</span>
+          {value && (
+            <button onClick={() => onChange('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-tarkov-gold text-[10px]"
+            >&#10005;</button>
+          )}
         </div>
-        {fleaLocked && (
-          <span className="text-[10px] font-semibold px-1 py-0.5 rounded border bg-red-900/40 border-red-800/60 text-red-400 mt-0.5 self-start">
-            Flea verrouillé
-          </span>
-        )}
       </div>
     </div>
   );
 }
 
-// ── TraderCard ───────────────────────────────────────────────────────────────
+// ── Card Profit ──────────────────────────────────────────────────────────────
+function ProfitCard({ value, onChange, lang }) {
+  return (
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+      style={{ height: 96 }}>
+      <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
+        <span className="text-tarkov-gold font-bold" style={{ fontSize: 26 }}>&#8381;</span>
+      </div>
+      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+        <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
+          {lang === 'en' ? 'Min. profit' : 'Profit min.'}
+        </span>
+        <input
+          type="number"
+          placeholder="20000"
+          value={value}
+          onChange={(e) => { onChange(e.target.value); localStorage.setItem('minProfitRub', e.target.value); }}
+          className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-xs w-full focus:outline-none focus:border-tarkov-gold"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Card Player Level ──────────────────────────────────────────────────────────────
+function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
+  const threshold = getRankThreshold(playerLevel);
+  const rankName  = RANK_NAMES[threshold]?.[lang] ?? RANK_NAMES[threshold]?.en ?? '';
+
+  const dec = () => onChange(Math.max(1,  playerLevel - 1));
+  const inc = () => onChange(Math.min(79, playerLevel + 1));
+
+  return (
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+      style={{ height: 96 }}>
+      {/* Badge rang comme portrait */}
+      <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
+        <RankBadge level={playerLevel} size={52} />
+        {fleaLocked && (
+          <div className="absolute bottom-0 left-0 right-0 bg-red-900/80 text-[9px] text-red-300 font-bold text-center py-0.5">
+            Flea lock
+          </div>
+        )}
+      </div>
+      {/* Contenu */}
+      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+        <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
+          {lang === 'en' ? 'Player level' : 'Niveau joueur'}
+        </span>
+        <div className="flex items-center gap-1">
+          <button onClick={dec}
+            className="w-6 h-6 rounded border border-tarkov-border bg-tarkov-bg text-gray-400 hover:text-tarkov-gold hover:border-tarkov-gold transition-colors text-xs font-bold flex items-center justify-center flex-shrink-0"
+          >-</button>
+          <input
+            type="number" min={1} max={79} value={playerLevel}
+            onChange={(e) => onChange(e.target.value)}
+            className="bg-tarkov-bg border border-tarkov-border rounded px-1 py-1 text-xs w-12 text-center focus:outline-none focus:border-tarkov-gold"
+          />
+          <button onClick={inc}
+            className="w-6 h-6 rounded border border-tarkov-border bg-tarkov-bg text-gray-400 hover:text-tarkov-gold hover:border-tarkov-gold transition-colors text-xs font-bold flex items-center justify-center flex-shrink-0"
+          >+</button>
+        </div>
+        <span className="text-[10px] text-tarkov-gold/70 leading-none truncate">{rankName}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── TraderCard ──────────────────────────────────────────────────────────────
 function TraderCard({ trader, tf, onToggle, onLevel }) {
   const meta      = TRADER_META[trader];
   const levels    = TRADER_LEVELS[trader];
@@ -149,7 +189,7 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
           : 'border-tarkov-border bg-tarkov-bg opacity-40 grayscale'
       }`}
       style={{ width: 110, height: 96 }}
-      title={`${trader} - ${isEnabled ? 'desactiver' : 'activer'}`}
+      title={`${trader} - ${isEnabled ? 'désactiver' : 'activer'}`}
     >
       <div className="relative flex-shrink-0" style={{ width: 72 }}>
         <img src={meta.img} alt={trader} className="w-full h-full object-cover"
@@ -180,7 +220,7 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   );
 }
 
-// ── IntelCard ────────────────────────────────────────────────────────────────
+// ── IntelCard ──────────────────────────────────────────────────────────────
 function IntelCard({ intelLevel, onIntelLevelChange }) {
   const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   return (
@@ -212,7 +252,7 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
   );
 }
 
-// ── Filters principal ────────────────────────────────────────────────────────
+// ── Filters principal ──────────────────────────────────────────────────────────────
 export function Filters({
   filters, onChange,
   traderFilters, onTraderFiltersChange,
@@ -221,8 +261,6 @@ export function Filters({
   lang,
   gameMode,
 }) {
-  const t = I18N[lang] || I18N.fr;
-
   const handleTraderToggle = (trader) => {
     const next = { ...traderFilters, [trader]: { ...traderFilters[trader], enabled: !traderFilters[trader].enabled } };
     localStorage.setItem('traderFilters', JSON.stringify(next));
@@ -245,67 +283,31 @@ export function Filters({
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
 
-      {/* ── ligne de filtres rapides ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3 sm:gap-5">
+      {/* ── Rang 1 : toutes les cards alignées sur la même hauteur 96px ── */}
+      <div className="flex flex-wrap gap-2 items-start">
 
-        {/* Recherche */}
-        <div className="flex items-center gap-1.5">
-          <IconSearch />
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 leading-none mb-0.5">
-              {lang === 'en' ? 'Search' : 'Recherche'}
-            </span>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={t.searchPlaceholder}
-                value={filters.search || ''}
-                onChange={(e) => onChange({ ...filters, search: e.target.value })}
-                className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-44 focus:outline-none focus:border-tarkov-gold pr-5"
-              />
-              {filters.search && (
-                <button
-                  onClick={() => onChange({ ...filters, search: '' })}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-tarkov-gold text-[10px] leading-none"
-                  title="Effacer"
-                >&#10005;</button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden sm:block w-px self-stretch bg-tarkov-border" />
-
-        {/* Profit minimum */}
-        <div className="flex items-center gap-1.5">
-          <IconRuble />
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 leading-none mb-0.5">
-              {lang === 'en' ? 'Min. profit' : 'Profit min.'}
-            </span>
-            <input
-              type="number" placeholder="20000" value={filters.minProfitRub}
-              onChange={(e) => { const v = e.target.value; onChange({ ...filters, minProfitRub: v }); localStorage.setItem('minProfitRub', v); }}
-              className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-28 focus:outline-none focus:border-tarkov-gold"
-            />
-          </div>
-        </div>
-
-        <div className="hidden sm:block w-px self-stretch bg-tarkov-border" />
-
-        {/* Niveau joueur */}
-        <PlayerLevelSelector
+        {/* Cards de contrôle */}
+        <SearchCard
+          value={filters.search}
+          onChange={(v) => onChange({ ...filters, search: v })}
+          lang={lang}
+        />
+        <ProfitCard
+          value={filters.minProfitRub}
+          onChange={(v) => onChange({ ...filters, minProfitRub: v })}
+          lang={lang}
+        />
+        <PlayerLevelCard
           playerLevel={playerLevel}
-          onPlayerLevelChange={onPlayerLevelChange}
+          onChange={onPlayerLevelChange}
           lang={lang}
           fleaLocked={fleaLocked}
         />
-      </div>
 
-      <div className="h-px bg-tarkov-border my-3" />
+        {/* Séparateur vertical */}
+        <div className="self-stretch w-px bg-tarkov-border mx-1 hidden sm:block" />
 
-      {/* ── cartes traders ── */}
-      <div className="flex flex-wrap justify-center gap-2">
+        {/* Traders */}
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader}
             tf={traderFilters[trader] || { enabled: true, level: 1 }}
