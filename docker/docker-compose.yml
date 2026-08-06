@@ -10,6 +10,9 @@ services:
       - TARKOV_API_URL=${TARKOV_API_URL:-https://api.tarkov.dev/graphql}
       - REFRESH_INTERVAL_MINUTES=${REFRESH_INTERVAL_MINUTES:-10}
       - PROFIT_THRESHOLD_PCT=${PROFIT_THRESHOLD_PCT:-20}
+      - ASSETS_DIR=/assets/images
+    volumes:
+      - assets_data:/assets/images
     depends_on:
       db:
         condition: service_healthy
@@ -21,6 +24,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:80"
+    volumes:
+      - assets_data:/usr/share/nginx/html/images/traders-dynamic:ro
     depends_on:
       - backend
     restart: unless-stopped
@@ -44,3 +49,5 @@ services:
 volumes:
   postgres_data:
     name: tarkov_postgres_data
+  assets_data:
+    name: tarkov_assets_data
