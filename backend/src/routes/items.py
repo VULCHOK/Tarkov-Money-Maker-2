@@ -23,8 +23,8 @@ def list_items(
     category: Optional[str] = Query(None, description="Filter by category name"),
     min_profit_pct: Optional[float] = Query(None, description="Min difference_pct threshold"),
     recommendation: Optional[str] = Query(None, description="BUY_FROM_TRADER | BUY_FROM_FLEA | FLEA_ONLY | TRADER_ONLY"),
-    search: Optional[str] = Query(None, description="Search by name or short_name"),
-    limit: int = Query(500, ge=1, le=5000),
+    search: Optional[str] = Query(None, description="Search by name_en or name_fr"),
+    limit: int = Query(5000, ge=1, le=10000),
     offset: int = Query(0, ge=0),
 ):
     q = db.query(Item)
@@ -37,8 +37,9 @@ def list_items(
         q = q.filter(Item.difference_pct >= min_profit_pct)
     if search:
         q = q.filter(or_(
-            Item.name.ilike(f"%{search}%"),
-            Item.short_name.ilike(f"%{search}%"),
+            Item.name_en.ilike(f"%{search}%"),
+            Item.name_fr.ilike(f"%{search}%"),
+            Item.short_name_en.ilike(f"%{search}%"),
         ))
 
     return q.order_by(Item.difference_pct.desc().nullslast()).offset(offset).limit(limit).all()

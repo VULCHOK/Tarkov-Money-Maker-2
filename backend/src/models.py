@@ -11,12 +11,14 @@ class Item(Base):
     __tablename__ = "items"
 
     # Identity
-    id         = Column(String(24),  primary_key=True, index=True)
-    name       = Column(String(255), nullable=False)
-    short_name = Column(String(50))
-    category   = Column(String(100), index=True)
-    icon_link  = Column(Text)
-    wiki_link  = Column(Text)
+    id            = Column(String(24),  primary_key=True, index=True)
+    name_en       = Column(String(255), nullable=False)
+    name_fr       = Column(String(255), nullable=True)
+    short_name_en = Column(String(50))
+    short_name_fr = Column(String(50))
+    category      = Column(String(100), index=True)
+    icon_link     = Column(Text)
+    wiki_link     = Column(Text)
 
     # Raw prices from tarkov.dev
     avg24h_price   = Column(Integer)

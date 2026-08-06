@@ -5,8 +5,10 @@ from datetime import datetime
 
 class ItemOut(BaseModel):
     id:                str
-    name:              str
-    short_name:        Optional[str]   = None
+    name_en:           str
+    name_fr:           Optional[str]   = None
+    short_name_en:     Optional[str]   = None
+    short_name_fr:     Optional[str]   = None
     category:          Optional[str]   = None
     icon_link:         Optional[str]   = None
     wiki_link:         Optional[str]   = None
