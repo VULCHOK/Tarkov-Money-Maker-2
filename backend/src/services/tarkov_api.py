@@ -6,7 +6,7 @@ from ..config import settings
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# GraphQL query (primary source — api.tarkov.dev/graphql)
+# GraphQL query (primary — api.tarkov.dev/graphql)
 # ---------------------------------------------------------------------------
 ITEMS_QUERY = """
 query TarkovPrices {
@@ -43,8 +43,24 @@ SOURCE_DISPLAY = {
 MAX_RETRIES = 3
 RETRY_DELAYS = [5, 15, 45]
 
-# Track which source was used last (exposed via /status)
+# Exposed via /status endpoint
 last_api_source: str = "unknown"
+
+# ---------------------------------------------------------------------------
+# json.tarkov.dev trader ID → display name
+# Verified from /regular/items response (2026-08)
+# ---------------------------------------------------------------------------
+_TRADER_ID_TO_NAME: dict[str, str] = {
+    "54cb50c76803fa8b248b4571": "Prapor",
+    "54cb57776803fa99248b456e": "Therapist",
+    "579dc571d53a0658a154fbec": "Fence",
+    "58330581ace78e27b8b10cee": "Skier",
+    "5935c25fb3acc3127c3d8cd9": "Peacekeeper",
+    "5a7c2eca46aef81a7ca2145d": "Mechanic",
+    "5ac3b934156ae10c4430e83c": "Ragman",
+    "5c0647fdd443bc2504c2d371": "Jaeger",
+    "6617beeaa9cfa777ca915b7c": "Lightkeeper",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +76,7 @@ async def _fetch_graphql() -> list[dict]:
         if resp.status_code != 200:
             raise httpx.HTTPStatusError(
                 f"{resp.status_code}: {resp.text[:200]}",
-                request=resp.request, response=resp
+                request=resp.request, response=resp,
             )
         data = resp.json()
         if "errors" in data:
@@ -69,50 +85,100 @@ async def _fetch_graphql() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Fallback: json.tarkov.dev REST API
-# Endpoint: GET https://json.tarkov.dev/items/prices
-# Returns: [{"id", "name", "avg24hPrice", "low24hPrice", "high24hPrice",
-#            "lastLowPrice", "changeLast48hPercent", "basePrice",
-#            "buyFor": [{"source", "price", "currency"}], ...}]
+# Fallback: json.tarkov.dev  GET /regular/items
+#
+# Real response shape (verified 2026-08):
+#   [
+#     ["data", {
+#       "items": { "<id>": { ...fields... } },
+#       "itemCategories": { "<id>": { "normalizedName": "..." } },
+#       ...
+#     }],
+#     ["translations", [...]]
+#   ]
+#
+# Price fields per item:
+#   avg24hPrice, low24hPrice, high24hPrice, lastLowPrice,
+#   changeLast48hPercent, basePrice
+#   buyFromTrader: [{ trader: "<traderID>", priceRUB, currency, ... }]
 # ---------------------------------------------------------------------------
+def _normalize_rest_item(item: dict, item_categories: dict) -> dict:
+    """Convert a json.tarkov.dev item into the same shape as our GraphQL items."""
+    # Resolve most-specific category name from first category ID
+    category_name = None
+    cats = item.get("categories", [])
+    if cats:
+        cat = item_categories.get(cats[0], {})
+        category_name = cat.get("normalizedName")
+
+    # Build buyFor — only RUB prices from known traders
+    buy_for = []
+    for entry in item.get("buyFromTrader", []):
+        trader_name = _TRADER_ID_TO_NAME.get(entry.get("trader", ""))
+        price_rub = entry.get("priceRUB") or entry.get("price", 0)
+        currency = entry.get("currency", "RUB")
+        if trader_name and price_rub and price_rub > 0 and currency == "RUB":
+            buy_for.append({
+                "source":   trader_name.lower().replace(" ", ""),
+                "price":    price_rub,
+                "currency": "RUB",
+            })
+
+    return {
+        "id":                   item.get("id", ""),
+        "name":                 item.get("name", ""),
+        "shortName":            item.get("shortName", ""),
+        "category":             {"name": category_name},
+        "iconLink":             item.get("iconLink"),
+        "wikiLink":             item.get("wikiLink") or item.get("link"),
+        "avg24hPrice":          item.get("avg24hPrice"),
+        "low24hPrice":          item.get("low24hPrice"),
+        "high24hPrice":         item.get("high24hPrice"),
+        "lastLowPrice":         item.get("lastLowPrice"),
+        "changeLast48hPercent": item.get("changeLast48hPercent"),
+        "basePrice":            item.get("basePrice"),
+        "buyFor":               buy_for,
+        "sellFor":              [],
+    }
+
+
 async def _fetch_rest_fallback() -> list[dict]:
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.get(
-            "https://json.tarkov.dev/items/prices",
+            "https://json.tarkov.dev/regular/items",
             headers={"Accept": "application/json"},
         )
         resp.raise_for_status()
-        data = resp.json()
-        # Normalize to same shape as GraphQL response
-        items = []
-        for item in data:
-            items.append({
-                "id":                   item.get("id", ""),
-                "name":                 item.get("name", ""),
-                "shortName":            item.get("shortName", ""),
-                "category":             item.get("category"),
-                "iconLink":             item.get("iconLink"),
-                "wikiLink":             item.get("wikiLink"),
-                "avg24hPrice":          item.get("avg24hPrice"),
-                "low24hPrice":          item.get("low24hPrice"),
-                "high24hPrice":         item.get("high24hPrice"),
-                "lastLowPrice":         item.get("lastLowPrice"),
-                "changeLast48hPercent": item.get("changeLast48hPercent"),
-                "basePrice":            item.get("basePrice"),
-                "buyFor":               item.get("buyFor", []),
-                "sellFor":              item.get("sellFor", []),
-            })
-        return items
+        raw = resp.json()
+
+    # Parse [["data", {...}], ["translations", [...]]]
+    data_section: dict = {}
+    for entry in raw:
+        if isinstance(entry, list) and len(entry) == 2 and entry[0] == "data":
+            data_section = entry[1]
+            break
+
+    items_dict: dict = data_section.get("items", {})
+    item_categories: dict = data_section.get("itemCategories", {})
+
+    if not items_dict:
+        raise ValueError("json.tarkov.dev returned empty items dict")
+
+    normalized = [
+        _normalize_rest_item(item, item_categories)
+        for item in items_dict.values()
+    ]
+    logger.info(f"[REST fallback] Normalized {len(normalized)} items from json.tarkov.dev")
+    return normalized
 
 
 # ---------------------------------------------------------------------------
-# Public entry point — tries GraphQL first, falls back to REST
+# Public entry point — GraphQL first, REST fallback if all retries fail
 # ---------------------------------------------------------------------------
 async def fetch_items() -> list[dict]:
     global last_api_source
     last_error: Exception = RuntimeError("No attempts made")
 
-    # — Try GraphQL with retries —
     for attempt in range(MAX_RETRIES):
         try:
             items = await _fetch_graphql()
@@ -126,14 +192,12 @@ async def fetch_items() -> list[dict]:
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(RETRY_DELAYS[attempt])
 
-    # — GraphQL failed — try REST fallback —
     logger.warning("GraphQL exhausted — trying json.tarkov.dev REST fallback...")
     try:
         items = await _fetch_rest_fallback()
-        logger.info(f"[REST fallback] Fetched {len(items)} items")
         last_api_source = "rest_fallback"
         return items
     except Exception as e:
         logger.error(f"[REST fallback] Also failed: {e}")
         last_api_source = "unavailable"
-        raise last_error  # raise original GraphQL error
+        raise last_error
