@@ -3,6 +3,7 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
@@ -41,19 +42,20 @@ function TraderHeader({ trader }) {
 function FleaHeader() {
   return (
     <span className="flex items-center gap-1.5">
-      <span className="text-base leading-none">🛒</span>
+      <span className="text-base leading-none">🛍</span>
       <span className="text-xs">Flea</span>
     </span>
   );
 }
 
 const REC_META = {
-  BUY_FLEA_SELL_TRADER: { text: 'Buy Flea → Trader', cls: 'bg-green-900 text-green-200',     icon: '💰' },
-  BUY_TRADER_SELL_FLEA: { text: 'Buy Trader → Flea', cls: 'bg-blue-900 text-blue-200',      icon: '🔄' },
-  FLEA_ONLY:            { text: 'Flea only',          cls: 'bg-gray-700 text-gray-300',      icon: '🛒' },
-  TRADER_ONLY:          { text: 'Trader only',         cls: 'bg-yellow-900 text-yellow-200', icon: '🏪' },
-  NO_PROFIT:            { text: 'No profit',           cls: 'bg-gray-800 text-gray-500',     icon: '➖' },
+  BUY_FLEA_SELL_TRADER: { text: 'Buy Flea → Trader', cls: 'bg-green-900 text-green-200', icon: '💰' },
+  BUY_TRADER_SELL_FLEA: { text: 'Buy Trader → Flea', cls: 'bg-blue-900 text-blue-200', icon: '🔄' },
+  FLEA_ONLY:            { text: 'Flea only', cls: 'bg-gray-700 text-gray-300', icon: '🛍' },
 };
+
+const HIDDEN_RECS = new Set(['TRADER_ONLY', 'NO_PROFIT']);
+const PAGE_SIZES = [10, 25, 50];
 
 function computeBestTrader(item, traderFilters) {
   let prices;
@@ -64,7 +66,7 @@ function computeBestTrader(item, traderFilters) {
 
   for (const trader of ALL_TRADERS) {
     const tf = traderFilters[trader];
-    if (!tf || !tf.enabled) continue;
+    if (!tf?.enabled) continue;
     const price = prices[trader];
     if (price == null) continue;
     if (price > bestPrice) {
@@ -84,16 +86,17 @@ function computeBestTrader(item, traderFilters) {
 }
 
 export function ItemTable({ items, lang, traderFilters }) {
+  const filtered = useMemo(() => items.filter((item) => !HIDDEN_RECS.has(item.recommendation)), [items]);
+
   const enriched = useMemo(() => {
-    if (!traderFilters) return items;
-    return items.map((item) => ({
+    if (!traderFilters) return filtered;
+    return filtered.map((item) => ({
       ...item,
       _best: computeBestTrader(item, traderFilters),
     }));
-  }, [items, traderFilters]);
+  }, [filtered, traderFilters]);
 
   const columns = useMemo(() => [
-    // Nom + icône
     col.accessor((row) => lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en, {
       id: 'name',
       header: 'Item',
@@ -118,7 +121,6 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // Colonnes trader — vert si c'est le meilleur trader sur une ligne BUY_FLEA_SELL_TRADER
     ...ALL_TRADERS.map((trader) =>
       col.accessor(
         (row) => {
@@ -132,16 +134,14 @@ export function ItemTable({ items, lang, traderFilters }) {
             const v = info.getValue();
             const row = info.row.original;
             const tf = traderFilters?.[trader];
-            const active = tf?.enabled;
 
             if (v == null) return <span className="text-gray-600 text-xs">—</span>;
 
-            // Issue #5 : vert si ce trader est le meilleur ET reco = BUY_FLEA_SELL_TRADER
-            const isBest = active
+            const isBest = tf?.enabled
               && row._best?.trader === trader
               && row.recommendation === 'BUY_FLEA_SELL_TRADER';
 
-            const colorCls = !active
+            const colorCls = !tf?.enabled
               ? 'text-gray-600 line-through'
               : isBest
                 ? 'text-green-400 font-bold'
@@ -150,7 +150,7 @@ export function ItemTable({ items, lang, traderFilters }) {
             return (
               <span className={`text-xs ${colorCls}`}>
                 {fmt(v)}
-                {active && tf.level > 1 && (
+                {tf?.enabled && tf.level > 1 && (
                   <span className="text-gray-500 ml-1">LL{tf.level}</span>
                 )}
               </span>
@@ -160,7 +160,6 @@ export function ItemTable({ items, lang, traderFilters }) {
       )
     ),
 
-    // Flea — last_low_price principal + avg24h en secondaire
     col.accessor('flea_price', {
       id: 'flea',
       header: () => <FleaHeader />,
@@ -180,7 +179,6 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // Diff ₽ — valeur principale, % en secondaire
     col.accessor((row) => row._best?.diff ?? null, {
       id: 'diff_rub',
       header: 'Diff ₽',
@@ -212,7 +210,6 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // Meilleur trader
     col.accessor((row) => row._best?.trader ?? null, {
       id: 'best_trader',
       header: 'Meilleur trader',
@@ -242,7 +239,6 @@ export function ItemTable({ items, lang, traderFilters }) {
       },
     }),
 
-    // Action
     col.accessor('recommendation', {
       id: 'action',
       header: 'Action',
@@ -268,50 +264,106 @@ export function ItemTable({ items, lang, traderFilters }) {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     initialState: {
       sorting: [{ id: 'diff_rub', desc: true }],
+      pagination: { pageSize: 25, pageIndex: 0 },
     },
   });
 
+  const { pageIndex, pageSize } = table.getState().pagination;
+  const total = enriched.length;
+  const from = total === 0 ? 0 : pageIndex * pageSize + 1;
+  const to = Math.min((pageIndex + 1) * pageSize, total);
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-tarkov-border mt-4">
-      <table className="w-full text-sm">
-        <thead className="bg-tarkov-card sticky top-0 z-10">
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id}>
-              {hg.headers.map((header) => (
-                <th
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  className="px-3 py-2 text-left font-semibold text-tarkov-gold cursor-pointer select-none hover:bg-tarkov-border transition-colors whitespace-nowrap"
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                  {header.column.getIsSorted() === 'asc' ? ' ↑'
-                    : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row, i) => (
-            <tr
-              key={row.id}
-              className={`border-t border-tarkov-border ${
-                i % 2 === 0 ? 'bg-tarkov-bg' : 'bg-tarkov-card'
-              } hover:bg-tarkov-border transition-colors`}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-3 py-2">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {enriched.length === 0 && (
-        <p className="text-center py-8 text-gray-500">Aucun item trouvé. Essaie de diminuer le seuil de profit.</p>
+    <div className="mt-4">
+      <div className="overflow-x-auto rounded-lg border border-tarkov-border">
+        <table className="w-full text-sm">
+          <thead className="bg-tarkov-card sticky top-0 z-10">
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id}>
+                {hg.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    onClick={header.column.getToggleSortingHandler()}
+                    className="px-3 py-2 text-left font-semibold text-tarkov-gold cursor-pointer select-none hover:bg-tarkov-border transition-colors whitespace-nowrap"
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getIsSorted() === 'asc' ? ' ↑'
+                      : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row, i) => (
+              <tr
+                key={row.id}
+                className={`border-t border-tarkov-border ${
+                  i % 2 === 0 ? 'bg-tarkov-bg' : 'bg-tarkov-card'
+                } hover:bg-tarkov-border transition-colors`}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="px-3 py-2">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {enriched.length === 0 && (
+          <p className="text-center py-8 text-gray-500">Aucun item trouvé. Essaie de diminuer le seuil de profit.</p>
+        )}
+      </div>
+
+      {total > 0 && (
+        <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
+          <span>{from}–{to} sur {total} items</span>
+
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500">Par page :</span>
+            {PAGE_SIZES.map((s) => (
+              <button
+                key={s}
+                onClick={() => table.setPageSize(s)}
+                className={`px-2 py-0.5 rounded border text-xs transition-colors ${
+                  pageSize === s
+                    ? 'border-tarkov-gold text-tarkov-gold'
+                    : 'border-tarkov-border text-gray-500 hover:border-gray-400'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
+              className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors"
+            >«</button>
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors"
+            >‹</button>
+            <span className="px-2">Page {pageIndex + 1} / {table.getPageCount()}</span>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors"
+            >›</button>
+            <button
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+              className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors"
+            >»</button>
+          </div>
+        </div>
       )}
     </div>
   );

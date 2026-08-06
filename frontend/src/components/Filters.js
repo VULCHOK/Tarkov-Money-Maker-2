@@ -45,7 +45,6 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
 
   return (
     <div className="flex flex-col gap-3 mb-4">
-      {/* Filtre profit minimum */}
       <div className="flex flex-wrap gap-3">
         <input
           type="number"
@@ -60,7 +59,6 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
         />
       </div>
 
-      {/* Filtres traders */}
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs text-gray-400 mr-1">Traders :</span>
         {ALL_TRADERS.map((trader) => {
