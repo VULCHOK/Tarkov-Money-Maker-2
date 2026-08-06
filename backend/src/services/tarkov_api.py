@@ -1,5 +1,4 @@
 import httpx
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,56 +21,54 @@ TRADER_ID_TO_NAME: dict[str, str] = {
 
 TRADER_SOURCES = set(TRADER_ID_TO_NAME.values())
 
-# Track source for /status endpoint
 last_api_source: str = "rest"
 
 
 def _normalize_item(item: dict, item_categories: dict) -> dict:
-    """
-    Normalize a raw json.tarkov.dev item into a flat dict
-    ready for price_calculator and DB upsert.
-    """
     category_name = None
     cats = item.get("categories", [])
     if cats:
         cat = item_categories.get(cats[0], {})
         category_name = cat.get("normalizedName")
 
-    # buyFrom: only RUB, known traders, price > 0
     buy_for: list[dict] = []
     for entry in item.get("buyFromTrader", []):
         trader_name = TRADER_ID_TO_NAME.get(entry.get("trader", ""))
         price_rub = entry.get("priceRUB") or entry.get("price", 0)
         currency = entry.get("currency", "RUB")
         if trader_name and price_rub and price_rub > 0 and currency == "RUB":
-            buy_for.append({
-                "source":   trader_name,
-                "price":    price_rub,
-                "currency": "RUB",
-            })
+            buy_for.append({"source": trader_name, "price": price_rub, "currency": "RUB"})
 
     return {
-        "id":                   item["id"],
-        "name":                 item.get("name", ""),
-        "short_name":           item.get("shortName", ""),
-        "category":             category_name,
-        "icon_link":            item.get("iconLink"),
-        "wiki_link":            item.get("wikiLink") or item.get("link"),
-        "avg24h_price":         item.get("avg24hPrice"),
-        "low24h_price":         item.get("low24hPrice"),
-        "high24h_price":        item.get("high24hPrice"),
-        "last_low_price":       item.get("lastLowPrice"),
-        "change_48h_pct":       item.get("changeLast48hPercent"),
-        "base_price":           item.get("basePrice"),
-        "buy_for":              buy_for,   # [{ source, price, currency }]
+        "id":             item["id"],
+        "name":           item.get("name", ""),
+        "short_name":     item.get("shortName", ""),
+        "category":       category_name,
+        "icon_link":      item.get("iconLink"),
+        "wiki_link":      item.get("wikiLink") or item.get("link"),
+        "avg24h_price":   item.get("avg24hPrice"),
+        "low24h_price":   item.get("low24hPrice"),
+        "high24h_price":  item.get("high24hPrice"),
+        "last_low_price": item.get("lastLowPrice"),
+        "change_48h_pct": item.get("changeLast48hPercent"),
+        "base_price":     item.get("basePrice"),
+        "buy_for":        buy_for,
     }
 
 
 async def fetch_items() -> list[dict]:
     """
     Fetch all items from json.tarkov.dev/regular/items.
-    Returns a list of normalized dicts.
-    Never raises — caller should handle exceptions.
+
+    Response shape (2026-08, verified live):
+      {
+        "data": {
+          "items": { "<id>": { ...fields... } },
+          "itemCategories": { "<id>": { "normalizedName": "..." } },
+          ...
+        },
+        "translations": [...]
+      }
     """
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.get(
@@ -81,22 +78,33 @@ async def fetch_items() -> list[dict]:
         resp.raise_for_status()
         raw = resp.json()
 
-    # Shape: [["data", {"items": {id: obj}, "itemCategories": {id: cat}}], ["translations", ...]]
-    data_section: dict = {}
-    for entry in raw:
-        if isinstance(entry, list) and len(entry) == 2 and entry[0] == "data":
-            data_section = entry[1]
-            break
+    # Support dict shape (current) and legacy list shape
+    if isinstance(raw, dict):
+        data_section = raw.get("data", {})
+    elif isinstance(raw, list):
+        data_section = {}
+        for entry in raw:
+            if isinstance(entry, list) and len(entry) == 2 and entry[0] == "data":
+                data_section = entry[1]
+                break
+            elif isinstance(entry, dict) and "items" in entry:
+                data_section = entry
+                break
+    else:
+        raise ValueError(f"Unexpected response type: {type(raw)}")
 
     items_dict: dict = data_section.get("items", {})
     item_categories: dict = data_section.get("itemCategories", {})
 
     if not items_dict:
+        logger.error(
+            f"Empty items dict. "
+            f"raw type={type(raw).__name__}  "
+            f"raw keys={list(raw.keys()) if isinstance(raw, dict) else 'list'}  "
+            f"data_section keys={list(data_section.keys())[:10]}"
+        )
         raise ValueError("json.tarkov.dev returned empty items dict")
 
-    normalized = [
-        _normalize_item(item, item_categories)
-        for item in items_dict.values()
-    ]
+    normalized = [_normalize_item(item, item_categories) for item in items_dict.values()]
     logger.info(f"[tarkov_api] Fetched and normalized {len(normalized)} items from json.tarkov.dev")
     return normalized
