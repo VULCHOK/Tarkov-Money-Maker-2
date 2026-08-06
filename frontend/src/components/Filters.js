@@ -75,7 +75,6 @@ function SearchCard({ value, onChange, lang }) {
   return (
     <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
       style={{ height: 96 }}>
-      {/* Icône loupe à gauche, même largeur que portrait trader */}
       <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
@@ -84,7 +83,6 @@ function SearchCard({ value, onChange, lang }) {
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </div>
-      {/* Contenu */}
       <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Search' : 'Recherche'}
@@ -92,7 +90,7 @@ function SearchCard({ value, onChange, lang }) {
         <div className="relative">
           <input
             type="text"
-            placeholder={lang === 'en' ? 'Item name...' : 'Nom d\'item...'}
+            placeholder={lang === 'en' ? 'Item name...' : "Nom d'item..."}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-xs w-full focus:outline-none focus:border-tarkov-gold pr-5"
@@ -132,7 +130,7 @@ function ProfitCard({ value, onChange, lang }) {
   );
 }
 
-// ── Card Player Level ──────────────────────────────────────────────────────────────
+// ── Card Player Level ─────────────────────────────────────────────────────────
 function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   const threshold = getRankThreshold(playerLevel);
   const rankName  = RANK_NAMES[threshold]?.[lang] ?? RANK_NAMES[threshold]?.en ?? '';
@@ -143,7 +141,6 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   return (
     <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
       style={{ height: 96 }}>
-      {/* Badge rang comme portrait */}
       <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <RankBadge level={playerLevel} size={52} />
         {fleaLocked && (
@@ -152,7 +149,6 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
           </div>
         )}
       </div>
-      {/* Contenu */}
       <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Player level' : 'Niveau joueur'}
@@ -176,7 +172,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   );
 }
 
-// ── TraderCard ──────────────────────────────────────────────────────────────
+// ── TraderCard ────────────────────────────────────────────────────────────────
 function TraderCard({ trader, tf, onToggle, onLevel }) {
   const meta      = TRADER_META[trader];
   const levels    = TRADER_LEVELS[trader];
@@ -220,7 +216,7 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   );
 }
 
-// ── IntelCard ──────────────────────────────────────────────────────────────
+// ── IntelCard ─────────────────────────────────────────────────────────────────
 function IntelCard({ intelLevel, onIntelLevelChange }) {
   const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   return (
@@ -252,7 +248,7 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
   );
 }
 
-// ── Filters principal ──────────────────────────────────────────────────────────────
+// ── Filters principal ──────────────────────────────────────────────────────────
 export function Filters({
   filters, onChange,
   traderFilters, onTraderFiltersChange,
@@ -283,10 +279,8 @@ export function Filters({
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
 
-      {/* ── Rang 1 : toutes les cards alignées sur la même hauteur 96px ── */}
+      {/* ── Ligne 1 : Search / Profit / Player level ── */}
       <div className="flex flex-wrap gap-2 items-start">
-
-        {/* Cards de contrôle */}
         <SearchCard
           value={filters.search}
           onChange={(v) => onChange({ ...filters, search: v })}
@@ -303,11 +297,13 @@ export function Filters({
           lang={lang}
           fleaLocked={fleaLocked}
         />
+      </div>
 
-        {/* Séparateur vertical */}
-        <div className="self-stretch w-px bg-tarkov-border mx-1 hidden sm:block" />
+      {/* Séparateur horizontal */}
+      <div className="h-px bg-tarkov-border my-2" />
 
-        {/* Traders */}
+      {/* ── Ligne 2 : Traders + Intel ── */}
+      <div className="flex flex-wrap gap-2 items-start">
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader}
             tf={traderFilters[trader] || { enabled: true, level: 1 }}
