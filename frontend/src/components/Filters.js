@@ -59,15 +59,17 @@ const INTEL_OPTIONS = [
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
 const FLEA_UNLOCK_LEVEL = 15;
 
+// PVE  → bleu  (était vert avant)
+// Kord Breach (pvp-season) → vert (était bleu avant)
 const MODE_FILTER_GRADIENT = {
   regular:      'from-[#2a0a0a]/30 to-transparent',
-  pve:          'from-[#0a2010]/30 to-transparent',
-  'pvp-season': 'from-[#071525]/30 to-transparent',
+  pve:          'from-[#071525]/30 to-transparent',
+  'pvp-season': 'from-[#0a2010]/30 to-transparent',
 };
 const MODE_FILTER_BORDER = {
   regular:      'border-red-900/40',
-  pve:          'border-green-900/40',
-  'pvp-season': 'border-blue-900/40',
+  pve:          'border-blue-900/40',
+  'pvp-season': 'border-green-900/40',
 };
 
 // ── Card Search ──────────────────────────────────────────────────────────────
