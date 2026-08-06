@@ -55,10 +55,10 @@ export function defaultMinOffers() {
 
 const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 30 };
 const INTEL_OPTIONS = [
-  { level: 0, label: 'Non construit', title: 'Non construit' },
-  { level: 1, label: 'Niveau 1',      title: 'Niveau 1' },
-  { level: 2, label: 'Niveau 2',      title: 'Niveau 2' },
-  { level: 3, label: 'Niveau 3 −30%', title: '-30% taxe flea' },
+  { level: 0, label: 'x',  title: 'Non construit' },
+  { level: 1, label: 'L1', title: 'Niveau 1' },
+  { level: 2, label: 'L2', title: 'Niveau 2' },
+  { level: 3, label: 'L3', title: '-30% taxe flea' },
 ];
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
 const FLEA_UNLOCK_LEVEL = 15;
@@ -77,7 +77,7 @@ const MODE_FILTER_BORDER = {
 // ── Card Search ──────────────────────────────────────────────────────────────
 function SearchCard({ value, onChange, lang }) {
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden w-full"
       style={{ height: 96 }}>
       <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
@@ -87,7 +87,7 @@ function SearchCard({ value, onChange, lang }) {
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1 min-w-0">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Search' : 'Recherche'}
         </span>
@@ -113,12 +113,12 @@ function SearchCard({ value, onChange, lang }) {
 // ── Card Profit ──────────────────────────────────────────────────────────────
 function ProfitCard({ value, onChange, lang }) {
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden w-full"
       style={{ height: 96 }}>
       <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <span className="text-tarkov-gold font-bold" style={{ fontSize: 26 }}>&#8381;</span>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1 min-w-0">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Min. profit' : 'Profit min.'}
         </span>
@@ -143,7 +143,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   const inc = () => onChange(Math.min(79, playerLevel + 1));
 
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden w-full"
       style={{ height: 96 }}>
       <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <RankBadge level={playerLevel} size={52} />
@@ -153,7 +153,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
           </div>
         )}
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1 min-w-0">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Player level' : 'Niveau joueur'}
         </span>
@@ -176,11 +176,11 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   );
 }
 
-// ── Card Min Offres (slider) ──────────────────────────────────────────────────
+// ── Card Min Offres (slider 1-100) ──────────────────────────────────────────────
 function MinOffersCard({ value, onChange, lang }) {
   const isActive = value > 1;
   return (
-    <div className={`flex items-stretch rounded-lg border overflow-hidden ${
+    <div className={`flex items-stretch rounded-lg border overflow-hidden w-full ${
       isActive ? 'border-tarkov-gold bg-tarkov-card' : 'border-tarkov-border bg-tarkov-card'
     }`} style={{ height: 96 }}>
       <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
@@ -191,7 +191,7 @@ function MinOffersCard({ value, onChange, lang }) {
           <span className="text-[9px] font-bold text-tarkov-gold leading-none block text-center">{value} offre{value > 1 ? 's' : ''}</span>
         </div>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-2" style={{ width: 120 }}>
+      <div className="flex flex-col justify-center px-2 py-2 gap-2 flex-1 min-w-0">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Min. offers' : 'Offres min.'}
         </span>
@@ -253,12 +253,12 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   );
 }
 
-// ── IntelCard (labels complets, scroll mobile) ────────────────────────────────
+// ── IntelCard (original) ────────────────────────────────────────────────────────────
 function IntelCard({ intelLevel, onIntelLevelChange }) {
   const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   return (
     <div className="flex items-stretch rounded-lg border border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40 overflow-hidden select-none"
-      style={{ height: 96, minWidth: 180 }} title="Intelligence Center">
+      style={{ height: 96 }} title="Intelligence Center">
       <div className="relative flex-shrink-0" style={{ width: 72 }}>
         <img src={INTEL_IMG} alt="Intel Center" className="w-full h-full object-cover"
           style={{ objectPosition: 'center 40%' }}
@@ -268,12 +268,12 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
           {discount > 0 && <span className="text-[9px] text-green-400 font-bold leading-none block">-{discount}% flea</span>}
         </div>
       </div>
-      <div className="flex flex-col justify-around px-2 py-1 flex-1">
+      <div className="flex flex-col justify-around items-center px-1 py-1 bg-black/30" style={{ width: 38 }}>
         {INTEL_OPTIONS.map(({ level, label, title }) => {
           const isActive = intelLevel === level;
           return (
             <button key={level} onClick={() => onIntelLevelChange(level)} title={title}
-              className={`w-full px-2 h-5 rounded text-[10px] font-semibold transition-colors text-left ${
+              className={`w-7 h-5 rounded text-xs font-bold transition-colors ${
                 isActive
                   ? 'bg-tarkov-gold text-tarkov-bg'
                   : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
@@ -316,8 +316,11 @@ export function Filters({
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
 
-      {/* ── Ligne 1 : 4 cards, wrap sur mobile, justify-between sur desktop ── */}
-      <div className="flex flex-wrap justify-between gap-3">
+      {/*
+        Ligne 1 : grid 4 colonnes → chaque card prend exactement 1/4 de la largeur.
+        Sur mobile (< sm) : 1 colonne = chaque card prend 100% de la largeur.
+      */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <SearchCard
           value={filters.search}
           onChange={(v) => onChange({ ...filters, search: v })}
@@ -344,8 +347,8 @@ export function Filters({
       {/* Séparateur horizontal */}
       <div className="h-px bg-tarkov-border my-2" />
 
-      {/* ── Ligne 2 : Traders scroll horizontal sur mobile, justify-between sur desktop ── */}
-      <div className="flex overflow-x-auto md:overflow-x-visible md:flex-wrap md:justify-between gap-2 pb-1">
+      {/* Ligne 2 : Traders + Intel — taille fixe, wrap naturel selon l’écran */}
+      <div className="flex flex-wrap gap-2 justify-start">
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader}
             tf={traderFilters[trader] || { enabled: true, level: 1 }}

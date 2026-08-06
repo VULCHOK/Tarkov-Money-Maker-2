@@ -8,7 +8,6 @@ import { ApiStatus } from './components/ApiStatus';
 
 const API_BASE = '/api';
 
-// PVE  → bleu  |  Kord Breach (pvp-season) → vert
 const MODES = [
   { key: 'regular',    label: 'PVP',         icon: '/images/mode-pvp.png',    headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badge: 'Permanent' },
   { key: 'pve',        label: 'PVE',         icon: '/images/mode-pve.png',    headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Co-op'     },
@@ -129,17 +128,23 @@ export default function App() {
   const feeDiscount  = INTEL_DISCOUNTS[intelLevel] ?? 0;
   const minRub       = parseFloat(filters.minProfitRub) || 0;
   const searchTerm   = (filters.search || '').toLowerCase().trim();
-  const minOffers    = filters.minOffers ?? 1;
+  // minOffers : si 1 (désactivé), on ne filtre pas du tout
+  const minOffers    = Number(filters.minOffers ?? 1);
   const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
   const t            = I18N[lang] || I18N.fr;
 
   const visibleItems = items.filter((item) => {
-    // Filtre offres actives minimum
+
+    // ── Filtre nombre minimum d'offres actives sur le flea ──
+    // last_offer_count peut être null (item hors flea) ou un entier.
+    // On applique le filtre seulement si minOffers > 1.
     if (minOffers > 1) {
-      const offerCount = item.last_offer_count ?? 0;
-      if (offerCount < minOffers) return false;
+      const count = item.last_offer_count;
+      // Si la valeur est absente (null/undefined), on considère 0 offres → exclu
+      if (count == null || count < minOffers) return false;
     }
 
+    // ── Filtre texte ──
     if (searchTerm) {
       const nameEn  = (item.name_en  || item.name  || '').toLowerCase();
       const nameFr  = (item.name_fr  || '').toLowerCase();
@@ -148,8 +153,12 @@ export default function App() {
       if (!nameEn.includes(searchTerm) && !nameFr.includes(searchTerm)
         && !shortEn.includes(searchTerm) && !shortFr.includes(searchTerm)) return false;
     }
+
+    // ── Filtre niveau flea ──
     const minFleaLevel = item.min_level_flea ?? 0;
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
+
+    // ── Filtre profit ──
     try {
       const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const sellPrices = JSON.parse(item.trader_prices || '{}');
