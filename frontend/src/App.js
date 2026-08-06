@@ -9,12 +9,11 @@ import { ApiStatus } from './components/ApiStatus';
 const API_BASE = '/api';
 
 const MODES = [
-  { key: 'regular',    label: 'PVP',         icon: '/images/mode-pvp.png',    headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badge: 'Permanent' },
-  { key: 'pve',        label: 'PVE',         icon: '/images/mode-pve.png',    headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badge: 'Co-op'     },
-  { key: 'pvp-season', label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Season 1'  },
+  { key: 'regular',      label: 'PVP',         icon: '/images/mode-pvp.png',    headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badge: 'Permanent' },
+  { key: 'pve',          label: 'PVE',         icon: '/images/mode-pve.png',    headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badge: 'Co-op'     },
+  { key: 'pvp-season',   label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Season 1'  },
 ];
 
-// Drapeaux SVG inline — compatibles partout, pas d'emoji
 const FLAG_GB = (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="20" height="10" className="flex-shrink-0 rounded-sm">
     <clipPath id="gb-t"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
@@ -75,7 +74,6 @@ function getBestBuyPrice(item, traderFilters) {
   } catch { return null; }
 }
 
-// Spinner de chargement
 function LoadingSpinner({ label, accentColor }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -171,7 +169,7 @@ export default function App() {
               <h1 className="text-xl font-bold text-tarkov-gold leading-tight">Tarkov Money Maker 2</h1>
               <p className={`text-xs ${activeMeta.accentColor} flex items-center gap-1 mt-0.5`}>
                 <span className="font-semibold">{activeMeta.label}</span>
-                <span className="text-gray-600">—</span>
+                <span className="text-gray-600">\u2014</span>
                 <span className="text-gray-500">{activeMeta.badge}</span>
               </p>
             </div>
@@ -217,6 +215,7 @@ export default function App() {
           playerLevel={playerLevel}
           onPlayerLevelChange={handlePlayerLevel}
           lang={lang}
+          gameMode={mode}
         />
         {loading && <LoadingSpinner label={t.loading} accentColor={activeMeta.accentColor} />}
         {error   && <p className="text-center py-8 text-red-400">{error}</p>}
