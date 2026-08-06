@@ -12,27 +12,27 @@ const MODES = [
   {
     key: 'regular',
     label: 'PVP',
-    emoji: '\u2694\uFE0F',
-    headerBg: 'from-[#3a0f0f] to-[#1a0808]',
-    borderColor: 'border-red-900',
+    emoji: '⚔️',
+    headerBg: 'from-[#2a0a0a] to-[#111]',
+    borderColor: 'border-red-900/60',
     accentColor: 'text-red-300',
     badge: 'Permanent',
   },
   {
     key: 'pve',
     label: 'PVE',
-    emoji: '\uD83E\uDD16',
-    headerBg: 'from-[#0d2b0d] to-[#071407]',
-    borderColor: 'border-green-900',
+    emoji: '🤖',
+    headerBg: 'from-[#0a2010] to-[#111]',
+    borderColor: 'border-green-900/60',
     accentColor: 'text-green-300',
     badge: 'Co-op',
   },
   {
     key: 'pvp-season',
     label: 'Kord Breach',
-    emoji: '\u2744\uFE0F',
-    headerBg: 'from-[#0a1a30] to-[#050d1a]',
-    borderColor: 'border-blue-900',
+    emoji: '❄️',
+    headerBg: 'from-[#071525] to-[#111]',
+    borderColor: 'border-blue-900/60',
     accentColor: 'text-blue-300',
     badge: 'Season 1',
   },
@@ -88,46 +88,75 @@ export default function App() {
     } catch { return true; }
   });
 
+  // Pill commune : conteneur de groupe
+  const pillGroup = 'flex items-center gap-0.5 bg-black/50 border border-white/10 rounded-lg p-0.5';
+  // Pill item inactive
+  const pillBase  = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer select-none';
+  const pillOff   = 'text-gray-400 hover:text-white hover:bg-white/5';
+  const pillOn    = 'bg-tarkov-gold text-tarkov-bg shadow-sm';
+
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
-      <header className={`bg-gradient-to-r ${activeMeta.headerBg} border-b ${activeMeta.borderColor} px-6 py-4 transition-all duration-500`}>
-        <div className="flex items-center justify-between flex-wrap gap-3">
+      <header className={`bg-gradient-to-r ${activeMeta.headerBg} border-b ${activeMeta.borderColor} px-5 py-3`}>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+
+          {/* Titre */}
           <div>
-            <h1 className="text-2xl font-bold text-tarkov-gold">Tarkov Money Maker 2</h1>
-            <p className={`text-sm ${activeMeta.accentColor} flex items-center gap-1.5`}>
+            <h1 className="text-xl font-bold text-tarkov-gold leading-tight">Tarkov Money Maker 2</h1>
+            <p className={`text-xs ${activeMeta.accentColor} flex items-center gap-1 mt-0.5`}>
               <span>{activeMeta.emoji}</span>
               <span className="font-semibold">{activeMeta.label}</span>
-              <span className="text-gray-500">—</span>
-              <span className="text-gray-400">{activeMeta.badge}</span>
+              <span className="text-gray-600">—</span>
+              <span className="text-gray-500">{activeMeta.badge}</span>
             </p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded px-1 py-1">
+
+          {/* Groupe de pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+
+            {/* Modes */}
+            <div className={pillGroup}>
               {MODES.map((m) => (
-                <button key={m.key} onClick={() => setMode(m.key)} title={m.badge}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all ${
-                    mode === m.key
-                      ? 'bg-tarkov-gold text-tarkov-bg'
-                      : 'text-gray-400 hover:text-tarkov-gold'
-                  }`}>
+                <button
+                  key={m.key}
+                  onClick={() => setMode(m.key)}
+                  className={`${pillBase} ${mode === m.key ? pillOn : pillOff}`}
+                  title={m.badge}
+                >
                   <span>{m.emoji}</span>
                   <span>{m.label}</span>
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded px-2 py-1">
-              <button onClick={() => setLang('en')} title="English"
-                className={`text-lg transition-opacity ${lang === 'en' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}>🇬🇧</button>
-              <button onClick={() => setLang('fr')} title="Français"
-                className={`text-lg transition-opacity ${lang === 'fr' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}>🇫🇷</button>
+
+            {/* Langue */}
+            <div className={pillGroup}>
+              <button
+                onClick={() => setLang('en')}
+                className={`${pillBase} ${lang === 'en' ? pillOn : pillOff}`}
+              >
+                🇬🇧 EN
+              </button>
+              <button
+                onClick={() => setLang('fr')}
+                className={`${pillBase} ${lang === 'fr' ? pillOn : pillOff}`}
+              >
+                🇫🇷 FR
+              </button>
             </div>
-            <ApiStatus />
-            <ExportButtons items={visibleItems} lang={lang} />
+
+            {/* Outils */}
+            <div className={pillGroup}>
+              <ApiStatus pillBase={pillBase} pillOff={pillOff} />
+              <span className="w-px h-4 bg-white/10 mx-0.5" />
+              <ExportButtons items={visibleItems} lang={lang} pillBase={pillBase} pillOff={pillOff} />
+            </div>
+
           </div>
         </div>
       </header>
 
-      <main className="px-6 py-4">
+      <main className="px-5 py-4">
         <StatsBar items={visibleItems} />
         <Filters
           filters={filters}
@@ -139,7 +168,7 @@ export default function App() {
         />
         {loading && (
           <p className="text-center py-8 text-gray-400">
-            Chargement des items <span className={activeMeta.accentColor}>({activeMeta.label})</span>...
+            Chargement <span className={activeMeta.accentColor}>({activeMeta.label})</span>...
           </p>
         )}
         {error && <p className="text-center py-8 text-red-400">{error}</p>}

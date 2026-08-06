@@ -2,15 +2,15 @@ import React from 'react';
 
 function toCSV(items, lang) {
   if (!items.length) return '';
-  const nameKey    = lang === 'fr' ? 'name_fr'       : 'name_en';
-  const snameKey   = lang === 'fr' ? 'short_name_fr' : 'short_name_en';
-  const headers = ['id', nameKey, snameKey, 'category', 'flea_price', 'best_trader', 'best_trader_price', 'difference', 'difference_pct', 'recommendation'];
-  const displayHeaders = ['id', 'name', 'short_name', 'category', 'flea_price', 'best_trader', 'best_trader_price', 'difference', 'difference_pct', 'recommendation'];
-  const rows = items.map((item) => headers.map((h) => JSON.stringify(item[h] ?? '')).join(','));
-  return [displayHeaders.join(','), ...rows].join('\n');
+  const nameKey  = lang === 'fr' ? 'name_fr'       : 'name_en';
+  const snameKey = lang === 'fr' ? 'short_name_fr' : 'short_name_en';
+  const headers  = ['id', nameKey, snameKey, 'category', 'flea_price', 'best_trader', 'best_trader_price', 'difference', 'difference_pct', 'recommendation'];
+  const display  = ['id', 'name', 'short_name', 'category', 'flea_price', 'best_trader', 'best_trader_price', 'difference', 'difference_pct', 'recommendation'];
+  const rows     = items.map((item) => headers.map((h) => JSON.stringify(item[h] ?? '')).join(','));
+  return [display.join(','), ...rows].join('\n');
 }
 
-export function ExportButtons({ items, lang = 'en' }) {
+export function ExportButtons({ items, lang = 'en', pillBase = '', pillOff = '' }) {
   const exportCSV = () => {
     const blob = new Blob([toCSV(items, lang)], { type: 'text/csv' });
     const a = document.createElement('a');
@@ -28,9 +28,13 @@ export function ExportButtons({ items, lang = 'en' }) {
   };
 
   return (
-    <div className="flex gap-2">
-      <button onClick={exportCSV}  className="px-3 py-1.5 bg-tarkov-card border border-tarkov-border rounded text-sm hover:bg-tarkov-border transition-colors">CSV</button>
-      <button onClick={exportJSON} className="px-3 py-1.5 bg-tarkov-card border border-tarkov-border rounded text-sm hover:bg-tarkov-border transition-colors">JSON</button>
-    </div>
+    <>
+      <button onClick={exportCSV}  className={`${pillBase} ${pillOff}`} title="Exporter en CSV">
+        ↓ CSV
+      </button>
+      <button onClick={exportJSON} className={`${pillBase} ${pillOff}`} title="Exporter en JSON">
+        ↓ JSON
+      </button>
+    </>
   );
 }

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const MODE_LABELS = {
-  regular: { label: 'PVP', emoji: '⚔️' },
-  pve: { label: 'PVE', emoji: '🤖' },
-  'pvp-season': { label: 'Seasonal', emoji: '❄️' },
+  regular:      { label: 'PVP',        emoji: '⚔️' },
+  pve:          { label: 'PVE',        emoji: '🤖' },
+  'pvp-season': { label: 'Kord Breach', emoji: '❄️' },
 };
 
 function fmtTime(isoString) {
@@ -23,9 +23,9 @@ function fmtDate(isoString) {
   });
 }
 
-export function ApiStatus() {
-  const [status, setStatus] = useState(null);
-  const [open, setOpen] = useState(false);
+export function ApiStatus({ pillBase = '', pillOff = '' }) {
+  const [status, setStatus]           = useState(null);
+  const [open, setOpen]               = useState(false);
   const [lastChecked, setLastChecked] = useState(null);
 
   const fetchStatus = useCallback(async () => {
@@ -57,29 +57,24 @@ export function ApiStatus() {
       case 'online':   return { color: 'bg-green-500',  pulse: true,  label: 'tarkov.dev Online' };
       case 'degraded': return { color: 'bg-orange-400', pulse: true,  label: 'tarkov.dev Dégradé' };
       case 'offline':  return { color: 'bg-red-500',    pulse: false, label: 'tarkov.dev Offline' };
-      default:         return { color: 'bg-gray-500',   pulse: false, label: 'Inconnu' };
+      default:         return { color: 'bg-gray-500',   pulse: false, label: 'Vérif...' };
     }
   })();
-
-  const modes = Object.entries(MODE_LABELS);
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="group relative flex items-center gap-2 cursor-pointer select-none"
-        title="Voir le statut détaillé"
+        className={`${pillBase} ${pillOff}`}
+        title="Statut de synchronisation"
       >
-        <span className="relative flex h-3 w-3">
+        <span className="relative flex h-2 w-2 flex-shrink-0">
           {dot.pulse && (
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dot.color} opacity-60`} />
           )}
-          <span className={`relative inline-flex rounded-full h-3 w-3 ${dot.color}`} />
+          <span className={`relative inline-flex rounded-full h-2 w-2 ${dot.color}`} />
         </span>
-
-        <span className="text-xs text-gray-400 hidden sm:inline group-hover:text-tarkov-gold transition-colors">
-          {dot.label}
-        </span>
+        <span>{dot.label}</span>
       </button>
 
       {open && (
@@ -93,41 +88,39 @@ export function ApiStatus() {
                 <span className={`inline-flex rounded-full h-2.5 w-2.5 ${dot.color}`} />
                 Statut de synchronisation
               </h2>
-              <button
-                onClick={() => setOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
-              >×</button>
+              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">×</button>
             </div>
 
             {status && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 text-xs">
-                <div className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
-                  <div className="text-gray-400 mb-1">Statut global</div>
-                  <div className={`font-semibold ${
-                    status.overall === 'online' ? 'text-green-400' :
-                    status.overall === 'degraded' ? 'text-orange-400' : 'text-red-400'
-                  }`}>{status.overall ?? '—'}</div>
-                </div>
-                <div className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
-                  <div className="text-gray-400 mb-1">Dernière sync</div>
-                  <div className="font-semibold text-white">{fmtDate(status.last_sync)}</div>
-                  <div className="text-gray-500">{fmtTime(status.last_sync)}</div>
-                </div>
-                <div className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
-                  <div className="text-gray-400 mb-1">Items synchronisés</div>
-                  <div className="font-semibold text-white">{status.items_synced?.toLocaleString('fr-FR') ?? '—'}</div>
-                  <div className="text-gray-500">total cumulé</div>
-                </div>
-                <div className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
-                  <div className="text-gray-400 mb-1">Source API</div>
-                  <div className="font-semibold text-white">{status.api_source_used ?? '—'}</div>
-                  <div className="text-gray-500">check auto toutes les 30s</div>
-                </div>
+                {[{
+                  label: 'Statut global',
+                  value: status.overall ?? '—',
+                  cls: status.overall === 'online' ? 'text-green-400' : status.overall === 'degraded' ? 'text-orange-400' : 'text-red-400',
+                }, {
+                  label: 'Dernière sync',
+                  value: fmtDate(status.last_sync),
+                  sub: fmtTime(status.last_sync),
+                }, {
+                  label: 'Items synchronisés',
+                  value: status.items_synced?.toLocaleString('fr-FR') ?? '—',
+                  sub: 'total cumulé',
+                }, {
+                  label: 'Source API',
+                  value: status.api_source_used ?? '—',
+                  sub: 'check auto toutes les 30s',
+                }].map(({ label, value, sub, cls }) => (
+                  <div key={label} className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
+                    <div className="text-gray-400 mb-1">{label}</div>
+                    <div className={`font-semibold ${cls ?? 'text-white'}`}>{value}</div>
+                    {sub && <div className="text-gray-500 text-[10px] mt-0.5">{sub}</div>}
+                  </div>
+                ))}
               </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-              {modes.map(([modeKey, meta]) => {
+              {Object.entries(MODE_LABELS).map(([modeKey, meta]) => {
                 const modeData = status?.modes?.[modeKey];
                 return (
                   <div key={modeKey} className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
@@ -136,25 +129,16 @@ export function ApiStatus() {
                       <span className="text-tarkov-gold font-semibold text-sm">{meta.label}</span>
                     </div>
                     <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-400">Statut</span>
-                        <span className={`font-semibold ${
-                          modeData?.status === 'success' ? 'text-green-400' :
-                          modeData?.status === 'error' ? 'text-red-400' : 'text-gray-500'
-                        }`}>{modeData?.status ?? 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-400">Items</span>
-                        <span className="text-white">{modeData?.items_synced?.toLocaleString('fr-FR') ?? '—'}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-400">Dernière sync</span>
-                        <span className="text-gray-300">{fmtTime(modeData?.last_sync)}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-400">Durée</span>
-                        <span className="text-gray-300">{modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '—'}</span>
-                      </div>
+                      {[['Statut', modeData?.status ?? 'N/A', modeData?.status === 'success' ? 'text-green-400' : modeData?.status === 'error' ? 'text-red-400' : 'text-gray-500'],
+                        ['Items', modeData?.items_synced?.toLocaleString('fr-FR') ?? '—', 'text-white'],
+                        ['Dernière sync', fmtTime(modeData?.last_sync), 'text-gray-300'],
+                        ['Durée', modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '—', 'text-gray-300'],
+                      ].map(([lbl, val, cls]) => (
+                        <div key={lbl} className="flex justify-between gap-3">
+                          <span className="text-gray-400">{lbl}</span>
+                          <span className={cls}>{val}</span>
+                        </div>
+                      ))}
                       {modeData?.error && (
                         <div className="text-red-400 text-xs mt-1 break-all">⚠ {modeData.error.slice(0, 80)}</div>
                       )}
