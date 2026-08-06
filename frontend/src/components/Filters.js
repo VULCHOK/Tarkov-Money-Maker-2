@@ -14,15 +14,17 @@ export const TRADER_LEVELS = {
 
 export const ALL_TRADERS = Object.keys(TRADER_LEVELS);
 
+// URLs vers le volume dynamique monté par le backend au démarrage
+// Fallback : raw.githubusercontent.com si le volume n'est pas encore prêt
 export const TRADER_META = {
-  Prapor:      { img: 'https://assets.tarkov.dev/prapor-portrait.png' },
-  Therapist:   { img: 'https://assets.tarkov.dev/therapist-portrait.png' },
-  Skier:       { img: 'https://assets.tarkov.dev/skier-portrait.png' },
-  Peacekeeper: { img: 'https://assets.tarkov.dev/peacekeeper-portrait.png' },
-  Mechanic:    { img: 'https://assets.tarkov.dev/mechanic-portrait.png' },
-  Ragman:      { img: 'https://assets.tarkov.dev/ragman-portrait.png' },
-  Jaeger:      { img: 'https://assets.tarkov.dev/jaeger-portrait.png' },
-  Lightkeeper: { img: 'https://assets.tarkov.dev/lightkeeper-portrait.png' },
+  Prapor:      { img: '/images/traders-dynamic/traders/prapor-portrait.png',      fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/prapor-portrait.png' },
+  Therapist:   { img: '/images/traders-dynamic/traders/therapist-portrait.png',   fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/therapist-portrait.png' },
+  Skier:       { img: '/images/traders-dynamic/traders/skier-portrait.png',       fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/skier-portrait.png' },
+  Peacekeeper: { img: '/images/traders-dynamic/traders/peacekeeper-portrait.png', fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/peacekeeper-portrait.png' },
+  Mechanic:    { img: '/images/traders-dynamic/traders/mechanic-portrait.png',    fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/mechanic-portrait.png' },
+  Ragman:      { img: '/images/traders-dynamic/traders/ragman-portrait.png',      fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/ragman-portrait.png' },
+  Jaeger:      { img: '/images/traders-dynamic/traders/jaeger-portrait.png',      fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/jaeger-portrait.png' },
+  Lightkeeper: { img: '/images/traders-dynamic/traders/lightkeeper-portrait.png', fallback: 'https://raw.githubusercontent.com/the-hideout/tarkov-dev/main/public/images/traders/lightkeeper-portrait.png' },
 };
 
 export function defaultTraderFilters() {
@@ -30,7 +32,6 @@ export function defaultTraderFilters() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      // Nettoyer Fence si présent dans les saves anciennes
       const { Fence: _f, ...rest } = parsed;
       return rest;
     } catch {}
@@ -52,59 +53,83 @@ const INTEL_OPTIONS = [
   { level: 3, label: 'Intel Center L3', sub: '-30% de taxe flea' },
 ];
 
+/**
+ * Carte trader redesignée :
+ * ┌─────────────────────────────┐
+ * │  [Portrait 56x56]  [1]      │
+ * │                    [2]      │
+ * │   Nom du trader    [3] ←LL  │
+ * │                    [4]      │
+ * └─────────────────────────────┘
+ * Clic sur la carte → toggle enabled
+ * Clic sur un bouton LL → change le niveau (sans stopper le toggle)
+ */
 function TraderCard({ trader, tf, onToggle, onLevel }) {
-  const meta = TRADER_META[trader];
-  const levels = TRADER_LEVELS[trader];
+  const meta     = TRADER_META[trader];
+  const levels   = TRADER_LEVELS[trader];
   const isEnabled = tf.enabled;
+
+  const handleImgError = (e) => {
+    if (meta.fallback && e.target.src !== meta.fallback) {
+      e.target.src = meta.fallback;
+    } else {
+      e.target.style.display = 'none';
+    }
+  };
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg border p-2 transition-colors cursor-pointer select-none ${
-        isEnabled
-          ? 'border-tarkov-gold bg-tarkov-card'
-          : 'border-tarkov-border bg-tarkov-bg opacity-50'
-      }`}
-      style={{ minWidth: 150 }}
       onClick={() => onToggle(trader)}
+      className={`relative flex items-stretch gap-0 rounded-lg border overflow-hidden cursor-pointer select-none transition-all ${
+        isEnabled
+          ? 'border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40'
+          : 'border-tarkov-border bg-tarkov-bg opacity-40 grayscale'
+      }`}
+      style={{ width: 110 }}
+      title={`${trader} — cliquer pour ${isEnabled ? 'désactiver' : 'activer'}`}
     >
-      {/* Portrait */}
-      <img
-        src={meta.img}
-        alt={trader}
-        className="w-10 h-10 rounded-full object-cover border-2 flex-shrink-0"
-        style={{ borderColor: isEnabled ? '#c8a84b' : '#3a3a3a' }}
-        onError={(e) => { e.target.style.display = 'none'; }}
-      />
+      {/* Portrait grand format */}
+      <div className="relative flex-shrink-0" style={{ width: 72, height: 80 }}>
+        <img
+          src={meta.img}
+          alt={trader}
+          className="w-full h-full object-cover object-top"
+          onError={handleImgError}
+        />
+        {/* Overlay nom en bas du portrait */}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+          <span className={`text-[10px] font-bold leading-none block truncate ${
+            isEnabled ? 'text-tarkov-gold' : 'text-gray-400'
+          }`}>{trader}</span>
+        </div>
+      </div>
 
-      {/* Nom + niveaux */}
-      <div className="flex flex-col gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-        <span className={`text-xs font-semibold leading-none ${
-          isEnabled ? 'text-tarkov-gold' : 'text-gray-500'
-        }`}>{trader}</span>
-
-        {/* Boutons LL */}
-        <div className="flex gap-0.5">
-          {levels.map((lvl) => (
+      {/* Boutons LL verticaux */}
+      <div
+        className="flex flex-col justify-around items-center px-1 py-1 bg-black/30"
+        style={{ width: 38 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {levels.map((lvl) => {
+          const isActive = isEnabled && tf.level === lvl;
+          return (
             <button
               key={lvl}
               onClick={(e) => {
                 e.stopPropagation();
-                if (!isEnabled) {
-                  // Réactiver le trader ET changer le niveau en un clic
-                  onToggle(trader);
-                }
+                if (!isEnabled) onToggle(trader);
                 onLevel(trader, lvl);
               }}
-              className={`w-7 h-5 rounded text-xs font-bold transition-colors ${
-                isEnabled && tf.level === lvl
+              className={`w-7 h-6 rounded text-xs font-bold transition-colors ${
+                isActive
                   ? 'bg-tarkov-gold text-tarkov-bg'
                   : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
               }`}
             >
               {lvl}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -135,8 +160,6 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
 
       {/* Ligne 1 : Profit min + Intel Center */}
       <div className="flex flex-wrap gap-4 items-end">
-
-        {/* Profit minimum */}
         <div className="flex flex-col gap-1">
           <span className="text-xs text-gray-400">Profit minimum (₽)</span>
           <input
@@ -152,7 +175,6 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
           />
         </div>
 
-        {/* Intel Center */}
         <div className="flex flex-col gap-1">
           <span className="text-xs text-gray-400">Intelligence Center</span>
           <div className="flex gap-1">
