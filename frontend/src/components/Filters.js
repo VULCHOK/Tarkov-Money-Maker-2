@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { RankBadge, getRankThreshold, RANK_NAMES } from './RankBadge';
 
 export const TRADER_LEVELS = {
@@ -74,26 +74,227 @@ const MODE_FILTER_BORDER = {
   'pvp-season': 'border-green-900/40',
 };
 
-function SearchCard({ value, onChange, lang }) {
+// ── Helpers fuzzy ────────────────────────────────────────────────────────────
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function fuzzyMatch(text, query) {
+  const t = normalize(text);
+  const q = normalize(query);
+  if (!q) return false;
+  // sous-chaîne directe d'abord
+  if (t.includes(q)) return true;
+  // fuzzy : tous les chars du query dans l'ordre
+  let ti = 0;
+  for (let qi = 0; qi < q.length; qi++) {
+    const idx = t.indexOf(q[qi], ti);
+    if (idx === -1) return false;
+    ti = idx + 1;
+  }
+  return true;
+}
+
+// Score pour trier les suggestions (plus bas = meilleur match)
+function fuzzyScore(text, query) {
+  const t = normalize(text);
+  const q = normalize(query);
+  if (t.startsWith(q)) return 0;
+  if (t.includes(q))   return 1;
+  return 2;
+}
+
+// ── SearchCard avec tags + autocomplete ──────────────────────────────────────
+export function SearchCard({ tags, onTagsChange, allItems, lang }) {
+  const [inputVal, setInputVal]     = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [highlighted, setHighlighted] = useState(-1);
+  const [open, setOpen]             = useState(false);
+  const inputRef  = useRef(null);
+  const wrapRef   = useRef(null);
+
+  // Fermer le dropdown si clic en dehors
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const buildSuggestions = useCallback((val) => {
+    if (!val.trim() || !allItems?.length) { setSuggestions([]); return; }
+    const seen = new Set();
+    const results = [];
+    for (const item of allItems) {
+      const names = [
+        item.name_en || item.name || '',
+        item.name_fr || '',
+        item.short_name_en || item.short_name || '',
+        item.short_name_fr || '',
+      ];
+      for (const name of names) {
+        if (!name) continue;
+        const key = normalize(name);
+        if (seen.has(key)) continue;
+        if (fuzzyMatch(name, val)) {
+          seen.add(key);
+          results.push({ label: name, score: fuzzyScore(name, val) });
+        }
+      }
+      if (results.length >= 80) break;
+    }
+    results.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
+    setSuggestions(results.slice(0, 12).map((r) => r.label));
+  }, [allItems]);
+
+  const handleInput = (val) => {
+    setInputVal(val);
+    setHighlighted(-1);
+    buildSuggestions(val);
+    setOpen(true);
+  };
+
+  const addTag = (term) => {
+    const t = term.trim();
+    if (!t) return;
+    // évite les doublons (insensible à la casse)
+    if (tags.some((tag) => normalize(tag) === normalize(t))) {
+      setInputVal('');
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+    onTagsChange([...tags, t]);
+    setInputVal('');
+    setSuggestions([]);
+    setOpen(false);
+    setHighlighted(-1);
+    inputRef.current?.focus();
+  };
+
+  const removeTag = (idx) => {
+    onTagsChange(tags.filter((_, i) => i !== idx));
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlighted >= 0 && highlighted < suggestions.length) {
+        addTag(suggestions[highlighted]);
+      } else if (inputVal.trim()) {
+        addTag(inputVal);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted((h) => Math.min(h + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted((h) => Math.max(h - 1, -1));
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    } else if (e.key === 'Backspace' && !inputVal && tags.length > 0) {
+      removeTag(tags.length - 1);
+    }
+  };
+
+  const placeholder = tags.length === 0
+    ? (lang === 'en' ? 'Item name, Enter or click to add…' : "Nom d'item, Entrée ou clic pour ajouter…")
+    : (lang === 'en' ? 'Add another term…' : 'Ajouter un autre terme…');
+
+  const showDropdown = open && suggestions.length > 0;
+
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden w-full" style={{ height: 96 }}>
-      <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+    <div
+      ref={wrapRef}
+      className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-visible w-full relative"
+      style={{ minHeight: 96 }}
+    >
+      {/* Icône loupe */}
+      <div className="flex items-start justify-center pt-4 bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
           <circle cx="11" cy="11" r="7" />
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1 min-w-0">
-        <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">{lang === 'en' ? 'Search' : 'Recherche'}</span>
+
+      {/* Corps */}
+      <div className="flex flex-col justify-start px-2 py-2 gap-1 flex-1 min-w-0 overflow-visible">
+        <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
+          {lang === 'en' ? 'Search' : 'Recherche'}
+        </span>
+
+        {/* Tags existants */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-0.5">
+            {tags.map((tag, i) => (
+              <span key={i}
+                className="inline-flex items-center gap-1 bg-tarkov-gold/20 border border-tarkov-gold/40 text-tarkov-gold text-[11px] font-semibold rounded-full px-2 py-0.5 leading-none">
+                {tag}
+                <button
+                  onClick={() => removeTag(i)}
+                  className="ml-0.5 text-tarkov-gold/60 hover:text-tarkov-gold transition-colors leading-none"
+                  aria-label={`Supprimer ${tag}`}>
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Champ texte */}
         <div className="relative">
-          <input type="text" placeholder={lang === 'en' ? 'Item name...' : "Nom d'item..."} value={value || ''} onChange={(e) => onChange(e.target.value)} className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-xs w-full focus:outline-none focus:border-tarkov-gold pr-5" />
-          {value && <button onClick={() => onChange('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-tarkov-gold text-[10px]">&#10005;</button>}
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={placeholder}
+            value={inputVal}
+            onChange={(e) => handleInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { if (inputVal) setOpen(true); }}
+            className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-xs w-full focus:outline-none focus:border-tarkov-gold pr-5"
+          />
+          {inputVal && (
+            <button
+              onClick={() => { setInputVal(''); setSuggestions([]); setOpen(false); inputRef.current?.focus(); }}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-tarkov-gold text-[10px]">
+              ✕
+            </button>
+          )}
         </div>
+
+        {/* Dropdown suggestions */}
+        {showDropdown && (
+          <ul className="absolute left-0 right-0 top-full mt-0.5 z-50 bg-tarkov-card border border-tarkov-border rounded-lg shadow-xl overflow-hidden max-h-56 overflow-y-auto">
+            {suggestions.map((s, i) => (
+              <li key={s}
+                onMouseDown={(e) => { e.preventDefault(); addTag(s); }}
+                onMouseEnter={() => setHighlighted(i)}
+                className={`px-3 py-1.5 text-xs cursor-pointer flex items-center justify-between gap-2 transition-colors ${
+                  i === highlighted
+                    ? 'bg-tarkov-gold/20 text-tarkov-gold'
+                    : 'text-gray-200 hover:bg-tarkov-border'
+                }`}>
+                <span className="truncate">{s}</span>
+                <span className="text-[9px] text-gray-600 flex-shrink-0">
+                  {lang === 'en' ? 'add' : 'ajouter'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
 }
 
+// ── Reste des composants (inchangés) ─────────────────────────────────────────
 function ProfitCard({ value, onChange, lang }) {
   return (
     <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden w-full" style={{ height: 96 }}>
@@ -217,7 +418,7 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
   );
 }
 
-export function Filters({ filters, onChange, traderFilters, onTraderFiltersChange, intelLevel, onIntelLevelChange, playerLevel, onPlayerLevelChange, lang, gameMode, offerCountAvailable }) {
+export function Filters({ filters, onChange, traderFilters, onTraderFiltersChange, intelLevel, onIntelLevelChange, playerLevel, onPlayerLevelChange, lang, gameMode, offerCountAvailable, searchTags, onSearchTagsChange, allItems }) {
   const handleTraderToggle = (trader) => {
     const next = { ...traderFilters, [trader]: { ...traderFilters[trader], enabled: !traderFilters[trader].enabled } };
     localStorage.setItem('traderFilters', JSON.stringify(next));
@@ -239,9 +440,13 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
 
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
-      {/* Ligne 1 : 4 filtres principaux — s'étire sur toute la largeur */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SearchCard value={filters.search} onChange={(v) => onChange({ ...filters, search: v })} lang={lang} />
+        <SearchCard
+          tags={searchTags}
+          onTagsChange={onSearchTagsChange}
+          allItems={allItems}
+          lang={lang}
+        />
         <ProfitCard value={filters.minProfitRub} onChange={(v) => onChange({ ...filters, minProfitRub: v })} lang={lang} />
         <PlayerLevelCard playerLevel={playerLevel} onChange={onPlayerLevelChange} lang={lang} fleaLocked={fleaLocked} />
         <MinOffersCard
@@ -254,7 +459,6 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
 
       <div className="h-px bg-tarkov-border my-2" />
 
-      {/* Ligne 2 : traders + intel — centrés, taille fixe, remplissent la largeur si possible */}
       <div className="flex flex-wrap justify-center gap-2">
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader} tf={traderFilters[trader] || { enabled: true, level: 1 }} onToggle={handleTraderToggle} onLevel={handleTraderLevel} />

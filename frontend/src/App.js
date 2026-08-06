@@ -74,6 +74,27 @@ function getBestBuyPrice(item, traderFilters) {
   } catch { return null; }
 }
 
+// Normalize pour fuzzy match (accent-insensible, lowercase)
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function itemMatchesTag(item, tag) {
+  const q = normalize(tag);
+  if (!q) return true;
+  const fields = [
+    item.name_en || item.name || '',
+    item.name_fr || '',
+    item.short_name_en || item.short_name || '',
+    item.short_name_fr || '',
+  ];
+  return fields.some((f) => normalize(f).includes(q));
+}
+
 function LoadingSpinner({ label, accentColor }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -94,9 +115,10 @@ export default function App() {
   const [error, setError]                 = useState(null);
   const [filters, setFilters]             = useState({
     minProfitRub: defaultMinProfitRub(),
-    search: '',
     minOffers: defaultMinOffers(),
   });
+  // Tags de recherche multi-termes (OR)
+  const [searchTags, setSearchTags]       = useState([]);
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
   const [intelLevel, setIntelLevel]       = useState(defaultIntelLevel);
   const [playerLevel, setPlayerLevel]     = useState(defaultPlayerLevel);
@@ -132,7 +154,6 @@ export default function App() {
   const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
   const feeDiscount  = INTEL_DISCOUNTS[intelLevel] ?? 0;
   const minRub       = parseFloat(filters.minProfitRub) || 0;
-  const searchTerm   = (filters.search || '').toLowerCase().trim();
   const minOffers    = offerCountAvailable ? Number(filters.minOffers ?? 1) : 1;
   const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
   const t            = I18N[lang] || I18N.fr;
@@ -149,21 +170,17 @@ export default function App() {
       }
     }
 
-    // Filtre texte (EN + FR + short names)
-    if (searchTerm) {
-      const nameEn  = (item.name_en  || item.name  || '').toLowerCase();
-      const nameFr  = (item.name_fr  || '').toLowerCase();
-      const shortEn = (item.short_name_en || item.short_name || '').toLowerCase();
-      const shortFr = (item.short_name_fr || '').toLowerCase();
-      if (!nameEn.includes(searchTerm) && !nameFr.includes(searchTerm)
-        && !shortEn.includes(searchTerm) && !shortFr.includes(searchTerm)) return false;
+    // Filtre tags (OR entre les tags, chaque tag est un fuzzy includes)
+    if (searchTags.length > 0) {
+      const matchesAny = searchTags.some((tag) => itemMatchesTag(item, tag));
+      if (!matchesAny) return false;
     }
 
     // Filtre niveau flea
     const minFleaLevel = item.min_level_flea ?? 0;
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
 
-    // Filtre profit minimum — s'applique TOUJOURS, même avec searchTerm
+    // Filtre profit minimum — s'applique toujours
     try {
       const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const sellPrices = JSON.parse(item.trader_prices || '{}');
@@ -241,6 +258,9 @@ export default function App() {
           lang={lang}
           gameMode={mode}
           offerCountAvailable={offerCountAvailable}
+          searchTags={searchTags}
+          onSearchTagsChange={setSearchTags}
+          allItems={items}
         />
         {loading && <LoadingSpinner label={t.loading} accentColor={activeMeta.accentColor} />}
         {error   && <p className="text-center py-8 text-red-400">{error}</p>}
