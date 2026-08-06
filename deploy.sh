@@ -33,6 +33,7 @@ done
 # ---------------------------------------------------------------------------
 command -v git          &>/dev/null || die "git non trouvé"
 command -v docker       &>/dev/null || die "docker non trouvé"
+command -v curl         &>/dev/null || die "curl non trouvé"
 docker compose version  &>/dev/null || die "docker compose plugin non trouvé"
 
 cd "$(dirname "$0")"
@@ -55,7 +56,13 @@ git fetch origin
 git reset --hard origin/main
 
 # ---------------------------------------------------------------------------
-# 3. Stop + (optionnel) suppression des volumes
+# 3. Téléchargement des images de rang (une seule fois, mise en cache locale)
+# ---------------------------------------------------------------------------
+log "Vérification des images de rang..."
+bash scripts/download_rank_images.sh
+
+# ---------------------------------------------------------------------------
+# 4. Stop + (optionnel) suppression des volumes
 # ---------------------------------------------------------------------------
 if [ "$FRESH" = true ]; then
     warn "Mode --fresh : suppression des volumes (reset DB complet)..."
@@ -66,7 +73,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Rebuild (avec cache sauf en mode --fresh)
+# 5. Rebuild (avec cache sauf en mode --fresh)
 # ---------------------------------------------------------------------------
 if [ "$FRESH" = true ]; then
     log "Rebuild des images (no-cache)..."
@@ -77,13 +84,13 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Lancement
+# 6. Lancement
 # ---------------------------------------------------------------------------
 log "Démarrage des conteneurs..."
 $COMPOSE up -d
 
 # ---------------------------------------------------------------------------
-# 6. Attente que le backend soit prêt
+# 7. Attente que le backend soit prêt
 # ---------------------------------------------------------------------------
 log "Attente du backend..."
 MAX=30
@@ -98,7 +105,7 @@ echo
 log "Backend up !"
 
 # ---------------------------------------------------------------------------
-# 7. Résumé
+# 8. Résumé
 # ---------------------------------------------------------------------------
 echo
 log "======================================="

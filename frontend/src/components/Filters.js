@@ -51,15 +51,14 @@ export function defaultIntelLevel() {
 
 const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 30 };
 const INTEL_OPTIONS = [
-  { level: 0, label: '\u2715',  title: 'Non construit \u2014 pas de r\u00e9duction' },
-  { level: 1, label: 'L1', title: 'Niveau 1 \u2014 pas de r\u00e9duction' },
-  { level: 2, label: 'L2', title: 'Niveau 2 \u2014 pas de r\u00e9duction' },
-  { level: 3, label: 'L3', title: 'Niveau 3 \u2014 -30% taxe flea' },
+  { level: 0, label: 'x',  title: 'Non construit - pas de reduction' },
+  { level: 1, label: 'L1', title: 'Niveau 1 - pas de reduction' },
+  { level: 2, label: 'L2', title: 'Niveau 2 - pas de reduction' },
+  { level: 3, label: 'L3', title: 'Niveau 3 - -30% taxe flea' },
 ];
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
 const FLEA_UNLOCK_LEVEL = 15;
 
-// ── Mode gradient ────────────────────────────────────────────────────────────
 const MODE_FILTER_GRADIENT = {
   regular:      'from-[#2a0a0a]/30 to-transparent',
   pve:          'from-[#0a2010]/30 to-transparent',
@@ -71,7 +70,6 @@ const MODE_FILTER_BORDER = {
   'pvp-season': 'border-blue-900/40',
 };
 
-// ── PlayerLevel Selector ─────────────────────────────────────────────────────────
 function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocked }) {
   const key      = getRankKey(playerLevel);
   const rankName = RANK_NAMES[key]?.[lang] ?? RANK_NAMES[key]?.en ?? '';
@@ -81,7 +79,6 @@ function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocke
 
   return (
     <div className="flex items-center gap-2">
-      {/* Badge SVG */}
       <RankBadge level={playerLevel} size={36} />
 
       <div className="flex flex-col flex-1 sm:flex-none">
@@ -91,7 +88,7 @@ function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocke
         <div className="flex items-center gap-1">
           <button onClick={decrement}
             className="w-6 h-7 rounded border border-tarkov-border bg-tarkov-bg text-gray-400 hover:text-tarkov-gold hover:border-tarkov-gold transition-colors text-sm font-bold flex items-center justify-center flex-shrink-0"
-          >\u2212</button>
+          >-</button>
           <input
             type="number" min={1} max={79} value={playerLevel}
             onChange={(e) => onPlayerLevelChange(e.target.value)}
@@ -105,7 +102,7 @@ function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocke
         <span className="text-[10px] text-tarkov-gold font-semibold mt-0.5 block sm:hidden">{rankName}</span>
         {fleaLocked && (
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-red-900/40 border-red-800/60 text-red-400 mt-0.5 self-start">
-            Flea \u2715
+            Flea x
           </span>
         )}
       </div>
@@ -113,7 +110,6 @@ function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocke
   );
 }
 
-// ── Trader card ──────────────────────────────────────────────────────────────
 function TraderCard({ trader, tf, onToggle, onLevel }) {
   const meta      = TRADER_META[trader];
   const levels    = TRADER_LEVELS[trader];
@@ -125,7 +121,7 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
                   : 'border-tarkov-border bg-tarkov-bg opacity-40 grayscale'
       }`}
       style={{ width: 110, height: 96 }}
-      title={`${trader} \u2014 ${isEnabled ? 'd\u00e9sactiver' : 'activer'}`}
+      title={`${trader} - ${isEnabled ? 'desactiver' : 'activer'}`}
     >
       <div className="relative flex-shrink-0" style={{ width: 72 }}>
         <img src={meta.img} alt={trader} className="w-full h-full object-cover" style={{ objectPosition: 'center 15%' }}
@@ -152,7 +148,6 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   );
 }
 
-// ── Intel card ───────────────────────────────────────────────────────────────
 function IntelCard({ intelLevel, onIntelLevelChange }) {
   const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   return (
@@ -182,7 +177,6 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
   );
 }
 
-// ── Main Filters ───────────────────────────────────────────────────────────────
 export function Filters({
   filters, onChange,
   traderFilters, onTraderFiltersChange,
@@ -219,7 +213,9 @@ export function Filters({
 
         {/* Recherche */}
         <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-sm select-none">\uD83D\uDD0D</span>
+          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+          </svg>
           <div className="flex flex-col flex-1 sm:flex-none">
             <span className="text-[10px] text-gray-500 leading-none mb-0.5">
               {lang === 'en' ? 'Search' : 'Recherche'}
@@ -237,7 +233,7 @@ export function Filters({
                   onClick={() => onChange({ ...filters, search: '' })}
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-tarkov-gold text-xs leading-none"
                   title="Effacer"
-                >\u2715</button>
+                >x</button>
               )}
             </div>
           </div>
@@ -248,7 +244,7 @@ export function Filters({
 
         {/* Profit minimum */}
         <div className="flex items-center gap-2">
-          <span className="text-tarkov-gold font-bold text-sm select-none">\u20bd</span>
+          <span className="text-tarkov-gold font-bold text-sm select-none">P</span>
           <div className="flex flex-col flex-1 sm:flex-none">
             <span className="text-[10px] text-gray-500 leading-none mb-0.5">
               {lang === 'en' ? 'Min. profit' : 'Profit min.'}
