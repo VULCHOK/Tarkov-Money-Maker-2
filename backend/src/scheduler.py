@@ -24,6 +24,6 @@ def start_scheduler() -> None:
     _scheduler.start()
     logger.info("[scheduler] APScheduler started — sync every 10 minutes.")
 
-    # Fire immediately without blocking startup
-    asyncio.get_event_loop().call_soon(asyncio.ensure_future, sync_data())
+    # Fire immediately — asyncio.create_task() replaces deprecated get_event_loop()
+    asyncio.create_task(sync_data())
     logger.info("[scheduler] Initial sync triggered.")

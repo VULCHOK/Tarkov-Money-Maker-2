@@ -1,12 +1,10 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from ..database import get_db
-from ..models import MarketPrice
+# market.py — stub kept for future use
+# MarketPrice model removed in v2 refactor (flea price now stored as flea_price in items)
+from fastapi import APIRouter
 
 router = APIRouter()
 
 
 @router.get("/")
-def get_market(db: Session = Depends(get_db)):
-    rows = db.query(MarketPrice).all()
-    return [{"item_id": r.item_id, "price": r.price} for r in rows]
+def get_market():
+    return {"message": "Market prices are embedded in /items/ as flea_price field."}

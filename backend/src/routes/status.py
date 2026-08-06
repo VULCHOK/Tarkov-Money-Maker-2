@@ -49,22 +49,22 @@ async def get_status():
         _probe_rest(),
     )
 
-    # Overall status: online if at least one source works
     if graphql_status == "online":
         overall = "online"
     elif rest_status == "online":
-        overall = "degraded"   # fallback active
+        overall = "degraded"
     else:
         overall = "offline"
 
     return {
         "overall": overall,
         "sources": {
-            "graphql": graphql_status,   # api.tarkov.dev/graphql
-            "rest":    rest_status,      # json.tarkov.dev
+            "graphql": graphql_status,
+            "rest":    rest_status,
         },
-        "last_sync": sync_state["last_success"],
-        "last_error": sync_state["last_error"],
-        "item_count": sync_state["item_count"],
+        # Fixed: use correct sync_state keys (last_sync / error, not last_success / last_error)
+        "last_sync":       sync_state.get("last_sync"),
+        "last_error":      sync_state.get("error"),
+        "item_count":      sync_state.get("item_count", 0),
         "api_source_used": last_api_source,
     }

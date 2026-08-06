@@ -1,18 +1,21 @@
 import React from 'react';
 
-function toCSV(items) {
+function toCSV(items, lang) {
   if (!items.length) return '';
-  const headers = ['id','name','category','flea_price','best_trader','best_trader_price','difference','difference_pct','recommendation'];
+  const nameKey    = lang === 'fr' ? 'name_fr'       : 'name_en';
+  const snameKey   = lang === 'fr' ? 'short_name_fr' : 'short_name_en';
+  const headers = ['id', nameKey, snameKey, 'category', 'flea_price', 'best_trader', 'best_trader_price', 'difference', 'difference_pct', 'recommendation'];
+  const displayHeaders = ['id', 'name', 'short_name', 'category', 'flea_price', 'best_trader', 'best_trader_price', 'difference', 'difference_pct', 'recommendation'];
   const rows = items.map((item) => headers.map((h) => JSON.stringify(item[h] ?? '')).join(','));
-  return [headers.join(','), ...rows].join('\n');
+  return [displayHeaders.join(','), ...rows].join('\n');
 }
 
-export function ExportButtons({ items }) {
+export function ExportButtons({ items, lang = 'en' }) {
   const exportCSV = () => {
-    const blob = new Blob([toCSV(items)], { type: 'text/csv' });
+    const blob = new Blob([toCSV(items, lang)], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'tarkov_prices.csv';
+    a.download = `tarkov_prices_${lang}.csv`;
     a.click();
   };
 
@@ -20,13 +23,13 @@ export function ExportButtons({ items }) {
     const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'tarkov_prices.json';
+    a.download = `tarkov_prices_${lang}.json`;
     a.click();
   };
 
   return (
     <div className="flex gap-2">
-      <button onClick={exportCSV} className="px-3 py-1.5 bg-tarkov-card border border-tarkov-border rounded text-sm hover:bg-tarkov-border transition-colors">CSV</button>
+      <button onClick={exportCSV}  className="px-3 py-1.5 bg-tarkov-card border border-tarkov-border rounded text-sm hover:bg-tarkov-border transition-colors">CSV</button>
       <button onClick={exportJSON} className="px-3 py-1.5 bg-tarkov-card border border-tarkov-border rounded text-sm hover:bg-tarkov-border transition-colors">JSON</button>
     </div>
   );

@@ -2,19 +2,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
-from ..database import SessionLocal
+from ..database import get_db
 from ..models import Item
 from ..schemas import ItemOut
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("/", response_model=list[ItemOut])
