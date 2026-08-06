@@ -47,10 +47,12 @@ if [ ! -f docker/.env ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Git pull
+# 2. Git pull (ignore les changements de permissions)
 # ---------------------------------------------------------------------------
+git config core.fileMode false
 log "Pull des derniers changements..."
-git pull --ff-only || die "git pull a échoué. Résoudre les conflits manuellement."
+git fetch origin
+git reset --hard origin/main
 
 # ---------------------------------------------------------------------------
 # 3. Stop + (optionnel) suppression des volumes
