@@ -64,11 +64,14 @@ def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
     return result
 
 
-def _best_buy_from_trader(buy_list: list[dict]) -> tuple[str | None, int | None]:
+def _best_buy_from_trader(
+    buy_list: list[dict], trader_levels: dict[str, int] | None = None
+) -> tuple[str | None, int | None]:
     """
-    Prix auxquels les traders VENDENT l'item au joueur (buyFromTrader).
-    On cherche le MOINS CHER (meilleure affaire pour le joueur).
-    Ignore Fence et les offres en barter (currency != RUB).
+    Prix auxquels les traders VENDENT l'item au joueur.
+    On cherche le MOINS CHER parmi les offres accessibles au niveau du joueur.
+    Ignore Fence et les barters.
+    trader_levels : {"Mechanic": 3, ...} — si None, accepte tous les niveaux.
     """
     best_name  = None
     best_price = None
@@ -77,23 +80,32 @@ def _best_buy_from_trader(buy_list: list[dict]) -> tuple[str | None, int | None]
         trader_name = TRADER_ID_TO_NAME.get(trader_id)
         if not trader_name or trader_name == "Fence":
             continue
-        # Ignorer les barters (currency != "RUB" ou priceRUB absent)
         currency  = entry.get("currency", "")
         price_rub = entry.get("priceRUB") or 0
         if currency not in ("RUB", "") or price_rub <= 0:
             continue
+        # Vérifier le niveau requis
+        min_level = entry.get("minTraderLevel") or 1
+        if trader_levels is not None:
+            user_level = trader_levels.get(trader_name, 1)
+            if min_level > user_level:
+                continue
         if best_price is None or price_rub < best_price:
             best_price = price_rub
             best_name  = trader_name
     return (best_name, best_price)
 
 
-def _all_buy_prices(buy_list: list[dict]) -> dict[str, int]:
+def _all_buy_prices_by_level(buy_list: list[dict]) -> dict[str, dict[str, int]]:
     """
-    Tous les prix RUB auxquels les traders VENDENT l'item au joueur.
-    Garde le moins cher par trader si plusieurs niveaux.
+    Retourne les prix d'achat trader VENTILÉS PAR NIVEAU :
+    { "Mechanic": { "1": 25000, "2": 23000, "3": 22997 }, ... }
+
+    Pour chaque trader+niveau, on garde le prix le moins cher.
+    Cela permet au frontend de filtrer selon le niveau sélectionné par le joueur.
     """
-    result: dict[str, int] = {}
+    # Accumulation : result[trader][level] = min_price
+    result: dict[str, dict[int, int]] = {}
     for entry in buy_list:
         trader_id   = entry.get("trader", "")
         trader_name = TRADER_ID_TO_NAME.get(trader_id)
@@ -103,10 +115,16 @@ def _all_buy_prices(buy_list: list[dict]) -> dict[str, int]:
             continue
         if currency not in ("RUB", "") or price_rub <= 0:
             continue
-        # Garder le moins cher par trader (meilleur deal joueur)
-        if price_rub < result.get(trader_name, float("inf")):
-            result[trader_name] = price_rub
-    return result
+        min_level = int(entry.get("minTraderLevel") or 1)
+        trader_dict = result.setdefault(trader_name, {})
+        if price_rub < trader_dict.get(min_level, float("inf")):
+            trader_dict[min_level] = price_rub
+
+    # Convertir les clés de niveau en str pour JSON
+    return {
+        trader: {str(lvl): price for lvl, price in levels.items()}
+        for trader, levels in result.items()
+    }
 
 
 def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories: dict, mode: str) -> dict:
@@ -130,19 +148,19 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
     trader_prices_json = _json.dumps(_all_sell_prices(sell_list))
 
     # --- Trader BUY prices (trader VEND l'item AU joueur) ---
-    # Le champ peut s'appeler buyFromTrader, buyFor, ou traderPrices selon la version de l'API
-    buy_list = (
-        item.get("buyFromTrader")
-        or item.get("buyFor")
-        or []
-    )
-    # Filtrer pour garder uniquement les offres traders (pas flea)
+    buy_list = item.get("buyFor") or item.get("buyFromTrader") or []
     buy_list_traders = [
         e for e in buy_list
-        if e.get("trader") and e.get("trader") != "flea-market"
+        if TRADER_ID_TO_NAME.get(e.get("trader", "")) not in (None, "Fence")
     ]
-    best_buy_trader, best_buy_trader_price = _best_buy_from_trader(buy_list_traders)
-    trader_buy_prices_json = _json.dumps(_all_buy_prices(buy_list_traders))
+
+    # best_buy = prix accessible au niveau 1 par défaut (le plus conservateur)
+    best_buy_trader, best_buy_trader_price = _best_buy_from_trader(
+        buy_list_traders, trader_levels={t: 1 for t in TRADER_ID_TO_NAME.values()}
+    )
+    # Structure complète par niveau pour le filtrage frontend
+    trader_buy_prices_by_level = _all_buy_prices_by_level(buy_list_traders)
+    trader_buy_prices_json = _json.dumps(trader_buy_prices_by_level)
 
     return {
         "id":               item_id,
@@ -172,7 +190,7 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
         "best_trader":           best_trader,
         "best_trader_price":     best_trader_price,
         "trader_prices":         trader_prices_json,
-        # Trader BUY (trader VEND AU joueur)
+        # Trader BUY (trader VEND AU joueur) — structuré par niveau
         "best_trader_buy":       best_buy_trader,
         "best_trader_buy_price": best_buy_trader_price,
         "trader_buy_prices":     trader_buy_prices_json,

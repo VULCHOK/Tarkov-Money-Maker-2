@@ -78,6 +78,87 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
   );
 }
 
+// Colonne Achat Trader — affiche le prix accessible selon le niveau sélectionné
+function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters }) {
+  const [open, setOpen] = useState(false);
+  let pricesByLevel = {};
+  try { pricesByLevel = JSON.parse(pricesJson || '{}'); } catch {}
+
+  // Pour chaque trader, récupérer le prix accessible au niveau configuré
+  const entries = ALL_TRADERS.map((trader) => {
+    const levels = pricesByLevel[trader];
+    if (!levels || typeof levels !== 'object') return null;
+    const userLevel = traderFilters?.[trader]?.level ?? 1;
+    // Chercher le meilleur prix parmi les niveaux <= userLevel
+    let bestPrice = null;
+    let accessibleLevel = null;
+    for (let lvl = 1; lvl <= userLevel; lvl++) {
+      const p = levels[String(lvl)];
+      if (p != null && (bestPrice === null || p < bestPrice)) {
+        bestPrice = p;
+        accessibleLevel = lvl;
+      }
+    }
+    if (bestPrice === null) return null;
+    return { trader, price: bestPrice, accessibleLevel, userLevel, levels };
+  }).filter(Boolean).sort((a, b) => a.price - b.price);
+
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
+
+  const bestEntry = highlight ? entries.find((e) => e.trader === highlight) || entries[0] : entries[0];
+
+  return (
+    <div className="relative inline-block" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <span className="flex items-center gap-1.5 cursor-default group">
+        {TRADER_META[bestEntry.trader]?.img && (
+          <img src={TRADER_META[bestEntry.trader].img} alt={bestEntry.trader}
+            className="w-5 h-5 rounded-full object-cover border border-tarkov-border flex-shrink-0"
+            onError={(e) => { e.target.style.display = 'none'; }} />
+        )}
+        <span className="flex flex-col leading-tight">
+          <span className="text-tarkov-gold text-xs font-semibold">{bestEntry.trader}</span>
+          <span className="text-white text-xs">{fmt(bestEntry.price)}</span>
+        </span>
+        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">▾</span>
+      </span>
+      {open && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-64 bg-tarkov-card border border-tarkov-border rounded shadow-lg py-1">
+          <p className="text-xs text-gray-500 px-3 pt-1 pb-1.5 border-b border-tarkov-border">{label}</p>
+          {entries.map(({ trader, price, accessibleLevel, userLevel, levels }) => {
+            // Niveaux non accessibles (> userLevel)
+            const lockedLevels = Object.keys(levels)
+              .map(Number)
+              .filter((lvl) => lvl > userLevel);
+            return (
+              <div key={trader} className={`px-3 py-1.5 text-xs ${
+                trader === bestEntry.trader ? 'bg-tarkov-border' : ''
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <img src={TRADER_META[trader]?.img} alt={trader}
+                      className="w-4 h-4 rounded-full object-cover border border-tarkov-border"
+                      onError={(e) => { e.target.style.display = 'none'; }} />
+                    <span className={trader === bestEntry.trader ? 'text-tarkov-gold font-semibold' : 'text-gray-300'}>{trader}</span>
+                    <span className="text-gray-500 text-[10px]">LL{accessibleLevel}</span>
+                  </span>
+                  <span className={trader === bestEntry.trader ? 'text-tarkov-gold font-semibold' : 'text-gray-400'}>{fmt(price)}</span>
+                </div>
+                {lockedLevels.length > 0 && (
+                  <div className="text-gray-600 text-[10px] mt-0.5 pl-5">
+                    {lockedLevels.map((lvl) => (
+                      <span key={lvl} className="mr-2">🔒 LL{lvl}: {fmt(levels[String(lvl)])}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) {
   const [open, setOpen] = useState(false);
   if (current == null) return <span className="text-gray-600 text-xs">—</span>;
@@ -121,53 +202,64 @@ function ProfitCell({ value, pct, isBest }) {
   );
 }
 
+/**
+ * computeRow — calcule FTS/BTF en respectant le niveau trader sélectionné.
+ * trader_buy_prices format: { "Mechanic": { "1": 25000, "3": 22997 }, ... }
+ * On prend le meilleur prix parmi tous les niveaux <= userLevel.
+ */
 function computeRow(item, traderFilters, feeDiscount) {
   const flea = item.flea_price ?? item.last_low_price ?? null;
 
+  // — Best sell price (trader rachète au joueur)
   let bestSellTrader = null, bestSellPrice = null;
   try {
     const sell = JSON.parse(item.trader_prices || '{}');
     for (const t of ALL_TRADERS) {
       if (!traderFilters[t]?.enabled) continue;
       const p = sell[t];
-      if (p && (bestSellPrice === null || p > bestSellPrice)) { bestSellPrice = p; bestSellTrader = t; }
+      if (p != null && (bestSellPrice === null || p > bestSellPrice)) {
+        bestSellPrice = p; bestSellTrader = t;
+      }
     }
   } catch {}
 
+  // — Best buy price (trader vend au joueur) avec filtre NIVEAU
   let bestBuyTrader = null, bestBuyPrice = null;
   try {
-    const buyRaw = JSON.parse(item.trader_buy_prices || '{}');
+    const buyByLevel = JSON.parse(item.trader_buy_prices || '{}');
     for (const t of ALL_TRADERS) {
       if (!traderFilters[t]?.enabled) continue;
+      const levels = buyByLevel[t];
+      if (!levels || typeof levels !== 'object') continue;
       const userLevel = traderFilters[t]?.level ?? 1;
-      const traderEntry = buyRaw[t];
-      if (traderEntry == null) continue;
-      let price = null;
-      if (typeof traderEntry === 'object') {
-        for (let lvl = 1; lvl <= userLevel; lvl++) {
-          const p = traderEntry[String(lvl)] ?? traderEntry[lvl];
-          if (p != null && (price === null || p < price)) price = p;
+      // Parcourir tous les niveaux <= userLevel, garder le moins cher
+      for (let lvl = 1; lvl <= userLevel; lvl++) {
+        const p = levels[String(lvl)];
+        if (p != null && (bestBuyPrice === null || p < bestBuyPrice)) {
+          bestBuyPrice = p; bestBuyTrader = t;
         }
-      } else { price = traderEntry; }
-      if (price != null && (bestBuyPrice === null || price < bestBuyPrice)) { bestBuyPrice = price; bestBuyTrader = t; }
+      }
     }
   } catch {}
 
   let profitFTS = null, pctFTS = null;
-  if (flea != null && bestSellPrice != null) { profitFTS = bestSellPrice - flea; pctFTS = flea > 0 ? (profitFTS / flea) * 100 : null; }
+  if (flea != null && bestSellPrice != null) {
+    profitFTS = bestSellPrice - flea;
+    pctFTS    = flea > 0 ? (profitFTS / flea) * 100 : null;
+  }
 
   let profitBTF = null, pctBTF = null;
   if (flea != null && bestBuyPrice != null) {
     const fee = Math.round((item.flea_fee ?? 0) * (1 - (feeDiscount ?? 0)));
     profitBTF = flea - fee - bestBuyPrice;
-    pctBTF = bestBuyPrice > 0 ? (profitBTF / bestBuyPrice) * 100 : null;
+    pctBTF    = bestBuyPrice > 0 ? (profitBTF / bestBuyPrice) * 100 : null;
   }
 
   let bestProfit = null, bestPct = null, bestRec = null;
   const ftsOk = profitFTS != null && profitFTS > 0;
   const btfOk = profitBTF != null && profitBTF > 0;
   if (ftsOk && (!btfOk || profitFTS >= profitBTF)) { bestProfit = profitFTS; bestPct = pctFTS; bestRec = 'BUY_FLEA_SELL_TRADER'; }
-  else if (btfOk) { bestProfit = profitBTF; bestPct = pctBTF; bestRec = 'BUY_TRADER_SELL_FLEA'; }
+  else if (btfOk)                                   { bestProfit = profitBTF; bestPct = pctBTF; bestRec = 'BUY_TRADER_SELL_FLEA'; }
 
   const bestActionTrader = bestRec === 'BUY_FLEA_SELL_TRADER' ? bestSellTrader : bestBuyTrader;
   return { flea, bestSellTrader, bestSellPrice, bestBuyTrader, bestBuyPrice, profitFTS, pctFTS, profitBTF, pctBTF, bestProfit, bestPct, bestRec, bestActionTrader };
@@ -199,11 +291,18 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     }),
     col.accessor((row) => row._c.bestBuyPrice, {
       id: 'buy_trader', header: 'Achat Trader',
-      cell: (info) => <TraderPricesTooltip pricesJson={info.row.original.trader_buy_prices} highlight={info.row.original._c.bestBuyTrader} label="Prix d'achat chez les traders" />,
+      cell: (info) => (
+        <TraderBuyPricesTooltip
+          pricesJson={info.row.original.trader_buy_prices}
+          highlight={info.row.original._c.bestBuyTrader}
+          label="Prix d'achat chez les traders (selon votre niveau)"
+          traderFilters={traderFilters}
+        />
+      ),
       sortingFn: (a, b) => (a.original._c.bestBuyPrice ?? Infinity) - (b.original._c.bestBuyPrice ?? Infinity),
     }),
     col.accessor((row) => row._c.flea, {
-      id: 'flea_price', header: () => <span>🛒 Flea</span>,
+      id: 'flea_price', header: () => <span>🛍 Flea</span>,
       cell: (info) => {
         const r = info.row.original;
         return <FleaPriceTooltip current={r._c.flea} low24h={r.low24h_price} avg24h={r.avg24h_price} high24h={r.high24h_price} lastOfferCount={r.last_offer_count} />;
