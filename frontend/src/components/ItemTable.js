@@ -64,7 +64,7 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
     .map((t) => ({ trader: t, price: prices[t] }))
     .filter((e) => e.price != null)
     .sort((a, b) => b.price - a.price);
-  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">\u2014</span>;
   const best = entries[0];
   const bestEntry = highlight ? entries.find((e) => e.trader === highlight) || best : best;
   return (
@@ -121,7 +121,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
     if (bestPrice === null) return null;
     return { trader, price: bestPrice, accessibleLevel, userLevel, levels };
   }).filter(Boolean).sort((a, b) => a.price - b.price);
-  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">\u2014</span>;
   const bestEntry = highlight ? entries.find((e) => e.trader === highlight) || entries[0] : entries[0];
   return (
     <div className="relative inline-block" ref={triggerRef}
@@ -160,7 +160,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
                 {lockedLevels.length > 0 && (
                   <div className="text-gray-600 text-[10px] mt-0.5 pl-5">
                     {lockedLevels.map((lvl) => (
-                      <span key={lvl} className="mr-2">🔒 LL{lvl}: {fmt(levels[String(lvl)])}</span>
+                      <span key={lvl} className="mr-2">\uD83D\uDD12 LL{lvl}: {fmt(levels[String(lvl)])}</span>
                     ))}
                   </div>
                 )}
@@ -176,7 +176,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
 function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) {
   const [open, setOpen] = useState(false);
   const { triggerRef, pos } = useSmartTooltip(open, 208);
-  if (current == null) return <span className="text-gray-600 text-xs">—</span>;
+  if (current == null) return <span className="text-gray-600 text-xs">\u2014</span>;
   return (
     <div className="relative inline-block" ref={triggerRef}
       onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
@@ -187,7 +187,7 @@ function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) 
       {open && (
         <div className={tooltipCls(pos, 'w-52')}>
           <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 px-3 pt-1">
-            Flea — 24h
+            Flea \u2014 24h
           </p>
           <div className="flex flex-col gap-1 text-xs px-3 pb-1">
             <div className="flex justify-between"><span className="text-gray-400">Actuel</span><span className="text-blue-300 font-semibold">{fmt(current)}</span></div>
@@ -208,9 +208,9 @@ function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) 
 }
 
 function ProfitCell({ value, pct, isBest }) {
-  if (value == null) return <span className="text-gray-600 text-xs">—</span>;
+  if (value == null) return <span className="text-gray-600 text-xs">\u2014</span>;
   const color = value > 0 ? 'text-green-400' : 'text-red-400';
-  const fire  = isBest && value >= HOT_DEAL_THRESHOLD ? ' 🔥' : '';
+  const fire  = isBest && value >= HOT_DEAL_THRESHOLD ? ' \uD83D\uDD25' : '';
   const bold  = isBest ? 'font-bold text-sm' : 'text-xs';
   return (
     <span className="flex flex-col leading-tight">
@@ -269,20 +269,20 @@ function wikiUrl(item) {
   return `https://escapefromtarkov.fandom.com/wiki/${encodeURIComponent(slug)}`;
 }
 
-// ── Barre de tri sticky (mobile) ─────────────────────────────────
+// \u2500\u2500 Barre de tri sticky (mobile) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 const MOBILE_SORTS = [
-  { id: 'best_profit', label: '★ Profit',    desc: true  },
-  { id: 'profit_btf', label: 'Trader→Flea', desc: true  },
-  { id: 'profit_fts', label: 'Flea→Trader', desc: true  },
-  { id: 'flea_price', label: 'Flea',         desc: false },
-  { id: 'buy_trader', label: 'Achat',        desc: false },
+  { id: 'best_profit', label: '\u2605 Profit',    desc: true  },
+  { id: 'profit_btf', label: 'Trader\u2192Flea', desc: true  },
+  { id: 'profit_fts', label: 'Flea\u2192Trader', desc: true  },
+  { id: 'flea_price', label: 'Flea',             desc: false },
+  { id: 'buy_trader', label: 'Achat',            desc: false },
 ];
 
 function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
   return (
     <div className="sticky top-0 z-20 bg-tarkov-bg border-b border-tarkov-border px-3 py-2 flex flex-col gap-2">
       <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>{from}–{to} {lang === 'en' ? 'of' : 'sur'} <span className="text-tarkov-gold font-semibold">{total}</span></span>
+        <span>{from}\u2013{to} {lang === 'en' ? 'of' : 'sur'} <span className="text-tarkov-gold font-semibold">{total}</span></span>
         <span className="text-gray-600">{lang === 'en' ? 'Tap to sort' : 'Appuie pour trier'}</span>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
@@ -298,7 +298,7 @@ function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
                   : 'border-tarkov-border text-gray-400 hover:border-tarkov-gold hover:text-tarkov-gold'
               }`}>
               {label}
-              {active && <span className="text-[10px]">{isDesc ? '↓' : '↑'}</span>}
+              {active && <span className="text-[10px]">{isDesc ? '\u2193' : '\u2191'}</span>}
             </button>
           );
         })}
@@ -307,7 +307,7 @@ function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
   );
 }
 
-// ── Carte mobile v3 ──────────────────────────────────────────────────
+// \u2500\u2500 Carte mobile \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function ItemCard({ row, lang }) {
   const { _c: c } = row;
   const name  = lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en;
@@ -315,29 +315,27 @@ function ItemCard({ row, lang }) {
   const isBTF = c.bestRec === 'BUY_TRADER_SELL_FLEA';
   const url   = wikiUrl(row);
 
-  const cardBorder   = isBTF ? 'border-blue-700/40'  : 'border-green-700/40';
-  const cardBg       = isBTF ? 'bg-blue-900/10'       : 'bg-green-900/10';
-  const accentColor  = isBTF ? 'text-blue-300'        : 'text-green-300';
-  const profitColor  = c.bestProfit > 0 ? (isBTF ? 'text-blue-300' : 'text-green-400') : 'text-red-400';
+  const cardBorder  = isBTF ? 'border-blue-700/40'  : 'border-green-700/40';
+  const cardBg      = isBTF ? 'bg-blue-900/10'       : 'bg-green-900/10';
+  const accentColor = isBTF ? 'text-blue-300'        : 'text-green-300';
 
   const recLabel = isBTF
-    ? (lang === 'en' ? 'Buy Trader → Sell Flea'  : 'Acheter Trader → Vendre Flea')
-    : (lang === 'en' ? 'Buy Flea → Sell Trader'   : 'Acheter Flea → Vendre Trader');
+    ? (lang === 'en' ? 'Buy Trader \u2192 Sell Flea'  : 'Acheter Trader \u2192 Vendre Flea')
+    : (lang === 'en' ? 'Buy Flea \u2192 Sell Trader'   : 'Acheter Flea \u2192 Vendre Trader');
 
   const lBuy  = lang === 'en' ? 'Buy'  : 'Achat';
   const lSell = lang === 'en' ? 'Sell' : 'Vente';
 
-  // ── Top-right : meilleur profit absolu ──
-  // Flea→Trader : profit FTS, label = "Flea" (pas de trader associé côté achat)
-  // Trader→Flea : profit BTF, label = nom du trader d'achat
-  const topLabel  = isBTF ? (c.bestBuyTrader ?? 'Trader') : 'Flea';
-  const topProfit = c.bestProfit;
-  const topPct    = c.bestPct;
+  // Top-right : source (trader ou Flea), profit, %, nb offres si Flea
+  const topLabel      = isBTF ? (c.bestBuyTrader ?? 'Trader') : 'Flea';
+  const topProfit     = c.bestProfit;
+  const topPct        = c.bestPct;
+  const topOfferCount = !isBTF ? row.last_offer_count : null; // nb offres uniquement pour Flea
 
   return (
     <div className={`rounded-xl border ${cardBorder} ${cardBg} overflow-hidden`}>
 
-      {/* ── LIGNE 1 : icône | nom | meilleur profit ── */}
+      {/* \u2500\u2500 LIGNE 1 : ic\u00f4ne | nom | meilleur profit \u2500\u2500 */}
       <div className="flex items-start gap-2.5 px-3 pt-3 pb-2">
         {row.icon_link
           ? <img src={row.icon_link} alt="" className="w-11 h-11 rounded-lg object-contain bg-tarkov-bg border border-tarkov-border flex-shrink-0 mt-0.5" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
@@ -351,23 +349,28 @@ function ItemCard({ row, lang }) {
           }
         </div>
 
-        {/* Meilleur profit : L1 source, L2 montant, L3 % */}
+        {/* Top-right : tout en tarkov-gold */}
         <div className="flex-shrink-0 flex flex-col items-end min-w-[64px]">
-          <span className="text-[9px] text-gray-500 uppercase tracking-wide leading-none mb-0.5">{topLabel}</span>
+          <span className="text-[9px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none mb-0.5">{topLabel}</span>
           {topProfit != null && (
-            <span className={`text-sm font-extrabold leading-none ${profitColor}`}>
-              {topProfit > 0 ? '+' : ''}{fmtK(topProfit)}{isHot ? '🔥' : ''}
+            <span className="text-sm font-extrabold leading-none text-tarkov-gold">
+              {topProfit > 0 ? '+' : ''}{fmtK(topProfit)}{isHot ? '\uD83D\uDD25' : ''}
             </span>
           )}
           {topPct != null && (
-            <span className={`text-[10px] font-semibold mt-0.5 ${profitColor} opacity-80`}>
+            <span className="text-[10px] font-semibold mt-0.5 text-tarkov-gold opacity-80">
               {topPct > 0 ? '+' : ''}{topPct.toFixed(1)}%
+            </span>
+          )}
+          {topOfferCount != null && (
+            <span className="text-[9px] text-tarkov-gold/60 mt-0.5 leading-none">
+              {topOfferCount} offres
             </span>
           )}
         </div>
       </div>
 
-      {/* ── LIGNE 2 : Buy | Sell | Flea ── */}
+      {/* \u2500\u2500 LIGNE 2 : Buy | Sell | Flea \u2500\u2500 */}
       <div className="grid grid-cols-3 gap-1.5 px-3 pb-2">
         <div className="bg-tarkov-bg/60 rounded-lg px-2 py-2 flex flex-col justify-between min-h-[56px]">
           <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{lBuy}</p>
@@ -403,19 +406,19 @@ function ItemCard({ row, lang }) {
         </div>
       </div>
 
-      {/* ── LIGNE 3 : profits détaillés avec % ── */}
+      {/* \u2500\u2500 LIGNE 3 : profits d\u00e9taill\u00e9s avec % \u2500\u2500 */}
       <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
         <div className={`rounded-lg px-2.5 py-2 border ${
           c.bestRec === 'BUY_FLEA_SELL_TRADER' ? 'border-green-700/60 bg-green-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea → Trader</span>
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea \u2192 Trader</span>
             {c.bestSellTrader && (
               <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
           <p className={`text-sm font-bold leading-none ${c.profitFTS > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '—'}
+            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '\u2014'}
           </p>
           {c.pctFTS != null && (
             <p className="text-gray-500 text-[10px] mt-0.5">{c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%</p>
@@ -426,13 +429,13 @@ function ItemCard({ row, lang }) {
           c.bestRec === 'BUY_TRADER_SELL_FLEA' ? 'border-blue-700/60 bg-blue-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader → Flea</span>
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader \u2192 Flea</span>
             {c.bestBuyTrader && (
               <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
           <p className={`text-sm font-bold leading-none ${c.profitBTF > 0 ? 'text-blue-300' : 'text-red-400'}`}>
-            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '—'}
+            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '\u2014'}
           </p>
           {c.pctBTF != null && (
             <p className="text-gray-500 text-[10px] mt-0.5">{c.pctBTF > 0 ? '+' : ''}{c.pctBTF.toFixed(1)}%</p>
@@ -440,7 +443,7 @@ function ItemCard({ row, lang }) {
         </div>
       </div>
 
-      {/* ── FOOTER ── */}
+      {/* \u2500\u2500 FOOTER \u2500\u2500 */}
       <div className={`flex items-center justify-center gap-1.5 px-3 py-1.5 border-t border-white/5 ${
         isBTF ? 'bg-blue-900/20' : 'bg-green-900/20'
       }`}>
@@ -450,7 +453,7 @@ function ItemCard({ row, lang }) {
   );
 }
 
-// ── Pagination ──────────────────────────────────────────────────────
+// \u2500\u2500 Pagination \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function PaginationBar({ table, lang, mobile }) {
   const { pageIndex, pageSize } = table.getState().pagination;
   const total = table.getFilteredRowModel().rows.length;
@@ -469,9 +472,9 @@ function PaginationBar({ table, lang, mobile }) {
           ))}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">‹</button>
+          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">\u2039</button>
           <span className="text-xs text-gray-400 px-1">{pageIndex + 1} / {table.getPageCount()}</span>
-          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">›</button>
+          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">\u203a</button>
         </div>
       </div>
     );
@@ -479,7 +482,7 @@ function PaginationBar({ table, lang, mobile }) {
 
   return (
     <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
-      <span>{from}–{to} {lang === 'en' ? 'of' : 'sur'} {total}</span>
+      <span>{from}\u2013{to} {lang === 'en' ? 'of' : 'sur'} {total}</span>
       <div className="flex items-center gap-1">
         <span className="text-gray-500">{lang === 'en' ? 'Per page:' : 'Par page :'}</span>
         {PAGE_SIZES.map((s) => (
@@ -490,17 +493,17 @@ function PaginationBar({ table, lang, mobile }) {
         ))}
       </div>
       <div className="flex items-center gap-1">
-        <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">«</button>
-        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">‹</button>
+        <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u00ab</button>
+        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u2039</button>
         <span className="px-2">Page {pageIndex + 1} / {table.getPageCount()}</span>
-        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">›</button>
-        <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">»</button>
+        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u203a</button>
+        <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u00bb</button>
       </div>
     </div>
   );
 }
 
-// ── ItemTable principal ──────────────────────────────────────────────────
+// \u2500\u2500 ItemTable principal \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const rows     = useMemo(() => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })), [items, traderFilters, feeDiscount]);
   const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
@@ -544,17 +547,17 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       sortingFn: (a, b) => (a.original._c.bestSellPrice ?? -Infinity) - (b.original._c.bestSellPrice ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitBTF, {
-      id: 'profit_btf', header: 'Trader→Flea',
+      id: 'profit_btf', header: 'Trader\u2192Flea',
       cell: (info) => <ProfitCell value={info.row.original._c.profitBTF} pct={info.row.original._c.pctBTF} isBest={info.row.original._c.bestRec === 'BUY_TRADER_SELL_FLEA'} />,
       sortingFn: (a, b) => (a.original._c.profitBTF ?? -Infinity) - (b.original._c.profitBTF ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitFTS, {
-      id: 'profit_fts', header: 'Flea→Trader',
+      id: 'profit_fts', header: 'Flea\u2192Trader',
       cell: (info) => <ProfitCell value={info.row.original._c.profitFTS} pct={info.row.original._c.pctFTS} isBest={info.row.original._c.bestRec === 'BUY_FLEA_SELL_TRADER'} />,
       sortingFn: (a, b) => (a.original._c.profitFTS ?? -Infinity) - (b.original._c.profitFTS ?? -Infinity),
     }),
     col.accessor((row) => row._c.bestProfit, {
-      id: 'best_profit', header: '★ Best Profit',
+      id: 'best_profit', header: '\u2605 Best Profit',
       cell: (info) => <ProfitCell value={info.row.original._c.bestProfit} pct={info.row.original._c.bestPct} isBest={true} />,
       sortingFn: (a, b) => (a.original._c.bestProfit ?? -Infinity) - (b.original._c.bestProfit ?? -Infinity),
     }),
@@ -584,7 +587,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
 
   const noItemsMsg = lang === 'en'
     ? 'No profitable items found. Try lowering the profit threshold or enabling more traders.'
-    : 'Aucun item profitable trouvé. Diminue le seuil ou active plus de traders.';
+    : 'Aucun item profitable trouv\u00e9. Diminue le seuil ou active plus de traders.';
 
   if (filtered.length === 0) {
     return <p className="text-center py-8 text-gray-500">{noItemsMsg}</p>;
@@ -620,7 +623,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
                       header.column.getCanSort() ? 'cursor-pointer hover:bg-tarkov-border transition-colors' : ''
                     }`}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' ? ' ↑' : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
+                    {header.column.getIsSorted() === 'asc' ? ' \u2191' : header.column.getIsSorted() === 'desc' ? ' \u2193' : ''}
                   </th>
                 ))}
               </tr>
