@@ -50,20 +50,19 @@ export function defaultIntelLevel() {
 
 export function defaultMinOffers() {
   const saved = localStorage.getItem('minOffers');
-  return saved !== null ? Number(saved) : 3;
+  return saved !== null ? Number(saved) : 20;
 }
 
 const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 30 };
 const INTEL_OPTIONS = [
-  { level: 0, label: 'x',  title: 'Non construit' },
-  { level: 1, label: 'L1', title: 'Niveau 1' },
-  { level: 2, label: 'L2', title: 'Niveau 2' },
-  { level: 3, label: 'L3', title: '-30% taxe flea' },
+  { level: 0, label: 'Non construit', title: 'Non construit' },
+  { level: 1, label: 'Niveau 1',      title: 'Niveau 1' },
+  { level: 2, label: 'Niveau 2',      title: 'Niveau 2' },
+  { level: 3, label: 'Niveau 3 −30%', title: '-30% taxe flea' },
 ];
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
 const FLEA_UNLOCK_LEVEL = 15;
 
-// PVE → bleu | Kord Breach (pvp-season) → vert
 const MODE_FILTER_GRADIENT = {
   regular:      'from-[#2a0a0a]/30 to-transparent',
   pve:          'from-[#071525]/30 to-transparent',
@@ -197,13 +196,13 @@ function MinOffersCard({ value, onChange, lang }) {
           {lang === 'en' ? 'Min. offers' : 'Offres min.'}
         </span>
         <input
-          type="range" min={1} max={20} step={1} value={value}
+          type="range" min={1} max={100} step={1} value={value}
           onChange={(e) => { const v = Number(e.target.value); onChange(v); localStorage.setItem('minOffers', String(v)); }}
           className="w-full accent-tarkov-gold cursor-pointer"
           title={`${value} offre${value > 1 ? 's' : ''} minimum`}
         />
         <div className="flex justify-between text-[9px] text-gray-600 leading-none">
-          <span>1</span><span>10</span><span>20</span>
+          <span>1</span><span>50</span><span>100</span>
         </div>
       </div>
     </div>
@@ -254,12 +253,12 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   );
 }
 
-// ── IntelCard ─────────────────────────────────────────────────────────────────
+// ── IntelCard (labels complets, scroll mobile) ────────────────────────────────
 function IntelCard({ intelLevel, onIntelLevelChange }) {
   const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   return (
     <div className="flex items-stretch rounded-lg border border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40 overflow-hidden select-none"
-      style={{ height: 96 }} title="Intelligence Center">
+      style={{ height: 96, minWidth: 180 }} title="Intelligence Center">
       <div className="relative flex-shrink-0" style={{ width: 72 }}>
         <img src={INTEL_IMG} alt="Intel Center" className="w-full h-full object-cover"
           style={{ objectPosition: 'center 40%' }}
@@ -269,12 +268,12 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
           {discount > 0 && <span className="text-[9px] text-green-400 font-bold leading-none block">-{discount}% flea</span>}
         </div>
       </div>
-      <div className="flex flex-col justify-around items-center px-1 py-1 bg-black/30" style={{ width: 38 }}>
+      <div className="flex flex-col justify-around px-2 py-1 flex-1">
         {INTEL_OPTIONS.map(({ level, label, title }) => {
           const isActive = intelLevel === level;
           return (
             <button key={level} onClick={() => onIntelLevelChange(level)} title={title}
-              className={`w-7 h-5 rounded text-xs font-bold transition-colors ${
+              className={`w-full px-2 h-5 rounded text-[10px] font-semibold transition-colors text-left ${
                 isActive
                   ? 'bg-tarkov-gold text-tarkov-bg'
                   : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
@@ -317,8 +316,8 @@ export function Filters({
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
 
-      {/* ── Ligne 1 : 4 cards réparties sur toute la largeur ── */}
-      <div className="flex justify-between gap-4">
+      {/* ── Ligne 1 : 4 cards, wrap sur mobile, justify-between sur desktop ── */}
+      <div className="flex flex-wrap justify-between gap-3">
         <SearchCard
           value={filters.search}
           onChange={(v) => onChange({ ...filters, search: v })}
@@ -336,7 +335,7 @@ export function Filters({
           fleaLocked={fleaLocked}
         />
         <MinOffersCard
-          value={filters.minOffers ?? 3}
+          value={filters.minOffers ?? 20}
           onChange={(v) => onChange({ ...filters, minOffers: v })}
           lang={lang}
         />
@@ -345,8 +344,8 @@ export function Filters({
       {/* Séparateur horizontal */}
       <div className="h-px bg-tarkov-border my-2" />
 
-      {/* ── Ligne 2 : Traders + Intel répartis sur toute la largeur ── */}
-      <div className="flex justify-between flex-wrap gap-2">
+      {/* ── Ligne 2 : Traders scroll horizontal sur mobile, justify-between sur desktop ── */}
+      <div className="flex overflow-x-auto md:overflow-x-visible md:flex-wrap md:justify-between gap-2 pb-1">
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader}
             tf={traderFilters[trader] || { enabled: true, level: 1 }}
