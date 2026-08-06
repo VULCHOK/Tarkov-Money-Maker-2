@@ -80,7 +80,6 @@ function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocke
   return (
     <div className="flex items-center gap-2">
       <RankBadge level={playerLevel} size={36} />
-
       <div className="flex flex-col flex-1 sm:flex-none">
         <span className="text-[10px] text-gray-500 leading-none mb-0.5">
           {lang === 'en' ? 'Player level' : 'Niveau joueur'}
@@ -102,7 +101,7 @@ function PlayerLevelSelector({ playerLevel, onPlayerLevelChange, lang, fleaLocke
         <span className="text-[10px] text-tarkov-gold font-semibold mt-0.5 block sm:hidden">{rankName}</span>
         {fleaLocked && (
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-red-900/40 border-red-800/60 text-red-400 mt-0.5 self-start">
-            Flea x
+            Flea verrouille
           </span>
         )}
       </div>
@@ -244,7 +243,10 @@ export function Filters({
 
         {/* Profit minimum */}
         <div className="flex items-center gap-2">
-          <span className="text-tarkov-gold font-bold text-sm select-none">P</span>
+          {/* Icone rouble SVG */}
+          <svg className="w-4 h-4 text-tarkov-gold flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <text x="2" y="18" fontSize="18" fontWeight="bold" fontFamily="serif">&#8381;</text>
+          </svg>
           <div className="flex flex-col flex-1 sm:flex-none">
             <span className="text-[10px] text-gray-500 leading-none mb-0.5">
               {lang === 'en' ? 'Min. profit' : 'Profit min.'}

@@ -9,9 +9,9 @@ import { ApiStatus } from './components/ApiStatus';
 const API_BASE = '/api';
 
 const MODES = [
-  { key: 'regular',      label: 'PVP',         icon: '/images/mode-pvp.png',    headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badge: 'Permanent' },
-  { key: 'pve',          label: 'PVE',         icon: '/images/mode-pve.png',    headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badge: 'Co-op'     },
-  { key: 'pvp-season',   label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Season 1'  },
+  { key: 'regular',    label: 'PVP',         icon: '/images/mode-pvp.png',    headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badge: 'Permanent' },
+  { key: 'pve',        label: 'PVE',         icon: '/images/mode-pve.png',    headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badge: 'Co-op'     },
+  { key: 'pvp-season', label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Season 1'  },
 ];
 
 const FLAG_GB = (
@@ -169,7 +169,7 @@ export default function App() {
               <h1 className="text-xl font-bold text-tarkov-gold leading-tight">Tarkov Money Maker 2</h1>
               <p className={`text-xs ${activeMeta.accentColor} flex items-center gap-1 mt-0.5`}>
                 <span className="font-semibold">{activeMeta.label}</span>
-                <span className="text-gray-600">\u2014</span>
+                <span className="text-gray-600">&mdash;</span>
                 <span className="text-gray-500">{activeMeta.badge}</span>
               </p>
             </div>
