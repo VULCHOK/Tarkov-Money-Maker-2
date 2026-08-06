@@ -124,18 +124,19 @@ export default function App() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  // Détecte si au moins 1 item du mode courant a un offer count réel.
-  // Recalculé à chaque rechargement des items (resync auto inclus).
-  const offerCountAvailable = useMemo(
-    () => items.some((item) => item.last_offer_count != null),
-    [items]
-  );
+  // Disponible pour TOUS les modes de façon dynamique :
+  // - true  → au moins 1 item du mode courant a un offer count → slider actif
+  // - false → aucun item n'a de offer count pour ce mode → alerte jaune
+  // Pendant le chargement on reste sur true pour éviter un flash d'alerte parasite.
+  const offerCountAvailable = useMemo(() => {
+    if (loading || items.length === 0) return true;
+    return items.some((item) => item.last_offer_count != null);
+  }, [items, loading]);
 
   const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
   const feeDiscount  = INTEL_DISCOUNTS[intelLevel] ?? 0;
   const minRub       = parseFloat(filters.minProfitRub) || 0;
   const searchTerm   = (filters.search || '').toLowerCase().trim();
-  // Si offer count indisponible pour ce mode, on ignore complètement le filtre.
   const minOffers    = offerCountAvailable ? Number(filters.minOffers ?? 1) : 1;
   const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
   const t            = I18N[lang] || I18N.fr;
