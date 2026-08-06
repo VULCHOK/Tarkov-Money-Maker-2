@@ -48,6 +48,11 @@ export function defaultIntelLevel() {
   return saved !== null ? Number(saved) : 0;
 }
 
+export function defaultMinOffers() {
+  const saved = localStorage.getItem('minOffers');
+  return saved !== null ? Number(saved) : 3;
+}
+
 const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 30 };
 const INTEL_OPTIONS = [
   { level: 0, label: 'x',  title: 'Non construit' },
@@ -73,7 +78,7 @@ const MODE_FILTER_BORDER = {
 // ── Card Search ──────────────────────────────────────────────────────────────
 function SearchCard({ value, onChange, lang }) {
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden flex-1 min-w-[180px]"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
       style={{ height: 96 }}>
       <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
@@ -83,7 +88,7 @@ function SearchCard({ value, onChange, lang }) {
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1">
+      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Search' : 'Recherche'}
         </span>
@@ -109,12 +114,12 @@ function SearchCard({ value, onChange, lang }) {
 // ── Card Profit ──────────────────────────────────────────────────────────────
 function ProfitCard({ value, onChange, lang }) {
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden flex-1 min-w-[180px]"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
       style={{ height: 96 }}>
       <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <span className="text-tarkov-gold font-bold" style={{ fontSize: 26 }}>&#8381;</span>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1">
+      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Min. profit' : 'Profit min.'}
         </span>
@@ -139,7 +144,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   const inc = () => onChange(Math.min(79, playerLevel + 1));
 
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden flex-1 min-w-[180px]"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
       style={{ height: 96 }}>
       <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <RankBadge level={playerLevel} size={52} />
@@ -149,7 +154,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
           </div>
         )}
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1">
+      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Player level' : 'Niveau joueur'}
         </span>
@@ -167,6 +172,39 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
           >+</button>
         </div>
         <span className="text-[10px] text-tarkov-gold/70 leading-none truncate">{rankName}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Card Min Offres (slider) ──────────────────────────────────────────────────
+function MinOffersCard({ value, onChange, lang }) {
+  const isActive = value > 1;
+  return (
+    <div className={`flex items-stretch rounded-lg border overflow-hidden ${
+      isActive ? 'border-tarkov-gold bg-tarkov-card' : 'border-tarkov-border bg-tarkov-card'
+    }`} style={{ height: 96 }}>
+      <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
+        <img src={FLEA_META.img} alt="Flea" className="w-full h-full object-cover"
+          style={{ objectPosition: 'center 30%' }}
+          onError={(e) => { e.target.style.display = 'none'; }} />
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1 pb-0.5">
+          <span className="text-[9px] font-bold text-tarkov-gold leading-none block text-center">{value} offre{value > 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      <div className="flex flex-col justify-center px-2 py-2 gap-2" style={{ width: 120 }}>
+        <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
+          {lang === 'en' ? 'Min. offers' : 'Offres min.'}
+        </span>
+        <input
+          type="range" min={1} max={20} step={1} value={value}
+          onChange={(e) => { const v = Number(e.target.value); onChange(v); localStorage.setItem('minOffers', String(v)); }}
+          className="w-full accent-tarkov-gold cursor-pointer"
+          title={`${value} offre${value > 1 ? 's' : ''} minimum`}
+        />
+        <div className="flex justify-between text-[9px] text-gray-600 leading-none">
+          <span>1</span><span>10</span><span>20</span>
+        </div>
       </div>
     </div>
   );
@@ -279,8 +317,8 @@ export function Filters({
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
 
-      {/* ── Ligne 1 : 3 cards flex-1, pleine largeur ── */}
-      <div className="flex gap-2">
+      {/* ── Ligne 1 : 4 cards réparties sur toute la largeur ── */}
+      <div className="flex justify-between gap-4">
         <SearchCard
           value={filters.search}
           onChange={(v) => onChange({ ...filters, search: v })}
@@ -297,13 +335,18 @@ export function Filters({
           lang={lang}
           fleaLocked={fleaLocked}
         />
+        <MinOffersCard
+          value={filters.minOffers ?? 3}
+          onChange={(v) => onChange({ ...filters, minOffers: v })}
+          lang={lang}
+        />
       </div>
 
       {/* Séparateur horizontal */}
       <div className="h-px bg-tarkov-border my-2" />
 
-      {/* ── Ligne 2 : Traders + Intel, flex-wrap ── */}
-      <div className="flex flex-wrap gap-2 justify-start">
+      {/* ── Ligne 2 : Traders + Intel répartis sur toute la largeur ── */}
+      <div className="flex justify-between flex-wrap gap-2">
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader}
             tf={traderFilters[trader] || { enabled: true, level: 1 }}

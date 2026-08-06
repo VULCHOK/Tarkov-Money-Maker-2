@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
-import { Filters, defaultTraderFilters, defaultIntelLevel, ALL_TRADERS } from './components/Filters';
+import { Filters, defaultTraderFilters, defaultIntelLevel, defaultMinOffers, ALL_TRADERS } from './components/Filters';
 import { ExportButtons } from './components/ExportButtons';
 import { StatsBar } from './components/StatsBar';
 import { ApiStatus } from './components/ApiStatus';
@@ -93,7 +93,11 @@ export default function App() {
   const [items, setItems]                 = useState([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
-  const [filters, setFilters]             = useState({ minProfitRub: defaultMinProfitRub(), search: '' });
+  const [filters, setFilters]             = useState({
+    minProfitRub: defaultMinProfitRub(),
+    search: '',
+    minOffers: defaultMinOffers(),
+  });
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
   const [intelLevel, setIntelLevel]       = useState(defaultIntelLevel);
   const [playerLevel, setPlayerLevel]     = useState(defaultPlayerLevel);
@@ -122,13 +126,20 @@ export default function App() {
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
-  const feeDiscount = INTEL_DISCOUNTS[intelLevel] ?? 0;
-  const minRub      = parseFloat(filters.minProfitRub) || 0;
-  const searchTerm  = (filters.search || '').toLowerCase().trim();
-  const activeMeta  = MODES.find((m) => m.key === mode) || MODES[0];
-  const t           = I18N[lang] || I18N.fr;
+  const feeDiscount  = INTEL_DISCOUNTS[intelLevel] ?? 0;
+  const minRub       = parseFloat(filters.minProfitRub) || 0;
+  const searchTerm   = (filters.search || '').toLowerCase().trim();
+  const minOffers    = filters.minOffers ?? 1;
+  const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
+  const t            = I18N[lang] || I18N.fr;
 
   const visibleItems = items.filter((item) => {
+    // Filtre offres actives minimum
+    if (minOffers > 1) {
+      const offerCount = item.last_offer_count ?? 0;
+      if (offerCount < minOffers) return false;
+    }
+
     if (searchTerm) {
       const nameEn  = (item.name_en  || item.name  || '').toLowerCase();
       const nameFr  = (item.name_fr  || '').toLowerCase();
