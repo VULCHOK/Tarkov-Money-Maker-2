@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Télécharge les assets images au démarrage du conteneur.
-Utilise httpx (déjà dans requirements.txt) — pas de dépendance supplémentaire.
+Utilise httpx (déjà dans requirements.txt).
 Skip si le fichier existe déjà (idempotent).
 Dossier cible : /assets/images/ (volume partagé avec le frontend)
 """
@@ -31,26 +31,31 @@ TRADER_PORTRAITS = {
     "flea-market": f"{_GH_RAW}/flea-market-portrait.png",
 }
 
+# Bannières de modes — Steam CDN uniquement
+# header.jpg = format 460x215 garanti pour toute app Steam publiée
+# app 203290  = EFT original (PVP / PVE, même client)
+# app 3932890 = EFT version release 2025 (Kord Breach / PVP Season)
 MODE_BANNERS = {
     "pvp": {
         "file": "pvp-banner.jpg",
         "urls": [
-            "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/1/1e/PMC_artwork.jpg",
-            "https://cdn.cloudflare.steamstatic.com/steam/apps/203290/capsule_616x353.jpg",
+            "https://cdn.cloudflare.steamstatic.com/steam/apps/203290/header.jpg",
         ],
     },
     "pve": {
         "file": "pve-banner.jpg",
         "urls": [
-            "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/e/e3/PvE_Zone_artwork.jpg",
-            "https://cdn.cloudflare.steamstatic.com/steam/apps/2522860/capsule_616x353.jpg",
+            # App Steam dédiée EFT PvE si elle existe, sinon fallback app originale
+            "https://cdn.cloudflare.steamstatic.com/steam/apps/2522860/header.jpg",
+            "https://cdn.cloudflare.steamstatic.com/steam/apps/203290/header.jpg",
         ],
     },
     "pvp-season": {
         "file": "kord-breach-banner.jpg",
         "urls": [
-            "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/k/kb/Kord_Breach_key_art.jpg",
-            "https://cdn.cloudflare.steamstatic.com/steam/apps/203290/ss_kord_breach.jpg",
+            # App Steam EFT release 2025 (app ID confirmé dans les logs : items sync OK)
+            "https://cdn.cloudflare.steamstatic.com/steam/apps/3932890/header.jpg",
+            "https://cdn.cloudflare.steamstatic.com/steam/apps/203290/header.jpg",
         ],
     },
 }
@@ -86,7 +91,7 @@ def main():
         for name, url in TRADER_PORTRAITS.items():
             download(client, url, TRADERS_DIR / f"{name}-portrait.png", name)
 
-        print("\n=== Bannieres de modes ===")
+        print("\n=== Bannieres de modes (Steam CDN) ===")
         for mode_key, cfg in MODE_BANNERS.items():
             dest = MODES_DIR / cfg["file"]
             if dest.exists():
@@ -96,7 +101,7 @@ def main():
                 if download(client, url, dest, mode_key):
                     break
             else:
-                print(f"  [WARN] {mode_key} : aucune source dispo - fallback CSS couleur actif")
+                print(f"  [WARN] {mode_key} : toutes sources KO - fallback CSS gradient actif")
 
     print("\n=== Termine ===")
 
