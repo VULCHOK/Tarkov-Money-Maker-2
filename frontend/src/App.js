@@ -5,13 +5,14 @@ import { Filters, defaultTraderFilters, defaultIntelLevel, defaultMinOffers, ALL
 import { ExportButtons } from './components/ExportButtons';
 import { StatsBar } from './components/StatsBar';
 import { ApiStatus } from './components/ApiStatus';
+import { useT } from './hooks/useT';
 
 const API_BASE = '/api';
 
 const MODES = [
-  { key: 'regular',    label: 'PVP',         icon: '/images/mode-pvp.png',    headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badge: 'Permanent' },
-  { key: 'pve',        label: 'PVE',         icon: '/images/mode-pve.png',    headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Co-op'     },
-  { key: 'pvp-season', label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badge: 'Season 1'  },
+  { key: 'regular',    label: 'PVP',         icon: '/images/mode-pvp.png',    headerBg: 'from-[#2a0a0a] to-[#111]', borderColor: 'border-red-900/60',   accentColor: 'text-red-300',   badgeKey: 'modeBadgePvp'    },
+  { key: 'pve',        label: 'PVE',         icon: '/images/mode-pve.png',    headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badgeKey: 'modeBadgePve'    },
+  { key: 'pvp-season', label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badgeKey: 'modeBadgeSeason' },
 ];
 
 const FLAG_GB = (
@@ -41,11 +42,6 @@ const LANGS = [
   { code: 'fr', flag: FLAG_FR, label: 'FR' },
 ];
 
-export const I18N = {
-  en: { searchPlaceholder: 'F-1, grenade, scope...', loading: 'Loading' },
-  fr: { searchPlaceholder: 'F-1, grenade, prise...', loading: 'Chargement' },
-};
-
 function defaultMinProfitRub() {
   const saved = localStorage.getItem('minProfitRub');
   return saved !== null ? saved : '20000';
@@ -60,11 +56,11 @@ function getBestBuyPrice(item, traderFilters) {
   try {
     const buyByLevel = JSON.parse(item.trader_buy_prices || '{}');
     let best = null;
-    for (const t of ALL_TRADERS) {
-      if (!traderFilters[t]?.enabled) continue;
-      const levels = buyByLevel[t];
+    for (const tr of ALL_TRADERS) {
+      if (!traderFilters[tr]?.enabled) continue;
+      const levels = buyByLevel[tr];
       if (!levels || typeof levels !== 'object') continue;
-      const userLevel = traderFilters[t]?.level ?? 1;
+      const userLevel = traderFilters[tr]?.level ?? 1;
       for (let lvl = 1; lvl <= userLevel; lvl++) {
         const p = levels[String(lvl)];
         if (p != null && (best === null || p < best)) best = p;
@@ -74,7 +70,6 @@ function getBestBuyPrice(item, traderFilters) {
   } catch { return null; }
 }
 
-// Normalize pour fuzzy match (accent-insensible, lowercase)
 function normalize(str) {
   return str
     .toLowerCase()
@@ -83,15 +78,13 @@ function normalize(str) {
     .trim();
 }
 
-function itemMatchesTag(item, tag) {
+// itemMatchesTag : matche uniquement les champs de la langue active pour éviter les doublons
+function itemMatchesTag(item, tag, lang) {
   const q = normalize(tag);
   if (!q) return true;
-  const fields = [
-    item.name_en || item.name || '',
-    item.name_fr || '',
-    item.short_name_en || item.short_name || '',
-    item.short_name_fr || '',
-  ];
+  const fields = lang === 'fr'
+    ? [item.name_fr || item.name_en || item.name || '', item.short_name_fr || item.short_name_en || item.short_name || '']
+    : [item.name_en || item.name || '',                 item.short_name_en || item.short_name || ''];
   return fields.some((f) => normalize(f).includes(q));
 }
 
@@ -116,15 +109,16 @@ export default function App() {
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [filters, setFilters]             = useState({
     minProfitRub: defaultMinProfitRub(),
-    minOffers: defaultMinOffers(),
+    minOffers:    defaultMinOffers(),
   });
-  // Tags de recherche multi-termes (OR)
   const [searchTags, setSearchTags]       = useState([]);
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
   const [intelLevel, setIntelLevel]       = useState(defaultIntelLevel);
   const [playerLevel, setPlayerLevel]     = useState(defaultPlayerLevel);
   const [lang, setLang]                   = useState(() => localStorage.getItem('lang') || 'fr');
   const [mode, setMode]                   = useState(() => localStorage.getItem('gameMode') || 'regular');
+
+  const t = useT(lang);
 
   useEffect(() => { localStorage.setItem('lang', lang); }, [lang]);
   useEffect(() => { localStorage.setItem('gameMode', mode); }, [mode]);
@@ -135,8 +129,6 @@ export default function App() {
     setPlayerLevel(n);
   };
 
-  // silent=true → refresh en arrière-plan sans spinner (données actuelles restent affichées)
-  // silent=false → premier chargement, affiche le spinner
   const fetchItems = useCallback(async (silent = false) => {
     if (!silent) { setLoading(true); }
     setError(null);
@@ -151,13 +143,11 @@ export default function App() {
     }
   }, [mode]);
 
-  // Premier chargement (avec spinner)
   useEffect(() => {
     setInitialLoaded(false);
     fetchItems(false);
   }, [fetchItems]);
 
-  // Refresh silencieux toutes les 5 min — données remplacées en arrière-plan, zéro flash
   useEffect(() => {
     if (!initialLoaded) return;
     const id = setInterval(() => fetchItems(true), 5 * 60 * 1000);
@@ -174,31 +164,20 @@ export default function App() {
   const minRub       = parseFloat(filters.minProfitRub) || 0;
   const minOffers    = offerCountAvailable ? Number(filters.minOffers ?? 1) : 1;
   const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
-  const t            = I18N[lang] || I18N.fr;
 
   const visibleItems = items.filter((item) => {
-    // Filtre nb offres flea
     if (minOffers > 1) {
       const count = item.last_offer_count;
       const hasFleaPresence = (item.flea_price ?? item.last_low_price ?? 0) > 0;
-      if (count != null) {
-        if (count < minOffers) return false;
-      } else if (!hasFleaPresence) {
-        return false;
-      }
+      if (count != null) { if (count < minOffers) return false; }
+      else if (!hasFleaPresence) { return false; }
     }
-
-    // Filtre tags (OR entre les tags, chaque tag est un fuzzy includes)
     if (searchTags.length > 0) {
-      const matchesAny = searchTags.some((tag) => itemMatchesTag(item, tag));
+      const matchesAny = searchTags.some((tag) => itemMatchesTag(item, tag, lang));
       if (!matchesAny) return false;
     }
-
-    // Filtre niveau flea
     const minFleaLevel = item.min_level_flea ?? 0;
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
-
-    // Filtre profit minimum — s'applique toujours
     try {
       const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const sellPrices = JSON.parse(item.trader_prices || '{}');
@@ -225,11 +204,11 @@ export default function App() {
           <div className="flex items-center gap-3">
             <img src={activeMeta.icon} alt={activeMeta.label} className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="text-xl font-bold text-tarkov-gold leading-tight">Tarkov Money Maker 2</h1>
+              <h1 className="text-xl font-bold text-tarkov-gold leading-tight">{t('appTitle')}</h1>
               <p className={`text-xs ${activeMeta.accentColor} flex items-center gap-1 mt-0.5`}>
                 <span className="font-semibold">{activeMeta.label}</span>
                 <span className="text-gray-600">&mdash;</span>
-                <span className="text-gray-500">{activeMeta.badge}</span>
+                <span className="text-gray-500">{t(activeMeta.badgeKey)}</span>
               </p>
             </div>
           </div>
@@ -237,7 +216,7 @@ export default function App() {
           <div className="flex items-center gap-2 flex-wrap">
             <div className={pillGroup}>
               {MODES.map((m) => (
-                <button key={m.key} onClick={() => setMode(m.key)} title={m.badge}
+                <button key={m.key} onClick={() => setMode(m.key)} title={t(m.badgeKey)}
                   className={`${pillBase} ${mode === m.key ? pillOn : pillOff}`}>
                   <img src={m.icon} alt={m.label} className="w-4 h-4 object-contain" />
                   <span>{m.label}</span>
@@ -254,7 +233,7 @@ export default function App() {
               ))}
             </div>
             <div className={pillGroup}>
-              <ApiStatus pillBase={pillBase} pillOff={pillOff} />
+              <ApiStatus pillBase={pillBase} pillOff={pillOff} lang={lang} />
               <span className="w-px h-4 bg-white/10 mx-0.5" />
               <ExportButtons items={visibleItems} lang={lang} pillBase={pillBase} pillOff={pillOff} />
             </div>
@@ -280,7 +259,7 @@ export default function App() {
           onSearchTagsChange={setSearchTags}
           allItems={items}
         />
-        {loading && <LoadingSpinner label={t.loading} accentColor={activeMeta.accentColor} />}
+        {loading && <LoadingSpinner label={t('loading')} accentColor={activeMeta.accentColor} />}
         {error   && <p className="text-center py-8 text-red-400">{error}</p>}
         {!loading && !error && (
           <ItemTable items={visibleItems} lang={lang} traderFilters={traderFilters} intelLevel={intelLevel} feeDiscount={feeDiscount} />
