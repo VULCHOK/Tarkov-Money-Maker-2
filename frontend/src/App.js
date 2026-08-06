@@ -124,10 +124,6 @@ export default function App() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  // Disponible pour TOUS les modes de façon dynamique :
-  // - true  → au moins 1 item du mode courant a un offer count → slider actif
-  // - false → aucun item n'a de offer count pour ce mode → alerte jaune
-  // Pendant le chargement on reste sur true pour éviter un flash d'alerte parasite.
   const offerCountAvailable = useMemo(() => {
     if (loading || items.length === 0) return true;
     return items.some((item) => item.last_offer_count != null);
@@ -142,6 +138,7 @@ export default function App() {
   const t            = I18N[lang] || I18N.fr;
 
   const visibleItems = items.filter((item) => {
+    // Filtre nb offres flea
     if (minOffers > 1) {
       const count = item.last_offer_count;
       const hasFleaPresence = (item.flea_price ?? item.last_low_price ?? 0) > 0;
@@ -152,6 +149,7 @@ export default function App() {
       }
     }
 
+    // Filtre texte (EN + FR + short names)
     if (searchTerm) {
       const nameEn  = (item.name_en  || item.name  || '').toLowerCase();
       const nameFr  = (item.name_fr  || '').toLowerCase();
@@ -161,9 +159,11 @@ export default function App() {
         && !shortEn.includes(searchTerm) && !shortFr.includes(searchTerm)) return false;
     }
 
+    // Filtre niveau flea
     const minFleaLevel = item.min_level_flea ?? 0;
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
 
+    // Filtre profit minimum — s'applique TOUJOURS, même avec searchTerm
     try {
       const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const sellPrices = JSON.parse(item.trader_prices || '{}');
@@ -174,7 +174,6 @@ export default function App() {
       const btfFee     = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
       const btfProfit  = bestBuy != null ? (fleaPrice - btfFee - bestBuy) : -Infinity;
       const bestProfit = Math.max(ftsProfit, btfProfit);
-      if (searchTerm) return true;
       return minRub > 0 ? bestProfit >= minRub : bestProfit > 0;
     } catch { return true; }
   });
