@@ -7,22 +7,15 @@ Real API structure (verified 2026-08-06):
     └─ data.itemCategories : dict { id -> { id, normalizedName, parent, children } }
     └─ data.fleaMarket     : { minPlayerLevel, enabled, ... }
 
-  item_object fields used:
-    id, normalizedName, updated, width, height, weight
-    types[]                       # ["gun", "wearable", ...]
-    basePrice, lastLowPrice
-    avg24hPrice, low24hPrice, high24hPrice
-    changeLast48h, changeLast48hPercent
-    lastOfferCount, minLevelForFlea
-    iconLink, wikiLink
-    categories[]                  # list of category IDs (first = most specific)
-    buyFromTrader[]               # [{ trader (ID), priceRUB, currency, minTraderLevel }]
-    sellToTrader[]                # [{ trader (ID), priceRUB, currency }]
+  item_object sell prices:
+    sellToTrader[]  : [{ trader (ID), priceRUB, currency }]
+    buyFromTrader[] : [{ trader (ID), priceRUB, currency, minTraderLevel }]
 
-  GET /regular/items_en  (and _fr, _de, etc.)
-    └─ data : dict { "<id> Name" -> "...", "<id> ShortName" -> "...", "<id> Description" -> "..." }
+  GET /regular/items_en  /  /regular/items_fr  (etc.)
+    └─ data : flat dict { "<id> Name" -> "...", "<id> ShortName" -> "..." }
 
-  itemCategory.name is ALSO a placeholder  -> use normalizedName instead.
+  Note: item.name and itemCategory.name are placeholder strings like
+  "5447a9cd... Name" — always use translation dicts for display names.
 """
 
 import asyncio
@@ -34,7 +27,10 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://json.tarkov.dev"
 
-# Trader ID -> display name  (from /regular/traders)
+# Exposed to status.py for display in the /status endpoint
+last_api_source: str = "rest"
+
+# Trader ID -> display name
 TRADER_ID_TO_NAME: dict[str, str] = {
     "54cb50c76803fa8b248b4571": "Prapor",
     "54cb57776803fa99248b456e": "Therapist",
@@ -49,19 +45,18 @@ TRADER_ID_TO_NAME: dict[str, str] = {
 
 
 def _get_data(resp_json: dict) -> dict:
-    """Safely extract the 'data' key from an API response."""
     return resp_json.get("data", resp_json)
 
 
 def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]:
     """
     From sellToTrader[], return (trader_name, best_priceRUB).
-    Ignores Fence (lowest prices).
+    Ignores Fence (always lowest).
     """
     best_name  = None
     best_price = 0
     for entry in sell_list:
-        trader_id = entry.get("trader", "")
+        trader_id   = entry.get("trader", "")
         trader_name = TRADER_ID_TO_NAME.get(trader_id)
         if not trader_name or trader_name == "Fence":
             continue
@@ -80,7 +75,6 @@ def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
         trader_name = TRADER_ID_TO_NAME.get(trader_id)
         price_rub   = entry.get("priceRUB") or 0
         if trader_name and price_rub > 0:
-            # keep best price per trader
             if price_rub > result.get(trader_name, 0):
                 result[trader_name] = price_rub
     return result
@@ -92,13 +86,7 @@ def _normalize_item(
     trans_fr: dict,
     item_categories: dict,
 ) -> dict:
-    """
-    Build a flat DB-ready dict from one item object + translation dicts.
-
-    Translation dicts have keys like:
-        "<id> Name"        -> display name
-        "<id> ShortName"   -> short name
-    """
+    import json as _json
     item_id = item["id"]
 
     name_en       = trans_en.get(f"{item_id} Name",      "")
@@ -106,7 +94,6 @@ def _normalize_item(
     short_name_en = trans_en.get(f"{item_id} ShortName", "")
     short_name_fr = trans_fr.get(f"{item_id} ShortName", short_name_en)
 
-    # Category: use normalizedName of the first (most specific) category
     category_slug = None
     for cat_id in item.get("categories", []):
         cat = item_categories.get(cat_id)
@@ -114,55 +101,49 @@ def _normalize_item(
             category_slug = cat.get("normalizedName")
             break
 
-    # Sell prices
     sell_list = item.get("sellToTrader", [])
     best_trader, best_trader_price = _best_sell_to_trader(sell_list)
-    import json as _json
     trader_prices_json = _json.dumps(_all_sell_prices(sell_list))
 
     return {
-        "id":             item_id,
-        "name_en":        name_en,
-        "name_fr":        name_fr,
-        "short_name_en":  short_name_en,
-        "short_name_fr":  short_name_fr,
+        "id":              item_id,
+        "name_en":         name_en,
+        "name_fr":         name_fr,
+        "short_name_en":   short_name_en,
+        "short_name_fr":   short_name_fr,
         "normalized_name": item.get("normalizedName"),
-        "category":       category_slug,
-        "types":          ",".join(item.get("types", [])),
-        "icon_link":      item.get("iconLink"),
-        "wiki_link":      item.get("wikiLink") or item.get("link"),
-        # Flea market prices
-        "avg24h_price":   item.get("avg24hPrice"),
-        "low24h_price":   item.get("low24hPrice"),
-        "high24h_price":  item.get("high24hPrice"),
-        "last_low_price": item.get("lastLowPrice"),
+        "category":        category_slug,
+        "types":           ",".join(item.get("types", [])),
+        "icon_link":       item.get("iconLink"),
+        "wiki_link":       item.get("wikiLink") or item.get("link"),
+        "avg24h_price":    item.get("avg24hPrice"),
+        "low24h_price":    item.get("low24hPrice"),
+        "high24h_price":   item.get("high24hPrice"),
+        "last_low_price":  item.get("lastLowPrice"),
         "last_offer_count": item.get("lastOfferCount"),
-        "change_48h":     item.get("changeLast48h"),
-        "change_48h_pct": item.get("changeLast48hPercent"),
-        "min_level_flea": item.get("minLevelForFlea"),
-        # Base data
-        "base_price":     item.get("basePrice"),
-        "width":          item.get("width"),
-        "height":         item.get("height"),
-        "weight":         item.get("weight"),
-        # Trader data
+        "change_48h":      item.get("changeLast48h"),
+        "change_48h_pct":  item.get("changeLast48hPercent"),
+        "min_level_flea":  item.get("minLevelForFlea"),
+        "base_price":      item.get("basePrice"),
+        "width":           item.get("width"),
+        "height":          item.get("height"),
+        "weight":          item.get("weight"),
         "best_trader":       best_trader,
         "best_trader_price": best_trader_price,
         "trader_prices":     trader_prices_json,
-        # Sync timestamp from API
-        "api_updated_at": item.get("updated"),
+        "api_updated_at":  item.get("updated"),
     }
 
 
 async def fetch_items() -> list[dict]:
     """
     Fetch all items. Returns a list of flat dicts ready for DB upsert.
-
-    Endpoints called in parallel:
-      - /regular/items       (full item objects)
-      - /regular/items_en    (English translations)
-      - /regular/items_fr    (French translations)
+    Three parallel requests:
+      - /regular/items       full item objects (prices, categories, traders)
+      - /regular/items_en    English translations
+      - /regular/items_fr    French translations
     """
+    global last_api_source
     async with httpx.AsyncClient(timeout=90) as client:
         resp_items, resp_en, resp_fr = await asyncio.gather(
             client.get(f"{BASE_URL}/regular/items",    headers={"Accept": "application/json"}),
@@ -172,6 +153,8 @@ async def fetch_items() -> list[dict]:
         resp_items.raise_for_status()
         resp_en.raise_for_status()
         resp_fr.raise_for_status()
+
+    last_api_source = "rest"
 
     data            = _get_data(resp_items.json())
     items_dict      : dict = data.get("items", {})
