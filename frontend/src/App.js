@@ -19,6 +19,11 @@ function defaultMinProfitRub() {
   return saved !== null ? saved : '20000';
 }
 
+function defaultPlayerLevel() {
+  const saved = localStorage.getItem('playerLevel');
+  return saved !== null ? Number(saved) : 15;
+}
+
 export default function App() {
   const [items, setItems]                 = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -26,11 +31,18 @@ export default function App() {
   const [filters, setFilters]             = useState({ minProfitRub: defaultMinProfitRub() });
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
   const [intelLevel, setIntelLevel]       = useState(defaultIntelLevel);
+  const [playerLevel, setPlayerLevel]     = useState(defaultPlayerLevel);
   const [lang, setLang]                   = useState(() => localStorage.getItem('lang') || 'fr');
   const [mode, setMode]                   = useState(() => localStorage.getItem('gameMode') || 'regular');
 
   useEffect(() => { localStorage.setItem('lang', lang); }, [lang]);
   useEffect(() => { localStorage.setItem('gameMode', mode); }, [mode]);
+
+  const handlePlayerLevel = (val) => {
+    const n = Math.min(79, Math.max(1, Number(val) || 1));
+    localStorage.setItem('playerLevel', String(n));
+    setPlayerLevel(n);
+  };
 
   const fetchItems = useCallback(async () => {
     setLoading(true); setError(null);
@@ -50,6 +62,10 @@ export default function App() {
   const activeMeta  = MODES.find((m) => m.key === mode) || MODES[0];
 
   const visibleItems = items.filter((item) => {
+    // Filtre niveau joueur : exclure les items nécessitant un niveau flea supérieur
+    const minFleaLevel = item.min_level_flea ?? 0;
+    if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
+
     try {
       const prices       = JSON.parse(item.trader_prices || '{}');
       const fleaPrice    = item.flea_price ?? item.last_low_price ?? 0;
@@ -69,7 +85,6 @@ export default function App() {
   const pillOff   = 'text-gray-400 hover:text-white hover:bg-white/5';
   const pillOn    = 'bg-tarkov-gold text-tarkov-bg shadow-sm';
 
-  // Pills langue : drapeau seul + code ISO
   const LANGS = [
     { code: 'en', flag: '🇬🇧', iso: 'EN' },
     { code: 'fr', flag: '🇫🇷', iso: 'FR' },
@@ -88,9 +103,7 @@ export default function App() {
               <span className="text-gray-500">{activeMeta.badge}</span>
             </p>
           </div>
-
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Modes */}
             <div className={pillGroup}>
               {MODES.map((m) => (
                 <button key={m.key} onClick={() => setMode(m.key)} title={m.badge}
@@ -99,8 +112,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-
-            {/* Langue — drapeau + code ISO */}
             <div className={pillGroup}>
               {LANGS.map(({ code, flag, iso }) => (
                 <button key={code} onClick={() => setLang(code)}
@@ -110,8 +121,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-
-            {/* Outils */}
             <div className={pillGroup}>
               <ApiStatus pillBase={pillBase} pillOff={pillOff} />
               <span className="w-px h-4 bg-white/10 mx-0.5" />
@@ -130,6 +139,8 @@ export default function App() {
           onTraderFiltersChange={setTraderFilters}
           intelLevel={intelLevel}
           onIntelLevelChange={setIntelLevel}
+          playerLevel={playerLevel}
+          onPlayerLevelChange={handlePlayerLevel}
         />
         {loading && <p className="text-center py-8 text-gray-400">Chargement <span className={activeMeta.accentColor}>({activeMeta.label})</span>...</p>}
         {error   && <p className="text-center py-8 text-red-400">{error}</p>}
