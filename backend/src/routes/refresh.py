@@ -7,16 +7,16 @@ router = APIRouter()
 
 @router.post("/")
 async def force_refresh():
-    """Trigger an immediate data refresh from tarkov.dev.
-
-    Uses asyncio.create_task so the HTTP response is returned immediately
-    and the sync runs in the background without crashing the ASGI worker.
     """
-    asyncio.create_task(sync_data())
+    Trigger an immediate data refresh from tarkov.dev.
+    Runs in the background — response is immediate.
+    Poll GET /refresh/status to track progress.
+    """
+    asyncio.create_task(sync_data())   # no db arg -> data_sync opens its own session
     return {"message": "Refresh triggered. Poll GET /refresh/status for progress."}
 
 
 @router.get("/status")
 def get_sync_status():
-    """Returns the current sync state — use this to diagnose issues."""
+    """Returns the current sync state (idle | running | success | error)."""
     return sync_state
