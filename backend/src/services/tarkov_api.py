@@ -1,21 +1,8 @@
 """
 tarkov_api.py  –  Fetches data from json.tarkov.dev
 
-Real API structure (verified 2026-08-06):
-  GET /regular/items
-    └─ data.items          : dict { id -> item_object }
-    └─ data.itemCategories : dict { id -> { id, normalizedName, parent, children } }
-    └─ data.fleaMarket     : { minPlayerLevel, enabled, ... }
-
-  item_object sell prices:
-    sellToTrader[]  : [{ trader (ID), priceRUB, currency }]
-    buyFromTrader[] : [{ trader (ID), priceRUB, currency, minTraderLevel }]
-
-  GET /regular/items_en  /  /regular/items_fr  (etc.)
-    └─ data : flat dict { "<id> Name" -> "...", "<id> ShortName" -> "..." }
-
-  Note: item.name and itemCategory.name are placeholder strings like
-  "5447a9cd... Name" — always use translation dicts for display names.
+Supporte 3 modes : regular (PVP), pve, pvp-season (Seasonal)
+Endpoints : /{mode}/items  /{mode}/items_en  /{mode}/items_fr
 """
 
 import asyncio
@@ -26,11 +13,10 @@ import httpx
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://json.tarkov.dev"
+GAME_MODES = ["regular", "pve", "pvp-season"]
 
-# Exposed to status.py for display in the /status endpoint
 last_api_source: str = "rest"
 
-# Trader ID -> display name
 TRADER_ID_TO_NAME: dict[str, str] = {
     "54cb50c76803fa8b248b4571": "Prapor",
     "54cb57776803fa99248b456e": "Therapist",
@@ -49,10 +35,6 @@ def _get_data(resp_json: dict) -> dict:
 
 
 def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]:
-    """
-    From sellToTrader[], return (trader_name, best_priceRUB).
-    Ignores Fence (always lowest).
-    """
     best_name  = None
     best_price = 0
     for entry in sell_list:
@@ -68,7 +50,6 @@ def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]
 
 
 def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
-    """Return { trader_name: priceRUB } for all traders in sellToTrader[]."""
     result: dict[str, int] = {}
     for entry in sell_list:
         trader_id   = entry.get("trader", "")
@@ -80,12 +61,7 @@ def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
     return result
 
 
-def _normalize_item(
-    item: dict,
-    trans_en: dict,
-    trans_fr: dict,
-    item_categories: dict,
-) -> dict:
+def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories: dict, mode: str) -> dict:
     import json as _json
     item_id = item["id"]
 
@@ -106,70 +82,86 @@ def _normalize_item(
     trader_prices_json = _json.dumps(_all_sell_prices(sell_list))
 
     return {
-        "id":              item_id,
-        "name_en":         name_en,
-        "name_fr":         name_fr,
-        "short_name_en":   short_name_en,
-        "short_name_fr":   short_name_fr,
-        "normalized_name": item.get("normalizedName"),
-        "category":        category_slug,
-        "types":           ",".join(item.get("types", [])),
-        "icon_link":       item.get("iconLink"),
-        "wiki_link":       item.get("wikiLink") or item.get("link"),
-        "avg24h_price":    item.get("avg24hPrice"),
-        "low24h_price":    item.get("low24hPrice"),
-        "high24h_price":   item.get("high24hPrice"),
-        "last_low_price":  item.get("lastLowPrice"),
+        "id":               item_id,
+        "mode":             mode,
+        "name_en":          name_en,
+        "name_fr":          name_fr,
+        "short_name_en":    short_name_en,
+        "short_name_fr":    short_name_fr,
+        "normalized_name":  item.get("normalizedName"),
+        "category":         category_slug,
+        "types":            ",".join(item.get("types", [])),
+        "icon_link":        item.get("iconLink"),
+        "wiki_link":        item.get("wikiLink") or item.get("link"),
+        "avg24h_price":     item.get("avg24hPrice"),
+        "low24h_price":     item.get("low24hPrice"),
+        "high24h_price":    item.get("high24hPrice"),
+        "last_low_price":   item.get("lastLowPrice"),
         "last_offer_count": item.get("lastOfferCount"),
-        "change_48h":      item.get("changeLast48h"),
-        "change_48h_pct":  item.get("changeLast48hPercent"),
-        "min_level_flea":  item.get("minLevelForFlea"),
-        "base_price":      item.get("basePrice"),
-        "width":           item.get("width"),
-        "height":          item.get("height"),
-        "weight":          item.get("weight"),
-        "best_trader":       best_trader,
+        "change_48h":       item.get("changeLast48h"),
+        "change_48h_pct":   item.get("changeLast48hPercent"),
+        "min_level_flea":   item.get("minLevelForFlea"),
+        "base_price":       item.get("basePrice"),
+        "width":            item.get("width"),
+        "height":           item.get("height"),
+        "weight":           item.get("weight"),
+        "best_trader":      best_trader,
         "best_trader_price": best_trader_price,
-        "trader_prices":     trader_prices_json,
-        "api_updated_at":  item.get("updated"),
+        "trader_prices":    trader_prices_json,
+        "api_updated_at":   item.get("updated"),
     }
 
 
-async def fetch_items() -> list[dict]:
-    """
-    Fetch all items. Returns a list of flat dicts ready for DB upsert.
-    Three parallel requests:
-      - /regular/items       full item objects (prices, categories, traders)
-      - /regular/items_en    English translations
-      - /regular/items_fr    French translations
-    """
-    global last_api_source
-    async with httpx.AsyncClient(timeout=90) as client:
-        resp_items, resp_en, resp_fr = await asyncio.gather(
-            client.get(f"{BASE_URL}/regular/items",    headers={"Accept": "application/json"}),
-            client.get(f"{BASE_URL}/regular/items_en", headers={"Accept": "application/json"}),
-            client.get(f"{BASE_URL}/regular/items_fr", headers={"Accept": "application/json"}),
-        )
-        resp_items.raise_for_status()
-        resp_en.raise_for_status()
-        resp_fr.raise_for_status()
-
-    last_api_source = "rest"
+async def _fetch_one_mode(client: httpx.AsyncClient, mode: str) -> list[dict]:
+    """Fetch et normalise tous les items pour un mode donné."""
+    resp_items, resp_en, resp_fr = await asyncio.gather(
+        client.get(f"{BASE_URL}/{mode}/items",    headers={"Accept": "application/json"}),
+        client.get(f"{BASE_URL}/{mode}/items_en", headers={"Accept": "application/json"}),
+        client.get(f"{BASE_URL}/{mode}/items_fr", headers={"Accept": "application/json"}),
+    )
+    resp_items.raise_for_status()
+    resp_en.raise_for_status()
+    resp_fr.raise_for_status()
 
     data            = _get_data(resp_items.json())
-    items_dict      : dict = data.get("items", {})
-    item_categories : dict = data.get("itemCategories", {})
-    trans_en        : dict = _get_data(resp_en.json())
-    trans_fr        : dict = _get_data(resp_fr.json())
+    items_dict      = data.get("items", {})
+    item_categories = data.get("itemCategories", {})
+    trans_en        = _get_data(resp_en.json())
+    trans_fr        = _get_data(resp_fr.json())
 
     if not items_dict:
-        raise ValueError(
-            f"[tarkov_api] items_dict is empty. data keys: {list(data.keys())}"
-        )
+        raise ValueError(f"[tarkov_api] Mode '{mode}': items_dict est vide. Clés: {list(data.keys())}")
 
     result = [
-        _normalize_item(item, trans_en, trans_fr, item_categories)
+        _normalize_item(item, trans_en, trans_fr, item_categories, mode)
         for item in items_dict.values()
     ]
-    logger.info(f"[tarkov_api] Fetched {len(result)} items")
+    logger.info(f"[tarkov_api] Mode '{mode}': {len(result)} items récupérés")
     return result
+
+
+async def fetch_items(modes: list[str] | None = None) -> list[dict]:
+    """
+    Fetch tous les items pour les modes demandés (défaut : les 3).
+    Retourne une liste plate de dicts prêts pour l'upsert DB.
+    """
+    global last_api_source
+    if modes is None:
+        modes = GAME_MODES
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        results = await asyncio.gather(
+            *[_fetch_one_mode(client, mode) for mode in modes],
+            return_exceptions=True,
+        )
+
+    last_api_source = "rest"
+    all_items: list[dict] = []
+    for mode, res in zip(modes, results):
+        if isinstance(res, Exception):
+            logger.error(f"[tarkov_api] Mode '{mode}' a échoué: {res}")
+        else:
+            all_items.extend(res)
+
+    logger.info(f"[tarkov_api] Total: {len(all_items)} items ({len(modes)} modes)")
+    return all_items

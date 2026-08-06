@@ -1,17 +1,18 @@
 -- Tarkov Money Maker 2 — PostgreSQL Schema
--- v3: aligné sur models.py (normalized_name, EN/FR names, types, dimensions, trader prices, computed fields)
--- Ce fichier est exécuté uniquement à la première init DB (docker-entrypoint-initdb.d).
+-- v4: support multi-mode (regular / pve / pvp-season)
+-- PK devient (id, mode) pour stocker les 3 modes en parallèle.
 
 CREATE TABLE IF NOT EXISTS items (
     -- Identity
-    id                VARCHAR(24)   PRIMARY KEY,
+    id                VARCHAR(24)   NOT NULL,
+    mode              VARCHAR(20)   NOT NULL DEFAULT 'regular',  -- regular | pve | pvp-season
     normalized_name   VARCHAR(255),
     name_en           VARCHAR(255)  NOT NULL DEFAULT '',
     name_fr           VARCHAR(255),
     short_name_en     VARCHAR(50),
     short_name_fr     VARCHAR(50),
     category          VARCHAR(100),
-    types             VARCHAR(255),          -- comma-separated e.g. "gun,wearable"
+    types             VARCHAR(255),
     icon_link         TEXT,
     wiki_link         TEXT,
 
@@ -34,9 +35,9 @@ CREATE TABLE IF NOT EXISTS items (
     base_price        INTEGER,
     best_trader       VARCHAR(50),
     best_trader_price INTEGER,
-    trader_prices     TEXT,                  -- JSON string {"Prapor": 1234, ...}
+    trader_prices     TEXT,
 
-    -- Computed by price_calculator
+    -- Computed
     flea_price        INTEGER,
     difference        INTEGER,
     difference_pct    FLOAT,
@@ -44,10 +45,13 @@ CREATE TABLE IF NOT EXISTS items (
 
     -- Sync metadata
     api_updated_at    VARCHAR(32),
-    updated_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    PRIMARY KEY (id, mode)
 );
 
-CREATE INDEX IF NOT EXISTS idx_items_normalized_name  ON items(normalized_name);
-CREATE INDEX IF NOT EXISTS idx_items_category         ON items(category);
-CREATE INDEX IF NOT EXISTS idx_items_recommendation   ON items(recommendation);
-CREATE INDEX IF NOT EXISTS idx_items_difference_pct   ON items(difference_pct DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_items_mode              ON items(mode);
+CREATE INDEX IF NOT EXISTS idx_items_normalized_name   ON items(normalized_name);
+CREATE INDEX IF NOT EXISTS idx_items_category          ON items(category);
+CREATE INDEX IF NOT EXISTS idx_items_recommendation    ON items(recommendation);
+CREATE INDEX IF NOT EXISTS idx_items_difference_pct    ON items(difference_pct DESC NULLS LAST);

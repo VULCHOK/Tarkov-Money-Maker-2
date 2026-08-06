@@ -9,7 +9,12 @@ import { ApiStatus } from './components/ApiStatus';
 
 const API_BASE = '/api';
 
-// Valeur par défaut du profit minimum : 20 000 ₽, ou ce qui est en localStorage
+const MODES = [
+  { key: 'regular',    label: 'PVP',      emoji: '⚔️' },
+  { key: 'pve',        label: 'PVE',      emoji: '🤖' },
+  { key: 'pvp-season', label: 'Seasonal', emoji: '❄️' },
+];
+
 function defaultMinProfitRub() {
   const saved = localStorage.getItem('minProfitRub');
   return saved !== null ? saved : '20000';
@@ -22,14 +27,16 @@ export default function App() {
   const [filters, setFilters] = useState({ minProfitRub: defaultMinProfitRub() });
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'fr');
+  const [mode, setMode] = useState(() => localStorage.getItem('gameMode') || 'regular');
 
   useEffect(() => { localStorage.setItem('lang', lang); }, [lang]);
+  useEffect(() => { localStorage.setItem('gameMode', mode); }, [mode]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get(`${API_BASE}/items/`);
+      const { data } = await axios.get(`${API_BASE}/items/`, { params: { mode } });
       setItems(data);
     } catch (err) {
       console.error('API error:', err);
@@ -37,7 +44,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mode]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -50,7 +57,6 @@ export default function App() {
     }
   };
 
-  // Filtrage côté client : on recalcule le meilleur prix selon les traders actifs
   const minRub = parseFloat(filters.minProfitRub) || 0;
   const visibleItems = minRub > 0
     ? items.filter((item) => {
@@ -70,12 +76,33 @@ export default function App() {
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
       <header className="border-b border-tarkov-border px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-tarkov-gold">Tarkov Money Maker 2</h1>
             <p className="text-sm text-gray-400">Compare trader prices vs Flea Market</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+
+            {/* Sélecteur de mode de jeu */}
+            <div className="flex items-center gap-1 bg-tarkov-card border border-tarkov-border rounded px-1 py-1">
+              {MODES.map((m) => (
+                <button
+                  key={m.key}
+                  onClick={() => setMode(m.key)}
+                  title={m.label}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all ${
+                    mode === m.key
+                      ? 'bg-tarkov-gold text-tarkov-bg'
+                      : 'text-gray-400 hover:text-tarkov-gold'
+                  }`}
+                >
+                  <span>{m.emoji}</span>
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Sélecteur de langue */}
             <div className="flex items-center gap-1 bg-tarkov-card border border-tarkov-border rounded px-2 py-1">
               <button
                 onClick={() => setLang('en')}
@@ -88,6 +115,7 @@ export default function App() {
                 className={`text-lg transition-opacity ${lang === 'fr' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}
               >🇫🇷</button>
             </div>
+
             <ApiStatus />
             <ExportButtons items={visibleItems} lang={lang} />
             <RefreshButton onRefresh={handleRefresh} />
@@ -102,7 +130,7 @@ export default function App() {
           traderFilters={traderFilters}
           onTraderFiltersChange={setTraderFilters}
         />
-        {loading && <p className="text-center py-8 text-gray-400">Chargement des items...</p>}
+        {loading && <p className="text-center py-8 text-gray-400">Chargement des items ({mode})...</p>}
         {error && <p className="text-center py-8 text-red-400">{error}</p>}
         {!loading && !error && (
           <ItemTable
