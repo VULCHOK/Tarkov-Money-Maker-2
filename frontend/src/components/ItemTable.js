@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table';
 import { ALL_TRADERS } from './Filters';
 import { ActionCell } from './ActionCell';
+import { useT } from '../hooks/useT';
 
 const col = createColumnHelper();
 const RUB = '\u20BD';
@@ -173,7 +174,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
   );
 }
 
-function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) {
+function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount, t }) {
   const [open, setOpen] = useState(false);
   const { triggerRef, pos } = useSmartTooltip(open, 208);
   if (current == null) return <span className="text-gray-600 text-xs">—</span>;
@@ -182,21 +183,21 @@ function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) 
       onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <span className="flex flex-col leading-tight cursor-default">
         <span className="text-blue-300 text-xs font-semibold">{fmt(current)}</span>
-        {avg24h != null && <span className="text-gray-500 text-xs">moy {fmt(avg24h)}</span>}
+        {avg24h != null && <span className="text-gray-500 text-xs">{t('fleaAvg').replace('Avg','moy').replace('Moy','')} {fmt(avg24h)}</span>}
       </span>
       {open && (
         <div className={tooltipCls(pos, 'w-52')}>
           <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 px-3 pt-1">
-            Flea — 24h
+            {t('flea24h')}
           </p>
           <div className="flex flex-col gap-1 text-xs px-3 pb-1">
-            <div className="flex justify-between"><span className="text-gray-400">Actuel</span><span className="text-blue-300 font-semibold">{fmt(current)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Bas 24h</span><span className="text-green-400">{fmt(low24h)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Moy 24h</span><span className="text-gray-200">{fmt(avg24h)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Haut 24h</span><span className="text-red-400">{fmt(high24h)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">{t('fleaCur')}</span><span className="text-blue-300 font-semibold">{fmt(current)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">{t('fleaLow')}</span><span className="text-green-400">{fmt(low24h)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">{t('fleaAvg')}</span><span className="text-gray-200">{fmt(avg24h)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">{t('fleaHigh')}</span><span className="text-red-400">{fmt(high24h)}</span></div>
             {lastOfferCount != null && (
               <div className="flex justify-between border-t border-tarkov-border mt-1 pt-1">
-                <span className="text-gray-500">Offres</span>
+                <span className="text-gray-500">{t('fleaOffers')}</span>
                 <span className="text-gray-400">{lastOfferCount}</span>
               </div>
             )}
@@ -225,23 +226,23 @@ function computeRow(item, traderFilters, feeDiscount) {
   let bestSellTrader = null, bestSellPrice = null;
   try {
     const sell = JSON.parse(item.trader_prices || '{}');
-    for (const t of ALL_TRADERS) {
-      if (!traderFilters[t]?.enabled) continue;
-      const p = sell[t];
-      if (p != null && (bestSellPrice === null || p > bestSellPrice)) { bestSellPrice = p; bestSellTrader = t; }
+    for (const tr of ALL_TRADERS) {
+      if (!traderFilters[tr]?.enabled) continue;
+      const p = sell[tr];
+      if (p != null && (bestSellPrice === null || p > bestSellPrice)) { bestSellPrice = p; bestSellTrader = tr; }
     }
   } catch {}
   let bestBuyTrader = null, bestBuyPrice = null;
   try {
     const buyByLevel = JSON.parse(item.trader_buy_prices || '{}');
-    for (const t of ALL_TRADERS) {
-      if (!traderFilters[t]?.enabled) continue;
-      const levels = buyByLevel[t];
+    for (const tr of ALL_TRADERS) {
+      if (!traderFilters[tr]?.enabled) continue;
+      const levels = buyByLevel[tr];
       if (!levels || typeof levels !== 'object') continue;
-      const userLevel = traderFilters[t]?.level ?? 1;
+      const userLevel = traderFilters[tr]?.level ?? 1;
       for (let lvl = 1; lvl <= userLevel; lvl++) {
         const p = levels[String(lvl)];
-        if (p != null && (bestBuyPrice === null || p < bestBuyPrice)) { bestBuyPrice = p; bestBuyTrader = t; }
+        if (p != null && (bestBuyPrice === null || p < bestBuyPrice)) { bestBuyPrice = p; bestBuyTrader = tr; }
       }
     }
   } catch {}
@@ -269,24 +270,23 @@ function wikiUrl(item) {
   return `https://escapefromtarkov.fandom.com/wiki/${encodeURIComponent(slug)}`;
 }
 
-// ── Barre de tri sticky (mobile) ─────────────────────────────────
 const MOBILE_SORTS = [
-  { id: 'best_profit', label: '★ Profit',    desc: true  },
-  { id: 'profit_btf', label: 'Trader→Flea', desc: true  },
-  { id: 'profit_fts', label: 'Flea→Trader', desc: true  },
-  { id: 'flea_price', label: 'Flea',         desc: false },
-  { id: 'buy_trader', label: 'Achat',        desc: false },
+  { id: 'best_profit', labelKey: 'colBestProfit', desc: true  },
+  { id: 'profit_btf', labelKey: 'colTraderFlea',  desc: true  },
+  { id: 'profit_fts', labelKey: 'colFleaTrader',  desc: true  },
+  { id: 'flea_price', labelKey: 'colFlea',         desc: false },
+  { id: 'buy_trader', labelKey: 'cardBuy',         desc: false },
 ];
 
-function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
+function MobileSortBar({ sorting, onSort, t, total, from, to }) {
   return (
     <div className="sticky top-0 z-20 bg-tarkov-bg border-b border-tarkov-border px-3 py-2 flex flex-col gap-2">
       <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>{from}–{to} {lang === 'en' ? 'of' : 'sur'} <span className="text-tarkov-gold font-semibold">{total}</span></span>
-        <span className="text-gray-600">{lang === 'en' ? 'Tap to sort' : 'Appuie pour trier'}</span>
+        <span>{from}–{to} {t('paginationOf')} <span className="text-tarkov-gold font-semibold">{total}</span></span>
+        <span className="text-gray-600">{t('paginationTapSort')}</span>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-        {MOBILE_SORTS.map(({ id, label, desc }) => {
+        {MOBILE_SORTS.map(({ id, labelKey, desc }) => {
           const active = sorting?.[0]?.id === id;
           const isDesc = active ? (sorting[0].desc ?? desc) : desc;
           return (
@@ -297,7 +297,7 @@ function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
                   ? 'bg-tarkov-gold text-tarkov-bg border-tarkov-gold'
                   : 'border-tarkov-border text-gray-400 hover:border-tarkov-gold hover:text-tarkov-gold'
               }`}>
-              {label}
+              {t(labelKey)}
               {active && <span className="text-[10px]">{isDesc ? '↓' : '↑'}</span>}
             </button>
           );
@@ -307,8 +307,7 @@ function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
   );
 }
 
-// ── Carte mobile ──────────────────────────────────────────────────
-function ItemCard({ row, lang }) {
+function ItemCard({ row, lang, t }) {
   const { _c: c } = row;
   const name  = lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en;
   const isHot = c.bestProfit != null && c.bestProfit >= HOT_DEAL_THRESHOLD;
@@ -319,37 +318,25 @@ function ItemCard({ row, lang }) {
   const cardBg      = isBTF ? 'bg-blue-900/10'       : 'bg-green-900/10';
   const accentColor = isBTF ? 'text-blue-300'        : 'text-green-300';
 
-  const recLabel = isBTF
-    ? (lang === 'en' ? 'Buy Trader → Sell Flea'  : 'Acheter Trader → Vendre Flea')
-    : (lang === 'en' ? 'Buy Flea → Sell Trader'   : 'Acheter Flea → Vendre Trader');
-
-  const lBuy  = lang === 'en' ? 'Buy'  : 'Achat';
-  const lSell = lang === 'en' ? 'Sell' : 'Vente';
-
-  // Top-right : source (trader ou Flea), profit, %, nb offres si Flea
-  const topLabel      = isBTF ? (c.bestBuyTrader ?? 'Trader') : 'Flea';
-  const topProfit     = c.bestProfit;
-  const topPct        = c.bestPct;
+  const recLabel    = isBTF ? t('recBTF') : t('recFTS');
+  const topLabel    = isBTF ? (c.bestBuyTrader ?? 'Trader') : 'Flea';
+  const topProfit   = c.bestProfit;
+  const topPct      = c.bestPct;
   const topOfferCount = !isBTF ? row.last_offer_count : null;
 
   return (
     <div className={`rounded-xl border ${cardBorder} ${cardBg} overflow-hidden`}>
-
-      {/* ── LIGNE 1 : icône | nom | meilleur profit ── */}
       <div className="flex items-start gap-2.5 px-3 pt-3 pb-2">
         {row.icon_link
           ? <img src={row.icon_link} alt="" className="w-11 h-11 rounded-lg object-contain bg-tarkov-bg border border-tarkov-border flex-shrink-0 mt-0.5" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
           : <span className="w-11 h-11 rounded-lg bg-tarkov-bg border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0 mt-0.5">?</span>
         }
-
         <div className="flex-1 min-w-0">
           {url
             ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-sm leading-snug text-tarkov-text hover:text-tarkov-gold hover:underline line-clamp-2 block">{name || row.id}</a>
             : <p className="font-semibold text-sm leading-snug text-tarkov-text line-clamp-2">{name || row.id}</p>
           }
         </div>
-
-        {/* Top-right : tout en tarkov-gold */}
         <div className="flex-shrink-0 flex flex-col items-end min-w-[64px]">
           <span className="text-[9px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none mb-0.5">{topLabel}</span>
           {topProfit != null && (
@@ -364,16 +351,15 @@ function ItemCard({ row, lang }) {
           )}
           {topOfferCount != null && (
             <span className="text-[9px] text-tarkov-gold/60 mt-0.5 leading-none">
-              {topOfferCount} offres
+              {topOfferCount} {t('cardOffers')}
             </span>
           )}
         </div>
       </div>
 
-      {/* ── LIGNE 2 : Buy | Sell | Flea ── */}
       <div className="grid grid-cols-3 gap-1.5 px-3 pb-2">
         <div className="bg-tarkov-bg/60 rounded-lg px-2 py-2 flex flex-col justify-between min-h-[56px]">
-          <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{lBuy}</p>
+          <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{t('cardBuy')}</p>
           <p className="text-white text-xs font-bold leading-none">{fmtK(c.bestBuyPrice)}</p>
           {c.bestBuyTrader
             ? <div className="flex items-center gap-1 mt-1">
@@ -383,9 +369,8 @@ function ItemCard({ row, lang }) {
             : <div className="mt-1 h-3.5" />
           }
         </div>
-
         <div className="bg-tarkov-bg/60 rounded-lg px-2 py-2 flex flex-col justify-between min-h-[56px]">
-          <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{lSell}</p>
+          <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{t('cardSell')}</p>
           <p className="text-white text-xs font-bold leading-none">{fmtK(c.bestSellPrice)}</p>
           {c.bestSellTrader
             ? <div className="flex items-center gap-1 mt-1">
@@ -395,18 +380,16 @@ function ItemCard({ row, lang }) {
             : <div className="mt-1 h-3.5" />
           }
         </div>
-
         <div className="bg-tarkov-bg/60 rounded-lg px-2 py-2 flex flex-col justify-between min-h-[56px]">
           <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">Flea</p>
           <p className="text-blue-300 text-xs font-bold leading-none">{fmtK(c.flea)}</p>
           {row.last_offer_count != null
-            ? <p className="text-gray-600 text-[9px] mt-1">{row.last_offer_count} offres</p>
+            ? <p className="text-gray-600 text-[9px] mt-1">{row.last_offer_count} {t('cardOffers')}</p>
             : <div className="mt-1 h-3.5" />
           }
         </div>
       </div>
 
-      {/* ── LIGNE 3 : profits détaillés avec % ── */}
       <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
         <div className={`rounded-lg px-2.5 py-2 border ${
           c.bestRec === 'BUY_FLEA_SELL_TRADER' ? 'border-green-700/60 bg-green-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
@@ -424,7 +407,6 @@ function ItemCard({ row, lang }) {
             <p className="text-gray-500 text-[10px] mt-0.5">{c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%</p>
           )}
         </div>
-
         <div className={`rounded-lg px-2.5 py-2 border ${
           c.bestRec === 'BUY_TRADER_SELL_FLEA' ? 'border-blue-700/60 bg-blue-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
@@ -443,7 +425,6 @@ function ItemCard({ row, lang }) {
         </div>
       </div>
 
-      {/* ── FOOTER ── */}
       <div className={`flex items-center justify-center gap-1.5 px-3 py-1.5 border-t border-white/5 ${
         isBTF ? 'bg-blue-900/20' : 'bg-green-900/20'
       }`}>
@@ -453,8 +434,7 @@ function ItemCard({ row, lang }) {
   );
 }
 
-// ── Pagination ────────────────────────────────────────────────────
-function PaginationBar({ table, lang, mobile }) {
+function PaginationBar({ table, t, mobile }) {
   const { pageIndex, pageSize } = table.getState().pagination;
   const total = table.getFilteredRowModel().rows.length;
   const from  = total === 0 ? 0 : pageIndex * pageSize + 1;
@@ -482,9 +462,9 @@ function PaginationBar({ table, lang, mobile }) {
 
   return (
     <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
-      <span>{from}–{to} {lang === 'en' ? 'of' : 'sur'} {total}</span>
+      <span>{from}–{to} {t('paginationOf')} {total}</span>
       <div className="flex items-center gap-1">
-        <span className="text-gray-500">{lang === 'en' ? 'Per page:' : 'Par page :'}</span>
+        <span className="text-gray-500">{t('paginationPerPage')}</span>
         {PAGE_SIZES.map((s) => (
           <button key={s} onClick={() => table.setPageSize(s)}
             className={`px-2 py-0.5 rounded border text-xs transition-colors ${
@@ -495,7 +475,7 @@ function PaginationBar({ table, lang, mobile }) {
       <div className="flex items-center gap-1">
         <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">«</button>
         <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">‹</button>
-        <span className="px-2">Page {pageIndex + 1} / {table.getPageCount()}</span>
+        <span className="px-2">{t('paginationPage')} {pageIndex + 1} / {table.getPageCount()}</span>
         <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">›</button>
         <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">»</button>
       </div>
@@ -503,8 +483,8 @@ function PaginationBar({ table, lang, mobile }) {
   );
 }
 
-// ── ItemTable principal ───────────────────────────────────────────
 export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
+  const t = useT(lang);
   const rows     = useMemo(() => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })), [items, traderFilters, feeDiscount]);
   const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
   const [mobileSorting, setMobileSorting] = useState([{ id: 'best_profit', desc: true }]);
@@ -513,7 +493,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
 
   const columns = useMemo(() => [
     col.accessor((row) => lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en, {
-      id: 'name', header: 'Item',
+      id: 'name', header: t('colItem'),
       cell: (info) => {
         const row  = info.row.original;
         const name = info.getValue() || row.normalized_name || row.id;
@@ -533,17 +513,17 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       },
     }),
     col.accessor((row) => row._c.bestBuyPrice, {
-      id: 'buy_trader', header: lang === 'en' ? 'Buy (Trader)' : 'Achat Trader',
-      cell: (info) => <TraderBuyPricesTooltip pricesJson={info.row.original.trader_buy_prices} highlight={info.row.original._c.bestBuyTrader} label={lang === 'en' ? 'Buy prices by trader (your level)' : "Prix d'achat chez les traders"} traderFilters={traderFilters} />,
+      id: 'buy_trader', header: t('colBuyTrader'),
+      cell: (info) => <TraderBuyPricesTooltip pricesJson={info.row.original.trader_buy_prices} highlight={info.row.original._c.bestBuyTrader} label={t('tooltipBuyPrices')} traderFilters={traderFilters} />,
       sortingFn: (a, b) => (a.original._c.bestBuyPrice ?? Infinity) - (b.original._c.bestBuyPrice ?? Infinity),
     }),
     col.accessor((row) => row._c.flea, {
       id: 'flea_price', header: () => <span>Flea</span>,
-      cell: (info) => { const r = info.row.original; return <FleaPriceTooltip current={r._c.flea} low24h={r.low24h_price} avg24h={r.avg24h_price} high24h={r.high24h_price} lastOfferCount={r.last_offer_count} />; },
+      cell: (info) => { const r = info.row.original; return <FleaPriceTooltip current={r._c.flea} low24h={r.low24h_price} avg24h={r.avg24h_price} high24h={r.high24h_price} lastOfferCount={r.last_offer_count} t={t} />; },
     }),
     col.accessor((row) => row._c.bestSellPrice, {
-      id: 'sell_trader', header: lang === 'en' ? 'Sell (Trader)' : 'Vente Trader',
-      cell: (info) => <TraderPricesTooltip pricesJson={info.row.original.trader_prices} highlight={info.row.original._c.bestSellTrader} label={lang === 'en' ? 'Trader buy-back prices' : 'Prix de rachat'} />,
+      id: 'sell_trader', header: t('colSellTrader'),
+      cell: (info) => <TraderPricesTooltip pricesJson={info.row.original.trader_prices} highlight={info.row.original._c.bestSellTrader} label={t('tooltipSellPrices')} />,
       sortingFn: (a, b) => (a.original._c.bestSellPrice ?? -Infinity) - (b.original._c.bestSellPrice ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitBTF, {
@@ -562,10 +542,10 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       sortingFn: (a, b) => (a.original._c.bestProfit ?? -Infinity) - (b.original._c.bestProfit ?? -Infinity),
     }),
     col.accessor((row) => row._c.bestRec, {
-      id: 'action', header: 'Action', enableSorting: false,
+      id: 'action', header: t('colAction'), enableSorting: false,
       cell: (info) => { const r = info.row.original; return <ActionCell rec={r._c.bestRec} traderName={r._c.bestActionTrader} profit={r._c.bestProfit} />; },
     }),
-  ], [lang, traderFilters, feeDiscount]);
+  ], [lang, traderFilters, feeDiscount, t]);
 
   const table = useReactTable({
     data: filtered, columns,
@@ -585,12 +565,8 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     initialState: { pagination: { pageSize: 25, pageIndex: 0 } },
   });
 
-  const noItemsMsg = lang === 'en'
-    ? 'No profitable items found. Try lowering the profit threshold or enabling more traders.'
-    : 'Aucun item profitable trouvé. Diminue le seuil ou active plus de traders.';
-
   if (filtered.length === 0) {
-    return <p className="text-center py-8 text-gray-500">{noItemsMsg}</p>;
+    return <p className="text-center py-8 text-gray-500">{t('noItems')}</p>;
   }
 
   const desktopRows = table.getRowModel().rows;
@@ -602,18 +578,16 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
 
   return (
     <div className="mt-4">
-      {/* Vue cartes : visible en dessous de lg (1024px) — couvre portrait ET paysage mobile */}
       <div className="lg:hidden rounded-xl border border-tarkov-border overflow-hidden">
-        <MobileSortBar sorting={mobileSorting} onSort={handleMobileSort} lang={lang} total={mTotal} from={mFrom} to={mTo} />
+        <MobileSortBar sorting={mobileSorting} onSort={handleMobileSort} t={t} total={mTotal} from={mFrom} to={mTo} />
         <div className="flex flex-col gap-3 p-3">
           {mobileRows.map((row) => (
-            <ItemCard key={row.id} row={row.original} lang={lang} />
+            <ItemCard key={row.id} row={row.original} lang={lang} t={t} />
           ))}
         </div>
-        <PaginationBar table={mobileTable} lang={lang} mobile />
+        <PaginationBar table={mobileTable} t={t} mobile />
       </div>
 
-      {/* Vue tableau : visible à partir de lg (1024px) */}
       <div className="hidden lg:block overflow-x-auto rounded-lg border border-tarkov-border">
         <table className="w-full text-sm">
           <thead className="bg-tarkov-card sticky top-0 z-10">
@@ -648,7 +622,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       </div>
 
       <div className="hidden lg:block">
-        <PaginationBar table={table} lang={lang} />
+        <PaginationBar table={table} t={t} />
       </div>
     </div>
   );
