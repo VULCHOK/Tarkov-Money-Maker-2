@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,242 +10,372 @@ import {
 import { ALL_TRADERS } from './Filters';
 
 const col = createColumnHelper();
+
 const fmt = (n) => n != null ? `${n.toLocaleString('fr-FR')} ₽` : '—';
 
 const TRADER_META = {
-  Prapor:     { img: 'https://assets.tarkov.dev/prapor-portrait.png' },
-  Therapist:  { img: 'https://assets.tarkov.dev/therapist-portrait.png' },
-  Skier:      { img: 'https://assets.tarkov.dev/skier-portrait.png' },
-  Peacekeeper:{ img: 'https://assets.tarkov.dev/peacekeeper-portrait.png' },
-  Mechanic:   { img: 'https://assets.tarkov.dev/mechanic-portrait.png' },
-  Ragman:     { img: 'https://assets.tarkov.dev/ragman-portrait.png' },
-  Jaeger:     { img: 'https://assets.tarkov.dev/jaeger-portrait.png' },
-  Fence:      { img: 'https://assets.tarkov.dev/fence-portrait.png' },
-  Lightkeeper:{ img: 'https://assets.tarkov.dev/lightkeeper-portrait.png' },
+  Prapor:      { img: 'https://assets.tarkov.dev/prapor-portrait.png' },
+  Therapist:   { img: 'https://assets.tarkov.dev/therapist-portrait.png' },
+  Skier:       { img: 'https://assets.tarkov.dev/skier-portrait.png' },
+  Peacekeeper: { img: 'https://assets.tarkov.dev/peacekeeper-portrait.png' },
+  Mechanic:    { img: 'https://assets.tarkov.dev/mechanic-portrait.png' },
+  Ragman:      { img: 'https://assets.tarkov.dev/ragman-portrait.png' },
+  Jaeger:      { img: 'https://assets.tarkov.dev/jaeger-portrait.png' },
+  Fence:       { img: 'https://assets.tarkov.dev/fence-portrait.png' },
+  Lightkeeper: { img: 'https://assets.tarkov.dev/lightkeeper-portrait.png' },
 };
-
-function TraderHeader({ trader }) {
-  const meta = TRADER_META[trader];
-  return (
-    <span className="flex items-center gap-1.5">
-      <img src={meta.img} alt={trader}
-        className="w-5 h-5 rounded-full object-cover border border-tarkov-border"
-        onError={(e) => { e.target.style.display = 'none'; }} />
-      <span className="text-xs">{trader}</span>
-    </span>
-  );
-}
-
-function FleaHeader() {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className="text-base leading-none">🛒</span>
-      <span className="text-xs">Flea</span>
-    </span>
-  );
-}
 
 const REC_META = {
-  BUY_FLEA_SELL_TRADER: { text: 'Buy Flea → Trader', cls: 'bg-green-900 text-green-200', icon: '💰' },
-  BUY_TRADER_SELL_FLEA: { text: 'Buy Trader → Flea', cls: 'bg-blue-900 text-blue-200',  icon: '🔄' },
-  FLEA_ONLY:            { text: 'Flea only',          cls: 'bg-gray-700 text-gray-300',  icon: '🛒' },
+  BUY_FLEA_SELL_TRADER: { cls: 'bg-green-900 text-green-200', icon: '💰' },
+  BUY_TRADER_SELL_FLEA: { cls: 'bg-blue-900  text-blue-200',  icon: '🔄' },
 };
 
-const HIDDEN_RECS = new Set(['TRADER_ONLY', 'NO_PROFIT']);
-const PAGE_SIZES  = [10, 25, 50];
+const PAGE_SIZES = [10, 25, 50];
 
-function computeBestTrader(item, traderFilters) {
-  let prices;
-  try { prices = JSON.parse(item.trader_prices || '{}'); } catch { return null; }
+// ── Tooltip avec tous les prix d'un type (sell ou buy) ────────────────────────────────────────────────
+function TraderPricesTooltip({ pricesJson, highlight, label }) {
+  const [open, setOpen] = useState(false);
 
-  let bestTrader = null;
-  let bestPrice  = -Infinity;
-  for (const trader of ALL_TRADERS) {
-    const tf = traderFilters[trader];
-    if (!tf?.enabled) continue;
-    const price = prices[trader];
-    if (price == null) continue;
-    if (price > bestPrice) { bestPrice = price; bestTrader = trader; }
-  }
-  if (!bestTrader) return null;
+  let prices = {};
+  try { prices = JSON.parse(pricesJson || '{}'); } catch {}
 
-  const fleaPrice = item.flea_price ?? item.last_low_price;
-  if (fleaPrice == null) return { trader: bestTrader, price: bestPrice, diff: null, diffPct: null };
-  const diff    = bestPrice - fleaPrice;
-  const diffPct = fleaPrice > 0 ? (diff / fleaPrice) * 100 : null;
-  return { trader: bestTrader, price: bestPrice, diff, diffPct };
+  const entries = ALL_TRADERS
+    .map((t) => ({ trader: t, price: prices[t] }))
+    .filter((e) => e.price != null)
+    .sort((a, b) => b.price - a.price);
+
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
+
+  const best = entries[0];
+  const bestEntry = highlight
+    ? entries.find((e) => e.trader === highlight) || best
+    : best;
+
+  return (
+    <div
+      className="relative inline-block"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {/* Valeur affichée dans la cellule */}
+      <span className="flex items-center gap-1.5 cursor-default group">
+        {TRADER_META[bestEntry.trader]?.img && (
+          <img
+            src={TRADER_META[bestEntry.trader].img}
+            alt={bestEntry.trader}
+            className="w-5 h-5 rounded-full object-cover border border-tarkov-border flex-shrink-0"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        )}
+        <span className="flex flex-col leading-tight">
+          <span className="text-tarkov-gold text-xs font-semibold">{bestEntry.trader}</span>
+          <span className="text-white text-xs">{fmt(bestEntry.price)}</span>
+        </span>
+        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">▾</span>
+      </span>
+
+      {/* Tooltip */}
+      {open && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-52 bg-tarkov-card border border-tarkov-border rounded shadow-lg py-1">
+          <p className="text-xs text-gray-500 px-3 pt-1 pb-1.5 border-b border-tarkov-border">{label}</p>
+          {entries.map(({ trader, price }) => (
+            <div
+              key={trader}
+              className={`flex items-center justify-between px-3 py-1 text-xs ${
+                trader === bestEntry.trader ? 'bg-tarkov-border' : ''
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <img
+                  src={TRADER_META[trader]?.img}
+                  alt={trader}
+                  className="w-4 h-4 rounded-full object-cover border border-tarkov-border"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+                <span className={trader === bestEntry.trader ? 'text-tarkov-gold font-semibold' : 'text-gray-300'}>
+                  {trader}
+                </span>
+              </span>
+              <span className={trader === bestEntry.trader ? 'text-tarkov-gold font-semibold' : 'text-gray-400'}>
+                {fmt(price)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
-export function ItemTable({ items, lang, traderFilters, intelLevel, feeDiscount }) {
-  const filtered = useMemo(
-    () => items.filter((item) => !HIDDEN_RECS.has(item.recommendation)),
-    [items]
+// ── Cellule profit colorée ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+function ProfitCell({ value, pct, isBest }) {
+  if (value == null) return <span className="text-gray-600 text-xs">—</span>;
+  const color   = value > 0 ? 'text-green-400' : 'text-red-400';
+  const fire    = isBest && value >= 5000 ? ' 🔥' : '';
+  const bold    = isBest ? 'font-bold text-sm' : 'text-xs';
+  return (
+    <span className="flex flex-col leading-tight">
+      <span className={`${color} ${bold}`}>
+        {value > 0 ? '+' : ''}{value.toLocaleString('fr-FR')} ₽{fire}
+      </span>
+      {pct != null && (
+        <span className="text-gray-500 text-xs">{pct > 0 ? '+' : ''}{pct.toFixed(1)}%</span>
+      )}
+    </span>
+  );
+}
+
+// ── Calcul des profits côté client (pour respecter traderFilters actifs) ───────────────────────────
+function computeRow(item, traderFilters, feeDiscount) {
+  const flea = item.flea_price ?? item.last_low_price ?? null;
+
+  // Best trader SELL (trader rachète au joueur) parmi les traders actifs
+  let bestSellTrader = null, bestSellPrice = null;
+  try {
+    const sell = JSON.parse(item.trader_prices || '{}');
+    for (const t of ALL_TRADERS) {
+      if (!traderFilters[t]?.enabled) continue;
+      const p = sell[t];
+      if (p && (bestSellPrice === null || p > bestSellPrice)) {
+        bestSellPrice = p; bestSellTrader = t;
+      }
+    }
+  } catch {}
+
+  // Best trader BUY (trader vend au joueur) parmi les traders actifs
+  let bestBuyTrader = null, bestBuyPrice = null;
+  try {
+    const buy = JSON.parse(item.trader_buy_prices || '{}');
+    for (const t of ALL_TRADERS) {
+      if (!traderFilters[t]?.enabled) continue;
+      const p = buy[t];
+      if (p && (bestBuyPrice === null || p < bestBuyPrice)) {
+        bestBuyPrice = p; bestBuyTrader = t;
+      }
+    }
+  } catch {}
+
+  // Profit Flea→Trader (buy on flea, sell to trader)
+  let profitFTS = null, pctFTS = null;
+  if (flea != null && bestSellPrice != null) {
+    profitFTS = bestSellPrice - flea;
+    pctFTS    = flea > 0 ? (profitFTS / flea) * 100 : null;
+  }
+
+  // Profit Trader→Flea (buy from trader, sell on flea minus fee)
+  let profitBTF = null, pctBTF = null;
+  if (flea != null && bestBuyPrice != null) {
+    const rawFee = item.flea_fee ?? 0;
+    const fee    = Math.round(rawFee * (1 - (feeDiscount ?? 0)));
+    profitBTF    = flea - fee - bestBuyPrice;
+    pctBTF       = bestBuyPrice > 0 ? (profitBTF / bestBuyPrice) * 100 : null;
+  }
+
+  // Best profit
+  let bestProfit = null, bestPct = null, bestRec = null;
+  const ftsOk = profitFTS != null && profitFTS > 0;
+  const btfOk = profitBTF != null && profitBTF > 0;
+  if (ftsOk && (!btfOk || profitFTS >= profitBTF)) {
+    bestProfit = profitFTS; bestPct = pctFTS; bestRec = 'BUY_FLEA_SELL_TRADER';
+  } else if (btfOk) {
+    bestProfit = profitBTF; bestPct = pctBTF; bestRec = 'BUY_TRADER_SELL_FLEA';
+  }
+
+  return {
+    flea,
+    bestSellTrader, bestSellPrice,
+    bestBuyTrader,  bestBuyPrice,
+    profitFTS, pctFTS,
+    profitBTF, pctBTF,
+    bestProfit, bestPct, bestRec,
+  };
+}
+
+export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
+  // Enrichir chaque item avec les calculs client
+  const rows = useMemo(
+    () => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })),
+    [items, traderFilters, feeDiscount]
   );
 
-  const enriched = useMemo(() => {
-    if (!traderFilters) return filtered;
-    return filtered.map((item) => ({
-      ...item,
-      _best: computeBestTrader(item, traderFilters),
-    }));
-  }, [filtered, traderFilters]);
+  // Filtrer les items sans profit
+  const filtered = useMemo(
+    () => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0),
+    [rows]
+  );
 
   const columns = useMemo(() => [
-    // Item name + icon
+
+    // ── 1. Item ────────────────────────────────────────────────────────────────────────────────
     col.accessor((row) => lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en, {
       id: 'name',
       header: 'Item',
       cell: (info) => {
         const row = info.row.original;
+        const name = info.getValue() || row.normalized_name || row.id;
         return (
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 min-w-[160px]">
             {row.icon_link ? (
               <img src={row.icon_link} alt=""
-                className="w-7 h-7 rounded object-contain bg-tarkov-card border border-tarkov-border flex-shrink-0"
+                className="w-8 h-8 rounded object-contain bg-tarkov-card border border-tarkov-border flex-shrink-0"
                 loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
             ) : (
-              <span className="w-7 h-7 rounded bg-tarkov-card border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
+              <span className="w-8 h-8 rounded bg-tarkov-card border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
             )}
-            <span className="font-medium leading-tight">{info.getValue() || row.normalized_name || row.id}</span>
+            <span className="font-medium text-sm leading-tight">{name}</span>
           </span>
         );
       },
     }),
 
-    // Trader price columns
-    ...ALL_TRADERS.map((trader) =>
-      col.accessor(
-        (row) => { try { return JSON.parse(row.trader_prices || '{}')[trader] ?? null; } catch { return null; } },
-        {
-          id: `trader_${trader}`,
-          header: () => <TraderHeader trader={trader} />,
-          cell: (info) => {
-            const v   = info.getValue();
-            const row = info.row.original;
-            const tf  = traderFilters?.[trader];
-            if (v == null) return <span className="text-gray-600 text-xs">—</span>;
-            const isBest = tf?.enabled && row._best?.trader === trader && row.recommendation === 'BUY_FLEA_SELL_TRADER';
-            const colorCls = !tf?.enabled ? 'text-gray-600 line-through'
-              : isBest ? 'text-green-400 font-bold' : 'text-tarkov-gold';
-            return (
-              <span className={`text-xs ${colorCls}`}>
-                {fmt(v)}
-                {tf?.enabled && tf.level > 1 && <span className="text-gray-500 ml-1">LL{tf.level}</span>}
-              </span>
-            );
-          },
-        }
-      )
-    ),
-
-    // Flea price
-    col.accessor('flea_price', {
-      id: 'flea',
-      header: () => <FleaHeader />,
+    // ── 2. Best Buy from Trader ────────────────────────────────────────────────────────────────────────────────────────────────────────
+    col.accessor((row) => row._c.bestBuyPrice, {
+      id: 'buy_trader',
+      header: 'Achat Trader',
       cell: (info) => {
-        const row  = info.row.original;
-        const flea = info.getValue();
-        const avg  = row.avg24h_price;
-        const fee  = row.flea_fee;
-        if (flea == null) return <span className="text-gray-600 text-xs">—</span>;
+        const row = info.row.original;
         return (
-          <span className="flex flex-col">
-            <span className="text-blue-300 text-xs font-semibold">{fmt(flea)}</span>
-            {avg  != null && <span className="text-gray-500 text-xs">moy {fmt(avg)}</span>}
-            {fee  != null && (
-              <span className="text-orange-400 text-xs">
-                taxe {fmt(Math.round(fee * (1 - (feeDiscount ?? 0))))}
-              </span>
-            )}
-          </span>
+          <TraderPricesTooltip
+            pricesJson={row.trader_buy_prices}
+            highlight={row._c.bestBuyTrader}
+            label="Prix d'achat chez les traders"
+          />
         );
       },
+      sortingFn: (a, b) => (a.original._c.bestBuyPrice ?? Infinity) - (b.original._c.bestBuyPrice ?? Infinity),
     }),
 
-    // Profit (Diff ₽)
-    col.accessor((row) => row._best?.diff ?? null, {
-      id: 'diff_rub',
-      header: 'Profit ₽',
+    // ── 3. Flea Price ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    col.accessor((row) => row._c.flea, {
+      id: 'flea_price',
+      header: () => <span className="flex items-center gap-1">🛒 Flea</span>,
       cell: (info) => {
-        const v    = info.getValue();
-        const best = info.row.original._best;
-        const rec  = info.row.original.recommendation;
+        const v   = info.getValue();
+        const avg = info.row.original.avg24h_price;
         if (v == null) return <span className="text-gray-600 text-xs">—</span>;
-        const color = v > 0 ? 'text-green-400' : 'text-red-400';
-        const fire  = v >= 5000 ? ' 🔥' : '';
-        const pct   = best?.diffPct;
-        // For BUY_TRADER_SELL_FLEA, show fee info
-        const fee   = info.row.original.flea_fee;
         return (
-          <span className="flex flex-col">
-            <span className={`font-bold text-sm ${color}`}>
-              {v > 0 ? '+' : ''}{v.toLocaleString('fr-FR')} ₽{fire}
-            </span>
-            {pct != null && <span className="text-gray-500 text-xs">{pct > 0 ? '+' : ''}{pct.toFixed(1)}%</span>}
-            {rec === 'BUY_TRADER_SELL_FLEA' && fee != null && (
-              <span className="text-orange-400 text-xs">taxe -{fmt(Math.round(fee * (1 - (feeDiscount ?? 0))))}</span>
-            )}
+          <span className="flex flex-col leading-tight">
+            <span className="text-blue-300 text-xs font-semibold">{fmt(v)}</span>
+            {avg != null && <span className="text-gray-500 text-xs">moy {fmt(avg)}</span>}
           </span>
         );
       },
-      sortingFn: (a, b) => (a.original._best?.diff ?? -Infinity) - (b.original._best?.diff ?? -Infinity),
     }),
 
-    // Best trader
-    col.accessor((row) => row._best?.trader ?? null, {
-      id: 'best_trader',
-      header: 'Meilleur trader',
+    // ── 4. Best Trader Sell (trader rachète au joueur) ────────────────────────────────────────────────────────────────────────────────────────
+    col.accessor((row) => row._c.bestSellPrice, {
+      id: 'sell_trader',
+      header: 'Vente Trader',
       cell: (info) => {
-        const trader = info.getValue();
-        const best   = info.row.original._best;
-        if (!trader) return <span className="text-gray-600 text-xs">—</span>;
-        const meta = TRADER_META[trader];
+        const row = info.row.original;
         return (
-          <span className="flex items-center gap-1.5">
-            {meta && <img src={meta.img} alt={trader}
-              className="w-5 h-5 rounded-full object-cover border border-tarkov-border"
-              onError={(e) => { e.target.style.display = 'none'; }} />}
-            <span className="flex flex-col">
-              <span className="text-tarkov-gold text-xs font-semibold">{trader}</span>
-              {best?.price != null && <span className="text-gray-400 text-xs">{fmt(best.price)}</span>}
-            </span>
-          </span>
+          <TraderPricesTooltip
+            pricesJson={row.trader_prices}
+            highlight={row._c.bestSellTrader}
+            label="Prix de rachat par les traders"
+          />
         );
       },
+      sortingFn: (a, b) => (a.original._c.bestSellPrice ?? -Infinity) - (b.original._c.bestSellPrice ?? -Infinity),
     }),
 
-    // Action badge
-    col.accessor('recommendation', {
+    // ── 5. Profit Trader→Flea ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    col.accessor((row) => row._c.profitBTF, {
+      id: 'profit_btf',
+      header: 'Profit Trader→Flea',
+      cell: (info) => {
+        const row = info.row.original;
+        const isBest = row._c.bestRec === 'BUY_TRADER_SELL_FLEA';
+        return <ProfitCell value={row._c.profitBTF} pct={row._c.pctBTF} isBest={isBest} />;
+      },
+      sortingFn: (a, b) => (a.original._c.profitBTF ?? -Infinity) - (b.original._c.profitBTF ?? -Infinity),
+    }),
+
+    // ── 6. Profit Flea→Trader ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    col.accessor((row) => row._c.profitFTS, {
+      id: 'profit_fts',
+      header: 'Profit Flea→Trader',
+      cell: (info) => {
+        const row = info.row.original;
+        const isBest = row._c.bestRec === 'BUY_FLEA_SELL_TRADER';
+        return <ProfitCell value={row._c.profitFTS} pct={row._c.pctFTS} isBest={isBest} />;
+      },
+      sortingFn: (a, b) => (a.original._c.profitFTS ?? -Infinity) - (b.original._c.profitFTS ?? -Infinity),
+    }),
+
+    // ── 7. Best Profit ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    col.accessor((row) => row._c.bestProfit, {
+      id: 'best_profit',
+      header: '⭐ Best Profit',
+      cell: (info) => {
+        const row = info.row.original;
+        return <ProfitCell value={row._c.bestProfit} pct={row._c.bestPct} isBest={true} />;
+      },
+      sortingFn: (a, b) => (a.original._c.bestProfit ?? -Infinity) - (b.original._c.bestProfit ?? -Infinity),
+    }),
+
+    // ── 8. Action ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    col.accessor((row) => row._c.bestRec, {
       id: 'action',
       header: 'Action',
+      enableSorting: false,
       cell: (info) => {
-        const v      = info.getValue();
-        const trader = info.row.original._best?.trader || info.row.original.best_trader;
-        const meta   = REC_META[v] || { text: v || '—', cls: 'bg-gray-800 text-gray-500', icon: '' };
-        const text   = v === 'BUY_FLEA_SELL_TRADER' && trader ? `Buy Flea → ${trader}` : meta.text;
+        const row = info.row.original;
+        const rec = row._c.bestRec;
+        if (!rec) return <span className="text-gray-600 text-xs">—</span>;
+        const meta = REC_META[rec];
+        const isFTS = rec === 'BUY_FLEA_SELL_TRADER';
+        const isBTF = rec === 'BUY_TRADER_SELL_FLEA';
+        const buyName  = isBTF ? row._c.bestBuyTrader  : null;
+        const sellName = isFTS ? row._c.bestSellTrader : null;
         return (
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${meta.cls}`}>
-            <span>{meta.icon}</span><span>{text}</span>
+          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${meta.cls}`}>
+            <span>{meta.icon}</span>
+            {isFTS && (
+              <>
+                <span>Flea</span>
+                <span className="opacity-60">→</span>
+                {sellName && TRADER_META[sellName]?.img && (
+                  <img src={TRADER_META[sellName].img} alt={sellName}
+                    className="w-4 h-4 rounded-full object-cover border border-green-700"
+                    onError={(e) => { e.target.style.display = 'none'; }} />
+                )}
+                <span>{sellName || 'Trader'}</span>
+              </>
+            )}
+            {isBTF && (
+              <>
+                {buyName && TRADER_META[buyName]?.img && (
+                  <img src={TRADER_META[buyName].img} alt={buyName}
+                    className="w-4 h-4 rounded-full object-cover border border-blue-700"
+                    onError={(e) => { e.target.style.display = 'none'; }} />
+                )}
+                <span>{buyName || 'Trader'}</span>
+                <span className="opacity-60">→</span>
+                <span>Flea</span>
+              </>
+            )}
           </span>
         );
       },
     }),
+
   ], [lang, traderFilters, feeDiscount]);
 
   const table = useReactTable({
-    data: enriched,
+    data: filtered,
     columns,
     getCoreRowModel:       getCoreRowModel(),
     getSortedRowModel:     getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
-      sorting:    [{ id: 'diff_rub', desc: true }],
+      sorting:    [{ id: 'best_profit', desc: true }],
       pagination: { pageSize: 25, pageIndex: 0 },
     },
   });
 
   const { pageIndex, pageSize } = table.getState().pagination;
-  const total = enriched.length;
+  const total = filtered.length;
   const from  = total === 0 ? 0 : pageIndex * pageSize + 1;
   const to    = Math.min((pageIndex + 1) * pageSize, total);
 
@@ -257,11 +387,16 @@ export function ItemTable({ items, lang, traderFilters, intelLevel, feeDiscount 
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((header) => (
-                  <th key={header.id}
+                  <th
+                    key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    className="px-3 py-2 text-left font-semibold text-tarkov-gold cursor-pointer select-none hover:bg-tarkov-border transition-colors whitespace-nowrap">
+                    className={`px-3 py-2 text-left font-semibold text-tarkov-gold select-none whitespace-nowrap ${
+                      header.column.getCanSort() ? 'cursor-pointer hover:bg-tarkov-border transition-colors' : ''
+                    }`}
+                  >
                     {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' ? ' ↑' : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
+                    {header.column.getIsSorted() === 'asc'  ? ' ↑' :
+                     header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
                   </th>
                 ))}
               </tr>
@@ -269,10 +404,12 @@ export function ItemTable({ items, lang, traderFilters, intelLevel, feeDiscount 
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row, i) => (
-              <tr key={row.id}
+              <tr
+                key={row.id}
                 className={`border-t border-tarkov-border ${
                   i % 2 === 0 ? 'bg-tarkov-bg' : 'bg-tarkov-card'
-                } hover:bg-tarkov-border transition-colors`}>
+                } hover:bg-tarkov-border transition-colors`}
+              >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-3 py-2">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -282,8 +419,11 @@ export function ItemTable({ items, lang, traderFilters, intelLevel, feeDiscount 
             ))}
           </tbody>
         </table>
+
         {total === 0 && (
-          <p className="text-center py-8 text-gray-500">Aucun item trouvé. Essaie de diminuer le seuil de profit.</p>
+          <p className="text-center py-8 text-gray-500">
+            Aucun item profitable trouvé. Essaie de diminuer le seuil de profit ou d'activer plus de traders.
+          </p>
         )}
       </div>
 
@@ -295,7 +435,9 @@ export function ItemTable({ items, lang, traderFilters, intelLevel, feeDiscount 
             {PAGE_SIZES.map((s) => (
               <button key={s} onClick={() => table.setPageSize(s)}
                 className={`px-2 py-0.5 rounded border text-xs transition-colors ${
-                  pageSize === s ? 'border-tarkov-gold text-tarkov-gold' : 'border-tarkov-border text-gray-500 hover:border-gray-400'
+                  pageSize === s
+                    ? 'border-tarkov-gold text-tarkov-gold'
+                    : 'border-tarkov-border text-gray-500 hover:border-gray-400'
                 }`}>{s}</button>
             ))}
           </div>
