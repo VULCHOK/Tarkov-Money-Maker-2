@@ -1,6 +1,6 @@
 -- Tarkov Money Maker 2 — PostgreSQL Schema
--- v4: support multi-mode (regular / pve / pvp-season)
--- PK devient (id, mode) pour stocker les 3 modes en parallèle.
+-- v5: add trader BUY prices (trader vend AU joueur) + flea_fee computed column
+-- PK = (id, mode) pour stocker les 3 modes en parallèle.
 
 CREATE TABLE IF NOT EXISTS items (
     -- Identity
@@ -31,16 +31,22 @@ CREATE TABLE IF NOT EXISTS items (
     change_48h_pct    FLOAT,
     min_level_flea    INTEGER,
 
-    -- Base / trader data
-    base_price        INTEGER,
-    best_trader       VARCHAR(50),
-    best_trader_price INTEGER,
-    trader_prices     TEXT,
+    -- Trader SELL data (trader rachète AU joueur)
+    base_price            INTEGER,
+    best_trader           VARCHAR(50),
+    best_trader_price     INTEGER,
+    trader_prices         TEXT,         -- JSON: {"Prapor": 1234, ...}
+
+    -- Trader BUY data (trader VEND au joueur)
+    best_trader_buy       VARCHAR(50),  -- trader le moins cher
+    best_trader_buy_price INTEGER,      -- prix RUB le moins cher
+    trader_buy_prices     TEXT,         -- JSON: {"Mechanic": 5000, ...}
 
     -- Computed
     flea_price        INTEGER,
     difference        INTEGER,
     difference_pct    FLOAT,
+    flea_fee          INTEGER,          -- taxe flea si BUY_TRADER_SELL_FLEA
     recommendation    VARCHAR(20),
 
     -- Sync metadata
