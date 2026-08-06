@@ -6,6 +6,7 @@ Endpoints : /{mode}/items  /{mode}/items_en  /{mode}/items_fr
 """
 
 import asyncio
+import json as _json
 import logging
 
 import httpx
@@ -35,6 +36,7 @@ def _get_data(resp_json: dict) -> dict:
 
 
 def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]:
+    """Prix auxquels les traders ACHTENT l'item au joueur (sellToTrader)."""
     best_name  = None
     best_price = 0
     for entry in sell_list:
@@ -50,6 +52,7 @@ def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]
 
 
 def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
+    """Tous les prix auxquels les traders ACHTENT l'item (sell = joueur vend au trader)."""
     result: dict[str, int] = {}
     for entry in sell_list:
         trader_id   = entry.get("trader", "")
@@ -61,8 +64,52 @@ def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
     return result
 
 
+def _best_buy_from_trader(buy_list: list[dict]) -> tuple[str | None, int | None]:
+    """
+    Prix auxquels les traders VENDENT l'item au joueur (buyFromTrader).
+    On cherche le MOINS CHER (meilleure affaire pour le joueur).
+    Ignore Fence et les offres en barter (currency != RUB).
+    """
+    best_name  = None
+    best_price = None
+    for entry in buy_list:
+        trader_id   = entry.get("trader", "")
+        trader_name = TRADER_ID_TO_NAME.get(trader_id)
+        if not trader_name or trader_name == "Fence":
+            continue
+        # Ignorer les barters (currency != "RUB" ou priceRUB absent)
+        currency  = entry.get("currency", "")
+        price_rub = entry.get("priceRUB") or 0
+        if currency not in ("RUB", "") or price_rub <= 0:
+            continue
+        if best_price is None or price_rub < best_price:
+            best_price = price_rub
+            best_name  = trader_name
+    return (best_name, best_price)
+
+
+def _all_buy_prices(buy_list: list[dict]) -> dict[str, int]:
+    """
+    Tous les prix RUB auxquels les traders VENDENT l'item au joueur.
+    Garde le moins cher par trader si plusieurs niveaux.
+    """
+    result: dict[str, int] = {}
+    for entry in buy_list:
+        trader_id   = entry.get("trader", "")
+        trader_name = TRADER_ID_TO_NAME.get(trader_id)
+        currency    = entry.get("currency", "")
+        price_rub   = entry.get("priceRUB") or 0
+        if not trader_name or trader_name == "Fence":
+            continue
+        if currency not in ("RUB", "") or price_rub <= 0:
+            continue
+        # Garder le moins cher par trader (meilleur deal joueur)
+        if price_rub < result.get(trader_name, float("inf")):
+            result[trader_name] = price_rub
+    return result
+
+
 def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories: dict, mode: str) -> dict:
-    import json as _json
     item_id = item["id"]
 
     name_en       = trans_en.get(f"{item_id} Name",      "")
@@ -77,9 +124,25 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
             category_slug = cat.get("normalizedName")
             break
 
+    # --- Trader SELL prices (trader rachète l'item AU joueur) ---
     sell_list = item.get("sellToTrader", [])
     best_trader, best_trader_price = _best_sell_to_trader(sell_list)
     trader_prices_json = _json.dumps(_all_sell_prices(sell_list))
+
+    # --- Trader BUY prices (trader VEND l'item AU joueur) ---
+    # Le champ peut s'appeler buyFromTrader, buyFor, ou traderPrices selon la version de l'API
+    buy_list = (
+        item.get("buyFromTrader")
+        or item.get("buyFor")
+        or []
+    )
+    # Filtrer pour garder uniquement les offres traders (pas flea)
+    buy_list_traders = [
+        e for e in buy_list
+        if e.get("trader") and e.get("trader") != "flea-market"
+    ]
+    best_buy_trader, best_buy_trader_price = _best_buy_from_trader(buy_list_traders)
+    trader_buy_prices_json = _json.dumps(_all_buy_prices(buy_list_traders))
 
     return {
         "id":               item_id,
@@ -105,10 +168,15 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
         "width":            item.get("width"),
         "height":           item.get("height"),
         "weight":           item.get("weight"),
-        "best_trader":      best_trader,
-        "best_trader_price": best_trader_price,
-        "trader_prices":    trader_prices_json,
-        "api_updated_at":   item.get("updated"),
+        # Trader SELL (trader rachète AU joueur)
+        "best_trader":           best_trader,
+        "best_trader_price":     best_trader_price,
+        "trader_prices":         trader_prices_json,
+        # Trader BUY (trader VEND AU joueur)
+        "best_trader_buy":       best_buy_trader,
+        "best_trader_buy_price": best_buy_trader_price,
+        "trader_buy_prices":     trader_buy_prices_json,
+        "api_updated_at":        item.get("updated"),
     }
 
 

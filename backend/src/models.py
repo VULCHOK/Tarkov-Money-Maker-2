@@ -21,9 +21,9 @@ class Item(Base):
         PrimaryKeyConstraint("id", "mode"),
     )
 
-    # ── Identity ─────────────────────────────────────────────────────────────────────────────────
+    # ── Identity ─────────────────────────────────────────────────────────────
     id              = Column(String(24),  nullable=False)
-    mode            = Column(String(20),  nullable=False, default="regular")  # PK part 2
+    mode            = Column(String(20),  nullable=False, default="regular")
     normalized_name = Column(String(255), index=True)
     name_en         = Column(String(255), nullable=False, default="")
     name_fr         = Column(String(255), nullable=True)
@@ -34,12 +34,12 @@ class Item(Base):
     icon_link       = Column(Text,        nullable=True)
     wiki_link       = Column(Text,        nullable=True)
 
-    # ── Physical ─────────────────────────────────────────────────────────────────────────────
+    # ── Physical ─────────────────────────────────────────────────────────────────
     width  = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
     weight = Column(Float,   nullable=True)
 
-    # ── Flea market prices ────────────────────────────────────────────────────────────────
+    # ── Flea market prices ───────────────────────────────────────────────────────
     avg24h_price     = Column(Integer, nullable=True)
     low24h_price     = Column(Integer, nullable=True)
     high24h_price    = Column(Integer, nullable=True)
@@ -49,19 +49,25 @@ class Item(Base):
     change_48h_pct   = Column(Float,   nullable=True)
     min_level_flea   = Column(Integer, nullable=True)
 
-    # ── Trader data ────────────────────────────────────────────────────────────────────────
+    # ── Trader SELL data (trader rachète AU joueur) ─────────────────────────────────
     base_price        = Column(Integer,     nullable=True)
     best_trader       = Column(String(50),  nullable=True)
     best_trader_price = Column(Integer,     nullable=True)
     trader_prices     = Column(Text,        nullable=True)  # JSON: {"Prapor": 1234, ...}
 
-    # ── Computed ───────────────────────────────────────────────────────────────────────────────
+    # ── Trader BUY data (trader VEND AU joueur) ────────────────────────────────────
+    best_trader_buy       = Column(String(50),  nullable=True)  # Trader le moins cher
+    best_trader_buy_price = Column(Integer,     nullable=True)  # Prix RUB le moins cher
+    trader_buy_prices     = Column(Text,        nullable=True)  # JSON: {"Mechanic": 5000, ...}
+
+    # ── Computed ──────────────────────────────────────────────────────────────────────
     flea_price      = Column(Integer,     nullable=True)
-    difference      = Column(Integer,     nullable=True)
+    difference      = Column(Integer,     nullable=True)  # profit net en RUB (positif = profit)
     difference_pct  = Column(Float,       nullable=True)
+    flea_fee        = Column(Integer,     nullable=True)  # taxe flea si BUY_TRADER_SELL_FLEA
     recommendation  = Column(String(20),  nullable=True)
 
-    # ── Sync metadata ────────────────────────────────────────────────────────────────────────
+    # ── Sync metadata ─────────────────────────────────────────────────────────────────
     api_updated_at = Column(String(32),              nullable=True)
     updated_at     = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -70,5 +76,13 @@ class Item(Base):
             return {}
         try:
             return json.loads(self.trader_prices)
+        except Exception:
+            return {}
+
+    def trader_buy_prices_dict(self) -> dict:
+        if not self.trader_buy_prices:
+            return {}
+        try:
+            return json.loads(self.trader_buy_prices)
         except Exception:
             return {}
