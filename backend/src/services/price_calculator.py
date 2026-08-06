@@ -1,36 +1,32 @@
 from typing import Optional
-from .tarkov_api import TRADER_SOURCES, SOURCE_DISPLAY
+from .tarkov_api import TRADER_SOURCES
 
 
-def calculate_differences(raw_items: list[dict]) -> list[dict]:
+def calculate_differences(normalized_items: list[dict]) -> list[dict]:
     """
-    Transform raw tarkov.dev items into enriched price-comparison objects.
+    Enrich normalized items with price comparison data.
 
-    tarkov.dev schema:
-      buyFor  = what you pay to acquire the item (trader sells TO you / flea buy price)
-      sellFor = what you receive when selling the item (trader buys FROM you)
+    Input items come from tarkov_api._normalize_item() and have:
+      buy_for: [{ source: str, price: int, currency: str }]
+      avg24h_price, low24h_price, base_price, etc.
 
     Logic:
-      - best_trader_buy_price  = min(buyFor where source in TRADER_SOURCES)
-      - flea_price             = avg24hPrice (average flea listing price)
-      - difference             = flea_price - best_trader_buy_price
-      - positive diff          -> buy from trader, sell on flea (BUY_FROM_TRADER)
-      - negative diff          -> buy from flea cheaper (BUY_FROM_FLEA)
+      - best_trader_price = cheapest trader buy price (RUB)
+      - flea_price        = avg24h_price (average flea listing)
+      - difference        = flea_price - best_trader_price
+      - BUY_FROM_TRADER   if difference > 0  (trader cheaper than flea)
+      - BUY_FROM_FLEA     if difference <= 0
     """
     results = []
-    for item in raw_items:
-        # Collect trader BUY prices (what traders charge YOU, in RUB)
-        # Only consider RUB prices for simplicity; skip barter-only entries (price=0)
+    for item in normalized_items:
         trader_prices: dict[str, int] = {}
-        for entry in item.get("buyFor", []):
+        for entry in item.get("buy_for", []):
             source = entry.get("source", "")
             price = entry.get("price", 0)
-            currency = entry.get("currency", "RUB")
-            if source in TRADER_SOURCES and price and price > 0 and currency == "RUB":
-                display = SOURCE_DISPLAY.get(source, source)
-                trader_prices[display] = price
+            if source in TRADER_SOURCES and price and price > 0:
+                trader_prices[source] = price
 
-        flea_price: Optional[int] = item.get("avg24hPrice") or item.get("low24hPrice")
+        flea_price: Optional[int] = item.get("avg24h_price") or item.get("low24h_price")
 
         best_trader: Optional[str] = None
         best_trader_price: Optional[int] = None
@@ -52,21 +48,14 @@ def calculate_differences(raw_items: list[dict]) -> list[dict]:
             recommendation = "TRADER_ONLY"
 
         results.append({
-            "id": item["id"],
-            "name": item["name"],
-            "category": (item.get("category") or {}).get("name"),
-            "trader_prices": trader_prices,
-            "flea_price": flea_price,
+            **item,   # carry all original fields
+            "trader_prices":     trader_prices,
+            "flea_price":        flea_price,
+            "best_trader":       best_trader,
             "best_trader_price": best_trader_price,
-            "best_trader": best_trader,
-            "difference": difference,
-            "difference_pct": difference_pct,
-            "recommendation": recommendation,
-            # Extra fields for potential future use
-            "icon_link": item.get("iconLink"),
-            "wiki_link": item.get("wikiLink"),
-            "change_48h_pct": item.get("changeLast48hPercent"),
-            "base_price": item.get("basePrice"),
+            "difference":        difference,
+            "difference_pct":    difference_pct,
+            "recommendation":    recommendation,
         })
 
     return results
