@@ -132,9 +132,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   );
 }
 
-// ── Card Min Offres — affiche une alerte si l'API ne fournit pas la donnée ──
 function MinOffersCard({ value, onChange, lang, offerCountAvailable }) {
-  // Cas indisponible : même dimensions, contenu remplacé par un message d'alerte
   if (!offerCountAvailable) {
     return (
       <div className="flex items-stretch rounded-lg border border-yellow-700/60 bg-tarkov-card overflow-hidden w-full" style={{ height: 96 }}>
@@ -241,6 +239,7 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
 
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
+      {/* Ligne 1 : 4 filtres principaux — s'étire sur toute la largeur */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <SearchCard value={filters.search} onChange={(v) => onChange({ ...filters, search: v })} lang={lang} />
         <ProfitCard value={filters.minProfitRub} onChange={(v) => onChange({ ...filters, minProfitRub: v })} lang={lang} />
@@ -255,7 +254,8 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
 
       <div className="h-px bg-tarkov-border my-2" />
 
-      <div className="flex flex-wrap gap-2 justify-center">
+      {/* Ligne 2 : traders + intel — centrés, taille fixe, remplissent la largeur si possible */}
+      <div className="flex flex-wrap justify-center gap-2">
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader} tf={traderFilters[trader] || { enabled: true, level: 1 }} onToggle={handleTraderToggle} onLevel={handleTraderLevel} />
         ))}

@@ -269,7 +269,7 @@ function wikiUrl(item) {
   return `https://escapefromtarkov.fandom.com/wiki/${encodeURIComponent(slug)}`;
 }
 
-// ── Barre de tri sticky (mobile) ────────────────────────────────────
+// ── Barre de tri sticky (mobile) ─────────────────────────────────
 const MOBILE_SORTS = [
   { id: 'best_profit', label: '★ Profit',    desc: true  },
   { id: 'profit_btf', label: 'Trader→Flea', desc: true  },
@@ -307,18 +307,18 @@ function MobileSortBar({ sorting, onSort, lang, total, from, to }) {
   );
 }
 
-// ── Carte mobile v2 ───────────────────────────────────────────────────
+// ── Carte mobile v3 ──────────────────────────────────────────────────
 function ItemCard({ row, lang }) {
   const { _c: c } = row;
-  const name = lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en;
+  const name  = lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en;
   const isHot = c.bestProfit != null && c.bestProfit >= HOT_DEAL_THRESHOLD;
   const isBTF = c.bestRec === 'BUY_TRADER_SELL_FLEA';
   const url   = wikiUrl(row);
 
-  const cardBorder  = isBTF ? 'border-blue-700/40'  : 'border-green-700/40';
-  const cardBg      = isBTF ? 'bg-blue-900/10'       : 'bg-green-900/10';
-  const accentColor = isBTF ? 'text-blue-300'        : 'text-green-300';
-  const profitColor = c.bestProfit > 0 ? (isBTF ? 'text-blue-300' : 'text-green-400') : 'text-red-400';
+  const cardBorder   = isBTF ? 'border-blue-700/40'  : 'border-green-700/40';
+  const cardBg       = isBTF ? 'bg-blue-900/10'       : 'bg-green-900/10';
+  const accentColor  = isBTF ? 'text-blue-300'        : 'text-green-300';
+  const profitColor  = c.bestProfit > 0 ? (isBTF ? 'text-blue-300' : 'text-green-400') : 'text-red-400';
 
   const recLabel = isBTF
     ? (lang === 'en' ? 'Buy Trader → Sell Flea'  : 'Acheter Trader → Vendre Flea')
@@ -327,80 +327,72 @@ function ItemCard({ row, lang }) {
   const lBuy  = lang === 'en' ? 'Buy'  : 'Achat';
   const lSell = lang === 'en' ? 'Sell' : 'Vente';
 
+  // ── Top-right : meilleur profit absolu ──
+  // Flea→Trader : profit FTS, label = "Flea" (pas de trader associé côté achat)
+  // Trader→Flea : profit BTF, label = nom du trader d'achat
+  const topLabel  = isBTF ? (c.bestBuyTrader ?? 'Trader') : 'Flea';
+  const topProfit = c.bestProfit;
+  const topPct    = c.bestPct;
+
   return (
     <div className={`rounded-xl border ${cardBorder} ${cardBg} overflow-hidden`}>
 
-      {/* ── LIGNE 1 : icône | nom + profit | prix de vente trader ── */}
+      {/* ── LIGNE 1 : icône | nom | meilleur profit ── */}
       <div className="flex items-start gap-2.5 px-3 pt-3 pb-2">
-        {/* Icône */}
         {row.icon_link
           ? <img src={row.icon_link} alt="" className="w-11 h-11 rounded-lg object-contain bg-tarkov-bg border border-tarkov-border flex-shrink-0 mt-0.5" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
           : <span className="w-11 h-11 rounded-lg bg-tarkov-bg border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0 mt-0.5">?</span>
         }
 
-        {/* Nom + profit */}
         <div className="flex-1 min-w-0">
           {url
             ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-sm leading-snug text-tarkov-text hover:text-tarkov-gold hover:underline line-clamp-2 block">{name || row.id}</a>
             : <p className="font-semibold text-sm leading-snug text-tarkov-text line-clamp-2">{name || row.id}</p>
           }
-          {c.bestProfit != null && (
-            <span className={`text-base font-extrabold leading-none ${profitColor}`}>
-              {c.bestProfit > 0 ? '+' : ''}{fmtK(c.bestProfit)}{isHot ? ' 🔥' : ''}
+        </div>
+
+        {/* Meilleur profit : L1 source, L2 montant, L3 % */}
+        <div className="flex-shrink-0 flex flex-col items-end min-w-[64px]">
+          <span className="text-[9px] text-gray-500 uppercase tracking-wide leading-none mb-0.5">{topLabel}</span>
+          {topProfit != null && (
+            <span className={`text-sm font-extrabold leading-none ${profitColor}`}>
+              {topProfit > 0 ? '+' : ''}{fmtK(topProfit)}{isHot ? '🔥' : ''}
+            </span>
+          )}
+          {topPct != null && (
+            <span className={`text-[10px] font-semibold mt-0.5 ${profitColor} opacity-80`}>
+              {topPct > 0 ? '+' : ''}{topPct.toFixed(1)}%
             </span>
           )}
         </div>
-
-        {/* Prix de vente trader (remplace l'ancien badge) */}
-        {c.bestSellPrice != null && (
-          <div className="flex-shrink-0 flex flex-col items-end">
-            <span className="text-[9px] text-gray-500 uppercase tracking-wide leading-none mb-0.5">{lSell}</span>
-            <span className="text-white text-xs font-bold leading-none">{fmtK(c.bestSellPrice)}</span>
-            {c.bestSellTrader && (
-              <div className="flex items-center gap-1 mt-1">
-                <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader}
-                  className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border"
-                  onError={(e) => { e.target.style.display = 'none'; }} />
-                <span className="text-tarkov-gold text-[9px]">{c.bestSellTrader}</span>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* ── LIGNE 2 : Buy | Sell Trader | Flea ── */}
+      {/* ── LIGNE 2 : Buy | Sell | Flea ── */}
       <div className="grid grid-cols-3 gap-1.5 px-3 pb-2">
-        {/* Buy trader */}
         <div className="bg-tarkov-bg/60 rounded-lg px-2 py-2 flex flex-col justify-between min-h-[56px]">
           <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{lBuy}</p>
           <p className="text-white text-xs font-bold leading-none">{fmtK(c.bestBuyPrice)}</p>
           {c.bestBuyTrader
             ? <div className="flex items-center gap-1 mt-1">
-                <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader}
-                  className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0"
-                  onError={(e) => { e.target.style.display = 'none'; }} />
+                <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader} className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0" onError={(e) => { e.target.style.display = 'none'; }} />
                 <span className="text-tarkov-gold text-[9px] truncate">{c.bestBuyTrader}</span>
               </div>
-            : <div className="mt-1 h-3.5" /> /* placeholder pour l'alignement */
+            : <div className="mt-1 h-3.5" />
           }
         </div>
 
-        {/* Sell trader */}
         <div className="bg-tarkov-bg/60 rounded-lg px-2 py-2 flex flex-col justify-between min-h-[56px]">
           <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{lSell}</p>
           <p className="text-white text-xs font-bold leading-none">{fmtK(c.bestSellPrice)}</p>
           {c.bestSellTrader
             ? <div className="flex items-center gap-1 mt-1">
-                <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader}
-                  className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0"
-                  onError={(e) => { e.target.style.display = 'none'; }} />
+                <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader} className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0" onError={(e) => { e.target.style.display = 'none'; }} />
                 <span className="text-tarkov-gold text-[9px] truncate">{c.bestSellTrader}</span>
               </div>
             : <div className="mt-1 h-3.5" />
           }
         </div>
 
-        {/* Flea */}
         <div className="bg-tarkov-bg/60 rounded-lg px-2 py-2 flex flex-col justify-between min-h-[56px]">
           <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">Flea</p>
           <p className="text-blue-300 text-xs font-bold leading-none">{fmtK(c.flea)}</p>
@@ -413,60 +405,42 @@ function ItemCard({ row, lang }) {
 
       {/* ── LIGNE 3 : profits détaillés avec % ── */}
       <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
-        {/* Flea → Trader */}
         <div className={`rounded-lg px-2.5 py-2 border ${
-          c.bestRec === 'BUY_FLEA_SELL_TRADER'
-            ? 'border-green-700/60 bg-green-900/20'
-            : 'border-tarkov-border bg-tarkov-bg/40'
+          c.bestRec === 'BUY_FLEA_SELL_TRADER' ? 'border-green-700/60 bg-green-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea → Trader</span>
             {c.bestSellTrader && (
-              <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader}
-                className="w-4 h-4 rounded-full object-cover border border-tarkov-border"
-                onError={(e) => { e.target.style.display = 'none'; }} />
+              <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
-          <p className={`text-sm font-bold leading-none ${
-            c.profitFTS > 0 ? 'text-green-400' : 'text-red-400'
-          }`}>
+          <p className={`text-sm font-bold leading-none ${c.profitFTS > 0 ? 'text-green-400' : 'text-red-400'}`}>
             {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '—'}
           </p>
           {c.pctFTS != null && (
-            <p className="text-gray-500 text-[10px] mt-0.5">
-              {c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%
-            </p>
+            <p className="text-gray-500 text-[10px] mt-0.5">{c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%</p>
           )}
         </div>
 
-        {/* Trader → Flea */}
         <div className={`rounded-lg px-2.5 py-2 border ${
-          c.bestRec === 'BUY_TRADER_SELL_FLEA'
-            ? 'border-blue-700/60 bg-blue-900/20'
-            : 'border-tarkov-border bg-tarkov-bg/40'
+          c.bestRec === 'BUY_TRADER_SELL_FLEA' ? 'border-blue-700/60 bg-blue-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader → Flea</span>
             {c.bestBuyTrader && (
-              <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader}
-                className="w-4 h-4 rounded-full object-cover border border-tarkov-border"
-                onError={(e) => { e.target.style.display = 'none'; }} />
+              <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
-          <p className={`text-sm font-bold leading-none ${
-            c.profitBTF > 0 ? 'text-blue-300' : 'text-red-400'
-          }`}>
+          <p className={`text-sm font-bold leading-none ${c.profitBTF > 0 ? 'text-blue-300' : 'text-red-400'}`}>
             {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '—'}
           </p>
           {c.pctBTF != null && (
-            <p className="text-gray-500 text-[10px] mt-0.5">
-              {c.pctBTF > 0 ? '+' : ''}{c.pctBTF.toFixed(1)}%
-            </p>
+            <p className="text-gray-500 text-[10px] mt-0.5">{c.pctBTF > 0 ? '+' : ''}{c.pctBTF.toFixed(1)}%</p>
           )}
         </div>
       </div>
 
-      {/* ── FOOTER : label recommandation ── */}
+      {/* ── FOOTER ── */}
       <div className={`flex items-center justify-center gap-1.5 px-3 py-1.5 border-t border-white/5 ${
         isBTF ? 'bg-blue-900/20' : 'bg-green-900/20'
       }`}>
@@ -476,7 +450,7 @@ function ItemCard({ row, lang }) {
   );
 }
 
-// ── Pagination ────────────────────────────────────────────────────────
+// ── Pagination ──────────────────────────────────────────────────────
 function PaginationBar({ table, lang, mobile }) {
   const { pageIndex, pageSize } = table.getState().pagination;
   const total = table.getFilteredRowModel().rows.length;
@@ -526,7 +500,7 @@ function PaginationBar({ table, lang, mobile }) {
   );
 }
 
-// ── ItemTable principal ────────────────────────────────────────────────────
+// ── ItemTable principal ──────────────────────────────────────────────────
 export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const rows     = useMemo(() => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })), [items, traderFilters, feeDiscount]);
   const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
@@ -548,10 +522,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
               : <span className="w-8 h-8 rounded bg-tarkov-card border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
             }
             {url
-              ? <a href={url} target="_blank" rel="noopener noreferrer"
-                  className="font-medium text-sm leading-tight hover:text-tarkov-gold hover:underline transition-colors">
-                  {name}
-                </a>
+              ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm leading-tight hover:text-tarkov-gold hover:underline transition-colors">{name}</a>
               : <span className="font-medium text-sm leading-tight">{name}</span>
             }
           </span>
@@ -628,7 +599,6 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
 
   return (
     <div className="mt-4">
-      {/* VUE MOBILE */}
       <div className="md:hidden rounded-xl border border-tarkov-border overflow-hidden">
         <MobileSortBar sorting={mobileSorting} onSort={handleMobileSort} lang={lang} total={mTotal} from={mFrom} to={mTo} />
         <div className="flex flex-col gap-3 p-3">
@@ -639,7 +609,6 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
         <PaginationBar table={mobileTable} lang={lang} mobile />
       </div>
 
-      {/* VUE DESKTOP */}
       <div className="hidden md:block overflow-x-auto rounded-lg border border-tarkov-border">
         <table className="w-full text-sm">
           <thead className="bg-tarkov-card sticky top-0 z-10">
