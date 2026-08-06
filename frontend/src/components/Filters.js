@@ -74,50 +74,35 @@ const MODE_FILTER_BORDER = {
   'pvp-season': 'border-green-900/40',
 };
 
-// ── Helpers fuzzy ────────────────────────────────────────────────────────────
+// ── Helpers normalize / fuzzy ──────────────────────────────────────────────
 function normalize(str) {
-  return str
+  return (str || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 }
 
-function fuzzyMatch(text, query) {
-  const t = normalize(text);
-  const q = normalize(query);
-  if (!q) return false;
-  // sous-chaîne directe d'abord
-  if (t.includes(q)) return true;
-  // fuzzy : tous les chars du query dans l'ordre
-  let ti = 0;
-  for (let qi = 0; qi < q.length; qi++) {
-    const idx = t.indexOf(q[qi], ti);
-    if (idx === -1) return false;
-    ti = idx + 1;
-  }
-  return true;
-}
-
-// Score pour trier les suggestions (plus bas = meilleur match)
 function fuzzyScore(text, query) {
   const t = normalize(text);
   const q = normalize(query);
-  if (t.startsWith(q)) return 0;
-  if (t.includes(q))   return 1;
-  return 2;
+  if (!q) return 999;
+  if (t === q)         return 0;
+  if (t.startsWith(q)) return 1;
+  if (t.includes(q))   return 2;
+  return 3;
 }
 
-// ── SearchCard avec tags + autocomplete ──────────────────────────────────────
+// ── SearchCard avec tags sous le champ + autocomplete ───────────────────────
 export function SearchCard({ tags, onTagsChange, allItems, lang }) {
-  const [inputVal, setInputVal]     = useState('');
+  const [inputVal, setInputVal]       = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [highlighted, setHighlighted] = useState(-1);
-  const [open, setOpen]             = useState(false);
-  const inputRef  = useRef(null);
-  const wrapRef   = useRef(null);
+  const [open, setOpen]               = useState(false);
+  const inputRef = useRef(null);
+  const wrapRef  = useRef(null);
 
-  // Fermer le dropdown si clic en dehors
+  // Ferme dropdown si clic dehors
   useEffect(() => {
     const handler = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
@@ -126,27 +111,29 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Suggestions : parcourt TOUS les items (pas de limite prématurée)
   const buildSuggestions = useCallback((val) => {
     if (!val.trim() || !allItems?.length) { setSuggestions([]); return; }
+    const q = normalize(val);
     const seen = new Set();
     const results = [];
     for (const item of allItems) {
-      const names = [
+      const candidates = [
         item.name_en || item.name || '',
         item.name_fr || '',
         item.short_name_en || item.short_name || '',
         item.short_name_fr || '',
       ];
-      for (const name of names) {
+      for (const name of candidates) {
         if (!name) continue;
         const key = normalize(name);
         if (seen.has(key)) continue;
-        if (fuzzyMatch(name, val)) {
+        const score = fuzzyScore(name, val);
+        if (score < 999 && key.includes(q)) {
           seen.add(key);
-          results.push({ label: name, score: fuzzyScore(name, val) });
+          results.push({ label: name, score });
         }
       }
-      if (results.length >= 80) break;
     }
     results.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
     setSuggestions(results.slice(0, 12).map((r) => r.label));
@@ -162,18 +149,12 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
   const addTag = (term) => {
     const t = term.trim();
     if (!t) return;
-    // évite les doublons (insensible à la casse)
     if (tags.some((tag) => normalize(tag) === normalize(t))) {
-      setInputVal('');
-      setSuggestions([]);
-      setOpen(false);
+      setInputVal(''); setSuggestions([]); setOpen(false);
       return;
     }
     onTagsChange([...tags, t]);
-    setInputVal('');
-    setSuggestions([]);
-    setOpen(false);
-    setHighlighted(-1);
+    setInputVal(''); setSuggestions([]); setOpen(false); setHighlighted(-1);
     inputRef.current?.focus();
   };
 
@@ -185,11 +166,8 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (highlighted >= 0 && highlighted < suggestions.length) {
-        addTag(suggestions[highlighted]);
-      } else if (inputVal.trim()) {
-        addTag(inputVal);
-      }
+      if (highlighted >= 0 && highlighted < suggestions.length) addTag(suggestions[highlighted]);
+      else if (inputVal.trim()) addTag(inputVal);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlighted((h) => Math.min(h + 1, suggestions.length - 1));
@@ -204,51 +182,31 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
   };
 
   const placeholder = tags.length === 0
-    ? (lang === 'en' ? 'Item name, Enter or click to add…' : "Nom d'item, Entrée ou clic pour ajouter…")
+    ? (lang === 'en' ? 'Item name, Enter or click…' : "Nom d'item, Entrée ou clic…")
     : (lang === 'en' ? 'Add another term…' : 'Ajouter un autre terme…');
 
   const showDropdown = open && suggestions.length > 0;
 
   return (
-    <div
-      ref={wrapRef}
-      className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-visible w-full relative"
-      style={{ minHeight: 96 }}
-    >
-      {/* Icône loupe */}
-      <div className="flex items-start justify-center pt-4 bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
-          strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+    // overflow-visible pour que le dropdown sorte du grid, height auto pour s'adapter aux tags
+    <div ref={wrapRef} className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card w-full relative" style={{ minHeight: 96 }}>
+
+      {/* Icône loupe — centrée verticalement */}
+      <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
           <circle cx="11" cy="11" r="7" />
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </div>
 
       {/* Corps */}
-      <div className="flex flex-col justify-start px-2 py-2 gap-1 flex-1 min-w-0 overflow-visible">
+      <div className="flex flex-col justify-center px-2 py-2 gap-1.5 flex-1 min-w-0">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Search' : 'Recherche'}
         </span>
 
-        {/* Tags existants */}
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-0.5">
-            {tags.map((tag, i) => (
-              <span key={i}
-                className="inline-flex items-center gap-1 bg-tarkov-gold/20 border border-tarkov-gold/40 text-tarkov-gold text-[11px] font-semibold rounded-full px-2 py-0.5 leading-none">
-                {tag}
-                <button
-                  onClick={() => removeTag(i)}
-                  className="ml-0.5 text-tarkov-gold/60 hover:text-tarkov-gold transition-colors leading-none"
-                  aria-label={`Supprimer ${tag}`}>
-                  ✕
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Champ texte */}
+        {/* 1. Champ texte EN PREMIER */}
         <div className="relative">
           <input
             ref={inputRef}
@@ -267,34 +225,52 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
               ✕
             </button>
           )}
+
+          {/* Dropdown attaché au champ */}
+          {showDropdown && (
+            <ul className="absolute left-0 right-0 top-full mt-0.5 z-50 bg-tarkov-card border border-tarkov-border rounded-lg shadow-xl overflow-y-auto max-h-52">
+              {suggestions.map((s, i) => (
+                <li key={s}
+                  onMouseDown={(e) => { e.preventDefault(); addTag(s); }}
+                  onMouseEnter={() => setHighlighted(i)}
+                  className={`px-3 py-1.5 text-xs cursor-pointer flex items-center justify-between gap-2 transition-colors ${
+                    i === highlighted
+                      ? 'bg-tarkov-gold/20 text-tarkov-gold'
+                      : 'text-gray-200 hover:bg-tarkov-border'
+                  }`}>
+                  <span className="truncate">{s}</span>
+                  <span className="text-[9px] text-gray-600 flex-shrink-0">
+                    {lang === 'en' ? 'add' : 'ajouter'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* Dropdown suggestions */}
-        {showDropdown && (
-          <ul className="absolute left-0 right-0 top-full mt-0.5 z-50 bg-tarkov-card border border-tarkov-border rounded-lg shadow-xl overflow-hidden max-h-56 overflow-y-auto">
-            {suggestions.map((s, i) => (
-              <li key={s}
-                onMouseDown={(e) => { e.preventDefault(); addTag(s); }}
-                onMouseEnter={() => setHighlighted(i)}
-                className={`px-3 py-1.5 text-xs cursor-pointer flex items-center justify-between gap-2 transition-colors ${
-                  i === highlighted
-                    ? 'bg-tarkov-gold/20 text-tarkov-gold'
-                    : 'text-gray-200 hover:bg-tarkov-border'
-                }`}>
-                <span className="truncate">{s}</span>
-                <span className="text-[9px] text-gray-600 flex-shrink-0">
-                  {lang === 'en' ? 'add' : 'ajouter'}
-                </span>
-              </li>
+        {/* 2. Tags EN DESSOUS du champ */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag, i) => (
+              <span key={i}
+                className="inline-flex items-center gap-1 bg-tarkov-gold/20 border border-tarkov-gold/40 text-tarkov-gold text-[11px] font-semibold rounded-full px-2 py-0.5 leading-none">
+                {tag}
+                <button
+                  onClick={() => removeTag(i)}
+                  className="ml-0.5 text-tarkov-gold/60 hover:text-tarkov-gold transition-colors leading-none text-[10px]"
+                  aria-label={`Supprimer ${tag}`}>
+                  ✕
+                </button>
+              </span>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-// ── Reste des composants (inchangés) ─────────────────────────────────────────
+// ── Autres composants (inchangés) ─────────────────────────────────────────────
 function ProfitCard({ value, onChange, lang }) {
   return (
     <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden w-full" style={{ height: 96 }}>
@@ -356,7 +332,6 @@ function MinOffersCard({ value, onChange, lang, offerCountAvailable }) {
       </div>
     );
   }
-
   const isActive = value > 1;
   return (
     <div className={`flex items-stretch rounded-lg border overflow-hidden w-full ${isActive ? 'border-tarkov-gold bg-tarkov-card' : 'border-tarkov-border bg-tarkov-card'}`} style={{ height: 96 }}>
@@ -368,7 +343,7 @@ function MinOffersCard({ value, onChange, lang, offerCountAvailable }) {
       </div>
       <div className="flex flex-col justify-center px-2 py-2 gap-2 flex-1 min-w-0">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">{lang === 'en' ? 'Min. offers' : 'Offres min.'}</span>
-        <input type="range" min={1} max={100} step={1} value={value} onChange={(e) => { const v = Number(e.target.value); onChange(v); localStorage.setItem('minOffers', String(v)); }} className="w-full accent-tarkov-gold cursor-pointer" title={`${value} offre${value > 1 ? 's' : ''} minimum`} />
+        <input type="range" min={1} max={100} step={1} value={value} onChange={(e) => { const v = Number(e.target.value); onChange(v); localStorage.setItem('minOffers', String(v)); }} className="w-full accent-tarkov-gold cursor-pointer" />
         <div className="flex justify-between text-[9px] text-gray-600 leading-none"><span>1</span><span>50</span><span>100</span></div>
       </div>
     </div>
@@ -440,7 +415,7 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
 
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
         <SearchCard
           tags={searchTags}
           onTagsChange={onSearchTagsChange}
