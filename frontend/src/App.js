@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
-import { Filters } from './components/Filters';
+import { Filters, defaultTraderFilters } from './components/Filters';
 import { ExportButtons } from './components/ExportButtons';
 import { RefreshButton } from './components/RefreshButton';
 import { StatsBar } from './components/StatsBar';
@@ -13,14 +13,13 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({ category: '', minProfitPct: '' });
+  const [filters, setFilters] = useState({ category: '', minProfitRub: '' });
+  const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
   const [categories, setCategories] = useState([]);
-  const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en');
+  const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'fr');
 
-  // Persist language choice
   useEffect(() => { localStorage.setItem('lang', lang); }, [lang]);
 
-  // Load categories once
   useEffect(() => {
     axios.get(`${API_BASE}/items/categories`)
       .then(({ data }) => setCategories(data))
@@ -33,8 +32,8 @@ export default function App() {
     try {
       const params = {};
       if (filters.category) params.category = filters.category;
-      if (filters.minProfitPct) params.min_profit_pct = filters.minProfitPct;
       const { data } = await axios.get(`${API_BASE}/items/`, { params });
+      // Filtre minProfitRub côté client (recalcul dynamique selon traders)
       setItems(data);
     } catch (err) {
       console.error('API error:', err);
@@ -42,7 +41,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters.category]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -55,6 +54,9 @@ export default function App() {
     }
   };
 
+  // Filtrage minProfitRub côté client après recalcul trader
+  const minRub = parseFloat(filters.minProfitRub) || null;
+
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
       <header className="border-b border-tarkov-border px-6 py-4">
@@ -64,7 +66,6 @@ export default function App() {
             <p className="text-sm text-gray-400">Compare trader prices vs Flea Market</p>
           </div>
           <div className="flex items-center gap-4">
-            {/* Language switcher */}
             <div className="flex items-center gap-1 bg-tarkov-card border border-tarkov-border rounded px-2 py-1">
               <button
                 onClick={() => setLang('en')}
@@ -85,10 +86,37 @@ export default function App() {
       </header>
       <main className="px-6 py-4">
         <StatsBar items={items} />
-        <Filters filters={filters} onChange={setFilters} categories={categories} />
+        <Filters
+          filters={filters}
+          onChange={setFilters}
+          categories={categories}
+          traderFilters={traderFilters}
+          onTraderFiltersChange={setTraderFilters}
+        />
         {loading && <p className="text-center py-8 text-gray-400">Loading items...</p>}
         {error && <p className="text-center py-8 text-red-400">{error}</p>}
-        {!loading && !error && <ItemTable items={items} lang={lang} />}
+        {!loading && !error && (
+          <ItemTable
+            items={
+              minRub
+                ? items.filter((item) => {
+                    try {
+                      const prices = JSON.parse(item.trader_prices || '{}');
+                      const bestPrice = Math.max(
+                        ...Object.entries(prices)
+                          .filter(([t]) => traderFilters[t]?.enabled)
+                          .map(([, p]) => p)
+                      );
+                      const diff = bestPrice - (item.flea_price ?? item.last_low_price ?? 0);
+                      return diff >= minRub;
+                    } catch { return true; }
+                  })
+                : items
+            }
+            lang={lang}
+            traderFilters={traderFilters}
+          />
+        )}
       </main>
     </div>
   );
