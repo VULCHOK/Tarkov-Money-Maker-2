@@ -8,13 +8,11 @@ import { ApiStatus } from './components/ApiStatus';
 
 const API_BASE = '/api';
 
-// Modes de jeu — bannière image dynamique avec fallback couleur CSS
 const MODES = [
   {
     key: 'regular',
     label: 'PVP',
-    emoji: '⚔️',
-    banner: '/images/traders-dynamic/modes/pvp-banner.jpg',
+    emoji: '\u2694\uFE0F',
     headerBg: 'from-[#3a0f0f] to-[#1a0808]',
     borderColor: 'border-red-900',
     accentColor: 'text-red-300',
@@ -23,8 +21,7 @@ const MODES = [
   {
     key: 'pve',
     label: 'PVE',
-    emoji: '🤖',
-    banner: '/images/traders-dynamic/modes/pve-banner.jpg',
+    emoji: '\uD83E\uDD16',
     headerBg: 'from-[#0d2b0d] to-[#071407]',
     borderColor: 'border-green-900',
     accentColor: 'text-green-300',
@@ -33,8 +30,7 @@ const MODES = [
   {
     key: 'pvp-season',
     label: 'Kord Breach',
-    emoji: '❄️',
-    banner: '/images/traders-dynamic/modes/kord-breach-banner.jpg',
+    emoji: '\u2744\uFE0F',
     headerBg: 'from-[#0a1a30] to-[#050d1a]',
     borderColor: 'border-blue-900',
     accentColor: 'text-blue-300',
@@ -48,21 +44,17 @@ function defaultMinProfitRub() {
 }
 
 export default function App() {
-  const [items, setItems]           = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
-  const [filters, setFilters]       = useState({ minProfitRub: defaultMinProfitRub() });
+  const [items, setItems]                 = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
+  const [filters, setFilters]             = useState({ minProfitRub: defaultMinProfitRub() });
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
-  const [intelLevel, setIntelLevel] = useState(defaultIntelLevel);
-  const [lang, setLang]             = useState(() => localStorage.getItem('lang') || 'fr');
-  const [mode, setMode]             = useState(() => localStorage.getItem('gameMode') || 'regular');
-  // bannerLoaded : true = image dispo, false = fallback CSS gradient
-  const [bannerLoaded, setBannerLoaded] = useState(false);
+  const [intelLevel, setIntelLevel]       = useState(defaultIntelLevel);
+  const [lang, setLang]                   = useState(() => localStorage.getItem('lang') || 'fr');
+  const [mode, setMode]                   = useState(() => localStorage.getItem('gameMode') || 'regular');
 
   useEffect(() => { localStorage.setItem('lang', lang); }, [lang]);
   useEffect(() => { localStorage.setItem('gameMode', mode); }, [mode]);
-  // Réinitialise l'état de chargement de la bannière au changement de mode
-  useEffect(() => { setBannerLoaded(false); }, [mode]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true); setError(null);
@@ -77,9 +69,9 @@ export default function App() {
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
-  const feeDiscount  = INTEL_DISCOUNTS[intelLevel] ?? 0;
-  const minRub       = parseFloat(filters.minProfitRub) || 0;
-  const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
+  const feeDiscount = INTEL_DISCOUNTS[intelLevel] ?? 0;
+  const minRub      = parseFloat(filters.minProfitRub) || 0;
+  const activeMeta  = MODES.find((m) => m.key === mode) || MODES[0];
 
   const visibleItems = items.filter((item) => {
     try {
@@ -96,36 +88,12 @@ export default function App() {
     } catch { return true; }
   });
 
-  // Style du header : image en fond si disponible, sinon gradient CSS
-  const headerStyle = bannerLoaded
-    ? {
-        backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.75), rgba(0,0,0,0.55)), url(${activeMeta.banner})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
-    : {};
-
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
-      {/* Préchargement silencieux de la bannière */}
-      <img
-        src={activeMeta.banner}
-        alt=""
-        className="hidden"
-        onLoad={() => setBannerLoaded(true)}
-        onError={() => setBannerLoaded(false)}
-      />
-
-      {/* Header */}
-      <header
-        className={`border-b ${activeMeta.borderColor} px-6 py-4 transition-all duration-500 ${
-          bannerLoaded ? '' : `bg-gradient-to-r ${activeMeta.headerBg}`
-        }`}
-        style={headerStyle}
-      >
+      <header className={`bg-gradient-to-r ${activeMeta.headerBg} border-b ${activeMeta.borderColor} px-6 py-4 transition-all duration-500`}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-tarkov-gold drop-shadow">Tarkov Money Maker 2</h1>
+            <h1 className="text-2xl font-bold text-tarkov-gold">Tarkov Money Maker 2</h1>
             <p className={`text-sm ${activeMeta.accentColor} flex items-center gap-1.5`}>
               <span>{activeMeta.emoji}</span>
               <span className="font-semibold">{activeMeta.label}</span>
@@ -134,7 +102,6 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Sélecteur de mode */}
             <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded px-1 py-1">
               {MODES.map((m) => (
                 <button key={m.key} onClick={() => setMode(m.key)} title={m.badge}
@@ -148,7 +115,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-            {/* Sélecteur de langue */}
             <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded px-2 py-1">
               <button onClick={() => setLang('en')} title="English"
                 className={`text-lg transition-opacity ${lang === 'en' ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}>🇬🇧</button>
