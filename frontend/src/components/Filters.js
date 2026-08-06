@@ -1,5 +1,4 @@
 import React from 'react';
-import { I18N } from '../App';
 import { RankBadge, getRankThreshold, RANK_NAMES } from './RankBadge';
 
 export const TRADER_LEVELS = {
@@ -59,8 +58,7 @@ const INTEL_OPTIONS = [
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
 const FLEA_UNLOCK_LEVEL = 15;
 
-// PVE  → bleu  (était vert avant)
-// Kord Breach (pvp-season) → vert (était bleu avant)
+// PVE → bleu | Kord Breach (pvp-season) → vert
 const MODE_FILTER_GRADIENT = {
   regular:      'from-[#2a0a0a]/30 to-transparent',
   pve:          'from-[#071525]/30 to-transparent',
@@ -75,7 +73,7 @@ const MODE_FILTER_BORDER = {
 // ── Card Search ──────────────────────────────────────────────────────────────
 function SearchCard({ value, onChange, lang }) {
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden flex-1 min-w-[180px]"
       style={{ height: 96 }}>
       <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
@@ -85,7 +83,7 @@ function SearchCard({ value, onChange, lang }) {
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Search' : 'Recherche'}
         </span>
@@ -111,12 +109,12 @@ function SearchCard({ value, onChange, lang }) {
 // ── Card Profit ──────────────────────────────────────────────────────────────
 function ProfitCard({ value, onChange, lang }) {
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden flex-1 min-w-[180px]"
       style={{ height: 96 }}>
       <div className="flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <span className="text-tarkov-gold font-bold" style={{ fontSize: 26 }}>&#8381;</span>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Min. profit' : 'Profit min.'}
         </span>
@@ -141,7 +139,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   const inc = () => onChange(Math.min(79, playerLevel + 1));
 
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden"
+    <div className="flex items-stretch rounded-lg border border-tarkov-border bg-tarkov-card overflow-hidden flex-1 min-w-[180px]"
       style={{ height: 96 }}>
       <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
         <RankBadge level={playerLevel} size={52} />
@@ -151,7 +149,7 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
           </div>
         )}
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-1" style={{ width: 120 }}>
+      <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">
           {lang === 'en' ? 'Player level' : 'Niveau joueur'}
         </span>
@@ -281,8 +279,8 @@ export function Filters({
   return (
     <div className={`bg-gradient-to-br ${gradientCls} bg-tarkov-card border ${borderCls} rounded-lg px-4 py-3 mb-6`}>
 
-      {/* ── Ligne 1 : Search / Profit / Player level ── */}
-      <div className="flex flex-wrap gap-2 items-start">
+      {/* ── Ligne 1 : 3 cards flex-1, pleine largeur ── */}
+      <div className="flex gap-2">
         <SearchCard
           value={filters.search}
           onChange={(v) => onChange({ ...filters, search: v })}
@@ -304,8 +302,8 @@ export function Filters({
       {/* Séparateur horizontal */}
       <div className="h-px bg-tarkov-border my-2" />
 
-      {/* ── Ligne 2 : Traders + Intel ── */}
-      <div className="flex flex-wrap gap-2 items-start">
+      {/* ── Ligne 2 : Traders + Intel, flex-wrap ── */}
+      <div className="flex flex-wrap gap-2 justify-start">
         {ALL_TRADERS.map((trader) => (
           <TraderCard key={trader} trader={trader}
             tf={traderFilters[trader] || { enabled: true, level: 1 }}
