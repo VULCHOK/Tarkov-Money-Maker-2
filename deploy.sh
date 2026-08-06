@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # deploy.sh  —  Tarkov Money Maker 2
-# Pull, rebuild de zéro et relance proprement.
-# Usage: ./deploy.sh
+# Modes :
+#   ./deploy.sh          → build avec cache (déploiement normal, rapide)
+#   ./deploy.sh --fresh  → destroy volumes + rebuild sans cache (reset complet)
 # =============================================================================
 set -euo pipefail
 
@@ -15,6 +16,17 @@ NC="\033[0m"
 log()  { echo -e "${GREEN}[deploy]${NC} $*"; }
 warn() { echo -e "${YELLOW}[deploy]${NC} $*"; }
 die()  { echo -e "${RED}[deploy] ERREUR${NC} $*"; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Parse args
+# ---------------------------------------------------------------------------
+FRESH=false
+for arg in "$@"; do
+  case $arg in
+    --fresh) FRESH=true ;;
+    *) die "Argument inconnu: $arg. Usage: ./deploy.sh [--fresh]" ;;
+  esac
+done
 
 # ---------------------------------------------------------------------------
 # 0. Vérifications préalables
@@ -41,16 +53,26 @@ log "Pull des derniers changements..."
 git pull --ff-only || die "git pull a échoué. Résoudre les conflits manuellement."
 
 # ---------------------------------------------------------------------------
-# 3. Stop + suppression des volumes (reset DB)
+# 3. Stop + (optionnel) suppression des volumes
 # ---------------------------------------------------------------------------
-log "Arrêt des conteneurs et suppression des volumes..."
-$COMPOSE down -v --remove-orphans
+if [ "$FRESH" = true ]; then
+    warn "Mode --fresh : suppression des volumes (reset DB complet)..."
+    $COMPOSE down -v --remove-orphans
+else
+    log "Arrêt des conteneurs (volumes conservés)..."
+    $COMPOSE down --remove-orphans
+fi
 
 # ---------------------------------------------------------------------------
-# 4. Rebuild sans cache
+# 4. Rebuild (avec cache sauf en mode --fresh)
 # ---------------------------------------------------------------------------
-log "Rebuild des images (no-cache)..."
-$COMPOSE build --no-cache --parallel
+if [ "$FRESH" = true ]; then
+    log "Rebuild des images (no-cache)..."
+    $COMPOSE build --no-cache --parallel
+else
+    log "Rebuild des images (avec cache)..."
+    $COMPOSE build --parallel
+fi
 
 # ---------------------------------------------------------------------------
 # 5. Lancement
@@ -79,6 +101,9 @@ log "Backend up !"
 echo
 log "======================================="
 log "  Tarkov Money Maker 2 est up  "
+if [ "$FRESH" = true ]; then
+    warn "  Mode --fresh : DB réinitialisée, sync auto dans ~10 min"
+fi
 log "  http://localhost (ou ton IP/domaine)"
 log "  Logs : docker compose -f docker/docker-compose.yml logs -f"
 log "======================================="
