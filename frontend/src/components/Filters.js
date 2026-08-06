@@ -55,8 +55,6 @@ const INTEL_OPTIONS = [
   { level: 3, label: 'L3', title: 'Niveau 3 — -30% taxe flea' },
 ];
 const INTEL_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/2/2c/Banner_hideout.png/revision/latest?cb=20191102201125';
-
-// Niveau de déblocage de la Flea Market
 const FLEA_UNLOCK_LEVEL = 15;
 
 // ─── TraderCard ───────────────────────────────────────────────────────────────
@@ -175,17 +173,13 @@ export function Filters({
               <input type="number" min={1} max={79} value={playerLevel}
                 onChange={(e) => onPlayerLevelChange(e.target.value)}
                 className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-16 focus:outline-none focus:border-tarkov-gold" />
-              {/* Badge Flea débloquée / bloquée */}
-              <span
-                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
-                  fleaLocked
-                    ? 'bg-red-900/40 border-red-800/60 text-red-400'
-                    : 'bg-green-900/40 border-green-800/60 text-green-400'
-                }`}
-                title={fleaLocked ? `Flea bloquée — débloquage au niveau ${FLEA_UNLOCK_LEVEL}` : 'Flea débloquée'}
-              >
-                {fleaLocked ? `Flea ✕` : 'Flea ✓'}
-              </span>
+              {/* Indicateur Flea bloquée uniquement si pertinent */}
+              {fleaLocked && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-red-900/40 border-red-800/60 text-red-400"
+                  title={`Flea bloquée — débloquage au niveau ${FLEA_UNLOCK_LEVEL}`}>
+                  Flea ✕
+                </span>
+              )}
             </div>
           </div>
         </div>
