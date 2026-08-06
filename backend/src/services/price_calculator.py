@@ -1,61 +1,71 @@
-from typing import Optional
-from .tarkov_api import TRADER_SOURCES
+"""
+price_calculator.py  –  Stateless arbitrage logic
+
+Receives a flat item dict (from tarkov_api._normalize_item)
+and adds computed fields:
+  flea_price      : best price to buy from flea (last_low_price or avg24h_price)
+  difference      : flea_price - best_trader_price  (negative = flea is cheaper)
+  difference_pct  : difference / best_trader_price * 100
+  recommendation  : arbitrage label
+
+Arbitrage labels:
+  BUY_FLEA_SELL_TRADER  – flea price < trader sell price  => buy flea, sell trader
+  BUY_TRADER_SELL_FLEA  – trader buy price < flea sell price  (not implemented yet)
+  FLEA_ONLY             – item has no trader sell offer
+  TRADER_ONLY           – item has no flea market listing
+  NO_PROFIT             – no interesting arbitrage
+"""
+
+# Flea market fee rate (5% of sell price by default)
+FLEA_FEE_RATE = 0.05
 
 
-def calculate_differences(normalized_items: list[dict]) -> list[dict]:
+def enrich(item: dict) -> dict:
     """
-    Enrich normalized items with price comparison data.
-
-    Input items come from tarkov_api._normalize_item() and have:
-      buy_for: [{ source: str, price: int, currency: str }]
-      avg24h_price, low24h_price, base_price, etc.
-
-    Logic:
-      - best_trader_price = cheapest trader buy price (RUB)
-      - flea_price        = avg24h_price (average flea listing)
-      - difference        = flea_price - best_trader_price
-      - BUY_FROM_TRADER   if difference > 0  (trader cheaper than flea)
-      - BUY_FROM_FLEA     if difference <= 0
+    Add computed price fields to an item dict. Returns the same dict mutated.
     """
-    results = []
-    for item in normalized_items:
-        trader_prices: dict[str, int] = {}
-        for entry in item.get("buy_for", []):
-            source = entry.get("source", "")
-            price = entry.get("price", 0)
-            if source in TRADER_SOURCES and price and price > 0:
-                trader_prices[source] = price
+    item = dict(item)  # don't mutate the original
 
-        flea_price: Optional[int] = item.get("avg24h_price") or item.get("low24h_price")
+    avg24h    = item.get("avg24h_price")    or 0
+    last_low  = item.get("last_low_price")  or 0
+    best_sell = item.get("best_trader_price") or 0
 
-        best_trader: Optional[str] = None
-        best_trader_price: Optional[int] = None
-        if trader_prices:
-            best_trader = min(trader_prices, key=trader_prices.get)
-            best_trader_price = trader_prices[best_trader]
+    # Use last_low_price as our reference flea buy price (more conservative)
+    # Fall back to avg24h if no last_low available
+    flea_price = last_low or avg24h or None
+    item["flea_price"] = flea_price
 
-        difference: Optional[int] = None
-        difference_pct: Optional[float] = None
-        recommendation: Optional[str] = None
+    if not flea_price and not best_sell:
+        item["difference"]     = None
+        item["difference_pct"] = None
+        item["recommendation"] = "NO_PROFIT"
+        return item
 
-        if flea_price and best_trader_price:
-            difference = flea_price - best_trader_price
-            difference_pct = round((difference / best_trader_price) * 100, 2)
-            recommendation = "BUY_FROM_TRADER" if difference > 0 else "BUY_FROM_FLEA"
-        elif flea_price and not best_trader_price:
-            recommendation = "FLEA_ONLY"
-        elif best_trader_price and not flea_price:
-            recommendation = "TRADER_ONLY"
+    if not flea_price:
+        item["difference"]     = None
+        item["difference_pct"] = None
+        item["recommendation"] = "TRADER_ONLY"
+        return item
 
-        results.append({
-            **item,   # carry all original fields
-            "trader_prices":     trader_prices,
-            "flea_price":        flea_price,
-            "best_trader":       best_trader,
-            "best_trader_price": best_trader_price,
-            "difference":        difference,
-            "difference_pct":    difference_pct,
-            "recommendation":    recommendation,
-        })
+    if not best_sell:
+        item["difference"]     = None
+        item["difference_pct"] = None
+        item["recommendation"] = "FLEA_ONLY"
+        return item
 
-    return results
+    # flea_price - best_trader_price
+    # negative => buying from flea is CHEAPER than trader sells
+    # => arbitrage: buy on flea, sell to trader for profit
+    diff = flea_price - best_sell
+    diff_pct = round((diff / best_sell) * 100, 2) if best_sell else None
+
+    item["difference"]     = diff
+    item["difference_pct"] = diff_pct
+
+    if diff < 0:
+        # Flea is cheaper than trader sell price => profit margin = -diff
+        item["recommendation"] = "BUY_FLEA_SELL_TRADER"
+    else:
+        item["recommendation"] = "NO_PROFIT"
+
+    return item

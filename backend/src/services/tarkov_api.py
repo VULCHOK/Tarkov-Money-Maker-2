@@ -1,11 +1,40 @@
-import httpx
+"""
+tarkov_api.py  –  Fetches data from json.tarkov.dev
+
+Real API structure (verified 2026-08-06):
+  GET /regular/items
+    └─ data.items          : dict { id -> item_object }
+    └─ data.itemCategories : dict { id -> { id, normalizedName, parent, children } }
+    └─ data.fleaMarket     : { minPlayerLevel, enabled, ... }
+
+  item_object fields used:
+    id, normalizedName, updated, width, height, weight
+    types[]                       # ["gun", "wearable", ...]
+    basePrice, lastLowPrice
+    avg24hPrice, low24hPrice, high24hPrice
+    changeLast48h, changeLast48hPercent
+    lastOfferCount, minLevelForFlea
+    iconLink, wikiLink
+    categories[]                  # list of category IDs (first = most specific)
+    buyFromTrader[]               # [{ trader (ID), priceRUB, currency, minTraderLevel }]
+    sellToTrader[]                # [{ trader (ID), priceRUB, currency }]
+
+  GET /regular/items_en  (and _fr, _de, etc.)
+    └─ data : dict { "<id> Name" -> "...", "<id> ShortName" -> "...", "<id> Description" -> "..." }
+
+  itemCategory.name is ALSO a placeholder  -> use normalizedName instead.
+"""
+
+import asyncio
 import logging
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Trader IDs -> display name
-# ---------------------------------------------------------------------------
+BASE_URL = "https://json.tarkov.dev"
+
+# Trader ID -> display name  (from /regular/traders)
 TRADER_ID_TO_NAME: dict[str, str] = {
     "54cb50c76803fa8b248b4571": "Prapor",
     "54cb57776803fa99248b456e": "Therapist",
@@ -18,94 +47,146 @@ TRADER_ID_TO_NAME: dict[str, str] = {
     "6617beeaa9cfa777ca915b7c": "Lightkeeper",
 }
 
-TRADER_SOURCES = set(TRADER_ID_TO_NAME.values())
-last_api_source: str = "rest"
 
-# /regular/items  -> full item objects with prices, categories, traders
-# /regular/items_{lang} -> flat translation dict {id_or_key: "translated string"}
-ITEMS_URL       = "https://json.tarkov.dev/regular/items"
-ITEMS_FR_URL    = "https://json.tarkov.dev/regular/items_fr"
+def _get_data(resp_json: dict) -> dict:
+    """Safely extract the 'data' key from an API response."""
+    return resp_json.get("data", resp_json)
 
 
-def _normalize_item(item: dict, translations_fr: dict, item_categories: dict) -> dict:
-    """Build a flat DB-ready dict from a full item object + FR translation dict."""
+def _best_sell_to_trader(sell_list: list[dict]) -> tuple[str | None, int | None]:
+    """
+    From sellToTrader[], return (trader_name, best_priceRUB).
+    Ignores Fence (lowest prices).
+    """
+    best_name  = None
+    best_price = 0
+    for entry in sell_list:
+        trader_id = entry.get("trader", "")
+        trader_name = TRADER_ID_TO_NAME.get(trader_id)
+        if not trader_name or trader_name == "Fence":
+            continue
+        price_rub = entry.get("priceRUB") or 0
+        if price_rub > best_price:
+            best_price = price_rub
+            best_name  = trader_name
+    return (best_name, best_price if best_price > 0 else None)
+
+
+def _all_sell_prices(sell_list: list[dict]) -> dict[str, int]:
+    """Return { trader_name: priceRUB } for all traders in sellToTrader[]."""
+    result: dict[str, int] = {}
+    for entry in sell_list:
+        trader_id   = entry.get("trader", "")
+        trader_name = TRADER_ID_TO_NAME.get(trader_id)
+        price_rub   = entry.get("priceRUB") or 0
+        if trader_name and price_rub > 0:
+            # keep best price per trader
+            if price_rub > result.get(trader_name, 0):
+                result[trader_name] = price_rub
+    return result
+
+
+def _normalize_item(
+    item: dict,
+    trans_en: dict,
+    trans_fr: dict,
+    item_categories: dict,
+) -> dict:
+    """
+    Build a flat DB-ready dict from one item object + translation dicts.
+
+    Translation dicts have keys like:
+        "<id> Name"        -> display name
+        "<id> ShortName"   -> short name
+    """
     item_id = item["id"]
 
-    # translations_fr keys are either "<id> Name" or "<id> ShortName"
-    name_fr       = translations_fr.get(f"{item_id} Name",      item.get("name", ""))
-    short_name_fr = translations_fr.get(f"{item_id} ShortName", item.get("shortName", ""))
+    name_en       = trans_en.get(f"{item_id} Name",      "")
+    name_fr       = trans_fr.get(f"{item_id} Name",      name_en)
+    short_name_en = trans_en.get(f"{item_id} ShortName", "")
+    short_name_fr = trans_fr.get(f"{item_id} ShortName", short_name_en)
 
-    # Category: first category id -> normalizedName
-    category_name = None
-    cats = item.get("categories", [])
-    if cats:
-        cat = item_categories.get(cats[0], {})
-        category_name = cat.get("normalizedName")
+    # Category: use normalizedName of the first (most specific) category
+    category_slug = None
+    for cat_id in item.get("categories", []):
+        cat = item_categories.get(cat_id)
+        if cat:
+            category_slug = cat.get("normalizedName")
+            break
 
-    # Trader buy prices (RUB only)
-    buy_for: list[dict] = []
-    for entry in item.get("buyFor", []):
-        source = entry.get("vendor", {}).get("name") or entry.get("source", "")
-        price  = entry.get("price", 0) or entry.get("priceRUB", 0)
-        currency = entry.get("currency", "RUB")
-        if source and price and price > 0 and currency == "RUB" and source in TRADER_SOURCES:
-            buy_for.append({"source": source, "price": price, "currency": "RUB"})
+    # Sell prices
+    sell_list = item.get("sellToTrader", [])
+    best_trader, best_trader_price = _best_sell_to_trader(sell_list)
+    import json as _json
+    trader_prices_json = _json.dumps(_all_sell_prices(sell_list))
 
     return {
         "id":             item_id,
-        "name_en":        item.get("name", ""),
+        "name_en":        name_en,
         "name_fr":        name_fr,
-        "short_name_en":  item.get("shortName", ""),
+        "short_name_en":  short_name_en,
         "short_name_fr":  short_name_fr,
-        "category":       category_name,
+        "normalized_name": item.get("normalizedName"),
+        "category":       category_slug,
+        "types":          ",".join(item.get("types", [])),
         "icon_link":      item.get("iconLink"),
         "wiki_link":      item.get("wikiLink") or item.get("link"),
+        # Flea market prices
         "avg24h_price":   item.get("avg24hPrice"),
         "low24h_price":   item.get("low24hPrice"),
         "high24h_price":  item.get("high24hPrice"),
         "last_low_price": item.get("lastLowPrice"),
+        "last_offer_count": item.get("lastOfferCount"),
+        "change_48h":     item.get("changeLast48h"),
         "change_48h_pct": item.get("changeLast48hPercent"),
+        "min_level_flea": item.get("minLevelForFlea"),
+        # Base data
         "base_price":     item.get("basePrice"),
-        "buy_for":        buy_for,
+        "width":          item.get("width"),
+        "height":         item.get("height"),
+        "weight":         item.get("weight"),
+        # Trader data
+        "best_trader":       best_trader,
+        "best_trader_price": best_trader_price,
+        "trader_prices":     trader_prices_json,
+        # Sync timestamp from API
+        "api_updated_at": item.get("updated"),
     }
 
 
 async def fetch_items() -> list[dict]:
     """
-    Fetch all items from json.tarkov.dev.
+    Fetch all items. Returns a list of flat dicts ready for DB upsert.
 
-    - GET /regular/items      -> full item objects (prices, categories, traders)
-    - GET /regular/items_fr   -> flat FR translation dict {"<id> Name": "...", ...}
+    Endpoints called in parallel:
+      - /regular/items       (full item objects)
+      - /regular/items_en    (English translations)
+      - /regular/items_fr    (French translations)
     """
-    async with httpx.AsyncClient(timeout=60) as client:
-        import asyncio
-        resp_items, resp_fr = await asyncio.gather(
-            client.get(ITEMS_URL,    headers={"Accept": "application/json"}),
-            client.get(ITEMS_FR_URL, headers={"Accept": "application/json"}),
+    async with httpx.AsyncClient(timeout=90) as client:
+        resp_items, resp_en, resp_fr = await asyncio.gather(
+            client.get(f"{BASE_URL}/regular/items",    headers={"Accept": "application/json"}),
+            client.get(f"{BASE_URL}/regular/items_en", headers={"Accept": "application/json"}),
+            client.get(f"{BASE_URL}/regular/items_fr", headers={"Accept": "application/json"}),
         )
         resp_items.raise_for_status()
+        resp_en.raise_for_status()
         resp_fr.raise_for_status()
 
-    # /regular/items  -> { "data": { "items": {id: {...}}, "itemCategories": {id: {...}}, ... } }
-    raw_items = resp_items.json()
-    data      = raw_items.get("data", raw_items)
-    items_dict: dict       = data.get("items", {})
-    item_categories: dict  = data.get("itemCategories", {})
-
-    # /regular/items_fr -> { "data": { "<id> Name": "...", "<id> ShortName": "..." } }
-    raw_fr         = resp_fr.json()
-    translations_fr: dict = raw_fr.get("data", {})
+    data            = _get_data(resp_items.json())
+    items_dict      : dict = data.get("items", {})
+    item_categories : dict = data.get("itemCategories", {})
+    trans_en        : dict = _get_data(resp_en.json())
+    trans_fr        : dict = _get_data(resp_fr.json())
 
     if not items_dict:
-        logger.error(
-            f"[tarkov_api] Empty items_dict. "
-            f"data keys: {list(data.keys())[:10]}"
+        raise ValueError(
+            f"[tarkov_api] items_dict is empty. data keys: {list(data.keys())}"
         )
-        raise ValueError("json.tarkov.dev returned empty items dict")
 
-    normalized = [
-        _normalize_item(item, translations_fr, item_categories)
+    result = [
+        _normalize_item(item, trans_en, trans_fr, item_categories)
         for item in items_dict.values()
     ]
-    logger.info(f"[tarkov_api] Fetched {len(normalized)} items from json.tarkov.dev")
-    return normalized
+    logger.info(f"[tarkov_api] Fetched {len(result)} items")
+    return result
