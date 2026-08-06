@@ -63,12 +63,10 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
   const levels    = TRADER_LEVELS[trader];
   const isEnabled = tf.enabled;
   return (
-    <div
-      onClick={() => onToggle(trader)}
+    <div onClick={() => onToggle(trader)}
       className={`relative flex items-stretch rounded-lg border overflow-hidden cursor-pointer select-none transition-all ${
-        isEnabled
-          ? 'border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40'
-          : 'border-tarkov-border bg-tarkov-bg opacity-40 grayscale'
+        isEnabled ? 'border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40'
+                  : 'border-tarkov-border bg-tarkov-bg opacity-40 grayscale'
       }`}
       style={{ width: 110, height: 96 }}
       title={`${trader} — ${isEnabled ? 'désactiver' : 'activer'}`}
@@ -80,14 +78,16 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
           <span className={`text-[10px] font-bold leading-none block truncate ${isEnabled ? 'text-tarkov-gold' : 'text-gray-400'}`}>{trader}</span>
         </div>
       </div>
-      <div className="flex flex-col justify-around items-center px-1 py-1 bg-black/30" style={{ width: 38 }} onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-col justify-around items-center px-1 py-1 bg-black/30" style={{ width: 38 }}
+        onClick={(e) => e.stopPropagation()}>
         {levels.map((lvl) => {
           const isActive = isEnabled && tf.level === lvl;
           return (
             <button key={lvl}
               onClick={(e) => { e.stopPropagation(); if (!isEnabled) onToggle(trader); onLevel(trader, lvl); }}
               className={`w-7 h-5 rounded text-xs font-bold transition-colors ${
-                isActive ? 'bg-tarkov-gold text-tarkov-bg' : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
+                isActive ? 'bg-tarkov-gold text-tarkov-bg'
+                         : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
               }`}>{lvl}</button>
           );
         })}
@@ -100,9 +100,11 @@ function TraderCard({ trader, tf, onToggle, onLevel }) {
 function IntelCard({ intelLevel, onIntelLevelChange }) {
   const discount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   return (
-    <div className="flex items-stretch rounded-lg border border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40 overflow-hidden select-none" style={{ height: 96 }} title="Intelligence Center">
+    <div className="flex items-stretch rounded-lg border border-tarkov-gold bg-tarkov-card shadow-md shadow-black/40 overflow-hidden select-none"
+      style={{ height: 96 }} title="Intelligence Center">
       <div className="relative flex-shrink-0" style={{ width: 72 }}>
-        <img src={INTEL_IMG} alt="Intel Center" className="w-full h-full object-cover" style={{ objectPosition: 'center 40%' }} onError={(e) => { e.target.style.display = 'none'; }} />
+        <img src={INTEL_IMG} alt="Intel Center" className="w-full h-full object-cover" style={{ objectPosition: 'center 40%' }}
+          onError={(e) => { e.target.style.display = 'none'; }} />
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-1 pt-3 pb-0.5">
           <span className="text-[9px] font-bold text-tarkov-gold leading-none block">Intel Center</span>
           {discount > 0 && <span className="text-[9px] text-green-400 font-bold leading-none block">-{discount}% flea</span>}
@@ -114,7 +116,8 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
           return (
             <button key={level} onClick={() => onIntelLevelChange(level)} title={title}
               className={`w-7 h-5 rounded text-xs font-bold transition-colors ${
-                isActive ? 'bg-tarkov-gold text-tarkov-bg' : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
+                isActive ? 'bg-tarkov-gold text-tarkov-bg'
+                         : 'bg-tarkov-bg border border-tarkov-border text-gray-500 hover:border-tarkov-gold hover:text-tarkov-gold'
               }`}>{label}</button>
           );
         })}
@@ -151,6 +154,32 @@ export function Filters({
     <div className="bg-tarkov-card border border-tarkov-border rounded-lg px-4 py-3 mb-6">
       <div className="flex flex-wrap items-center gap-4">
 
+        {/* Recherche par nom */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-gray-400 text-sm select-none">🔍</span>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-500 leading-none mb-0.5">Recherche</span>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="F-1, grenade, prise..."
+                value={filters.search || ''}
+                onChange={(e) => onChange({ ...filters, search: e.target.value })}
+                className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-44 focus:outline-none focus:border-tarkov-gold pr-6"
+              />
+              {filters.search && (
+                <button
+                  onClick={() => onChange({ ...filters, search: '' })}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-tarkov-gold text-xs leading-none"
+                  title="Effacer"
+                >✕</button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="w-px self-stretch bg-tarkov-border flex-shrink-0" />
+
         {/* Profit minimum */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-tarkov-gold font-bold text-sm select-none">₽</span>
@@ -173,7 +202,6 @@ export function Filters({
               <input type="number" min={1} max={79} value={playerLevel}
                 onChange={(e) => onPlayerLevelChange(e.target.value)}
                 className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-16 focus:outline-none focus:border-tarkov-gold" />
-              {/* Indicateur Flea bloquée uniquement si pertinent */}
               {fleaLocked && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-red-900/40 border-red-800/60 text-red-400"
                   title={`Flea bloquée — débloquage au niveau ${FLEA_UNLOCK_LEVEL}`}>

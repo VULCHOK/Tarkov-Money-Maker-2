@@ -51,7 +51,7 @@ export default function App() {
   const [items, setItems]                 = useState([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
-  const [filters, setFilters]             = useState({ minProfitRub: defaultMinProfitRub() });
+  const [filters, setFilters]             = useState({ minProfitRub: defaultMinProfitRub(), search: '' });
   const [traderFilters, setTraderFilters] = useState(defaultTraderFilters);
   const [intelLevel, setIntelLevel]       = useState(defaultIntelLevel);
   const [playerLevel, setPlayerLevel]     = useState(defaultPlayerLevel);
@@ -82,11 +82,25 @@ export default function App() {
   const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
   const feeDiscount = INTEL_DISCOUNTS[intelLevel] ?? 0;
   const minRub      = parseFloat(filters.minProfitRub) || 0;
+  const searchTerm  = (filters.search || '').toLowerCase().trim();
   const activeMeta  = MODES.find((m) => m.key === mode) || MODES[0];
 
   const visibleItems = items.filter((item) => {
+    // Filtre recherche par nom (EN + FR, insensible casse et accents)
+    if (searchTerm) {
+      const nameEn = (item.name_en || item.name || '').toLowerCase();
+      const nameFr = (item.name_fr || '').toLowerCase();
+      const shortEn = (item.short_name_en || item.short_name || '').toLowerCase();
+      const shortFr = (item.short_name_fr || '').toLowerCase();
+      if (!nameEn.includes(searchTerm) && !nameFr.includes(searchTerm)
+        && !shortEn.includes(searchTerm) && !shortFr.includes(searchTerm)) return false;
+    }
+
+    // Filtre niveau flea
     const minFleaLevel = item.min_level_flea ?? 0;
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
+
+    // Filtre profit
     try {
       const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const sellPrices = JSON.parse(item.trader_prices || '{}');
@@ -97,6 +111,8 @@ export default function App() {
       const btfFee     = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
       const btfProfit  = bestBuy != null ? (fleaPrice - btfFee - bestBuy) : -Infinity;
       const bestProfit = Math.max(ftsProfit, btfProfit);
+      // Si recherche active : ignorer le filtre profit pour voir tous les résultats
+      if (searchTerm) return true;
       return minRub > 0 ? bestProfit >= minRub : bestProfit > 0;
     } catch { return true; }
   });
@@ -111,7 +127,6 @@ export default function App() {
       <header className={`bg-gradient-to-r ${activeMeta.headerBg} border-b ${activeMeta.borderColor} px-5 py-3`}>
         <div className="flex items-center justify-between flex-wrap gap-2">
 
-          {/* Titre + sous-titre mode actif */}
           <div className="flex items-center gap-3">
             <img src={activeMeta.icon} alt={activeMeta.label} className="w-10 h-10 object-contain" />
             <div>
@@ -124,10 +139,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Contrôles droite */}
           <div className="flex items-center gap-2 flex-wrap">
-
-            {/* Sélecteur de mode avec icônes PNG */}
             <div className={pillGroup}>
               {MODES.map((m) => (
                 <button key={m.key} onClick={() => setMode(m.key)} title={m.badge}
@@ -137,8 +149,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-
-            {/* Sélecteur de langue avec drapeaux */}
             <div className={pillGroup}>
               {LANGS.map(({ code, flag, label }) => (
                 <button key={code} onClick={() => setLang(code)}
@@ -148,13 +158,11 @@ export default function App() {
                 </button>
               ))}
             </div>
-
             <div className={pillGroup}>
               <ApiStatus pillBase={pillBase} pillOff={pillOff} />
               <span className="w-px h-4 bg-white/10 mx-0.5" />
               <ExportButtons items={visibleItems} lang={lang} pillBase={pillBase} pillOff={pillOff} />
             </div>
-
           </div>
         </div>
       </header>
