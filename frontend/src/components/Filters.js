@@ -132,7 +132,32 @@ function PlayerLevelCard({ playerLevel, onChange, lang, fleaLocked }) {
   );
 }
 
-function MinOffersCard({ value, onChange, lang }) {
+// ── Card Min Offres — affiche une alerte si l'API ne fournit pas la donnée ──
+function MinOffersCard({ value, onChange, lang, offerCountAvailable }) {
+  // Cas indisponible : même dimensions, contenu remplacé par un message d'alerte
+  if (!offerCountAvailable) {
+    return (
+      <div className="flex items-stretch rounded-lg border border-yellow-700/60 bg-tarkov-card overflow-hidden w-full" style={{ height: 96 }}>
+        <div className="relative flex items-center justify-center bg-tarkov-bg flex-shrink-0" style={{ width: 72 }}>
+          <img src={FLEA_META.img} alt="Flea" className="w-full h-full object-cover opacity-30" style={{ objectPosition: 'center 30%' }} onError={(e) => { e.target.style.display = 'none'; }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-yellow-500 text-2xl font-bold">!</span>
+          </div>
+        </div>
+        <div className="flex flex-col justify-center px-2 py-2 gap-1 flex-1 min-w-0">
+          <span className="text-[10px] text-yellow-500 font-semibold uppercase tracking-wide leading-none">
+            {lang === 'en' ? 'Min. offers' : 'Offres min.'}
+          </span>
+          <span className="text-[9px] text-yellow-600 leading-snug">
+            {lang === 'en'
+              ? 'API does not provide offer count for this mode. Filter disabled.'
+              : "L'API ne fournit pas le nb d'offres pour ce mode. Filtre désactivé."}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   const isActive = value > 1;
   return (
     <div className={`flex items-stretch rounded-lg border overflow-hidden w-full ${isActive ? 'border-tarkov-gold bg-tarkov-card' : 'border-tarkov-border bg-tarkov-card'}`} style={{ height: 96 }}>
@@ -194,7 +219,7 @@ function IntelCard({ intelLevel, onIntelLevelChange }) {
   );
 }
 
-export function Filters({ filters, onChange, traderFilters, onTraderFiltersChange, intelLevel, onIntelLevelChange, playerLevel, onPlayerLevelChange, lang, gameMode }) {
+export function Filters({ filters, onChange, traderFilters, onTraderFiltersChange, intelLevel, onIntelLevelChange, playerLevel, onPlayerLevelChange, lang, gameMode, offerCountAvailable }) {
   const handleTraderToggle = (trader) => {
     const next = { ...traderFilters, [trader]: { ...traderFilters[trader], enabled: !traderFilters[trader].enabled } };
     localStorage.setItem('traderFilters', JSON.stringify(next));
@@ -220,7 +245,12 @@ export function Filters({ filters, onChange, traderFilters, onTraderFiltersChang
         <SearchCard value={filters.search} onChange={(v) => onChange({ ...filters, search: v })} lang={lang} />
         <ProfitCard value={filters.minProfitRub} onChange={(v) => onChange({ ...filters, minProfitRub: v })} lang={lang} />
         <PlayerLevelCard playerLevel={playerLevel} onChange={onPlayerLevelChange} lang={lang} fleaLocked={fleaLocked} />
-        <MinOffersCard value={filters.minOffers ?? 20} onChange={(v) => onChange({ ...filters, minOffers: v })} lang={lang} />
+        <MinOffersCard
+          value={filters.minOffers ?? 20}
+          onChange={(v) => onChange({ ...filters, minOffers: v })}
+          lang={lang}
+          offerCountAvailable={offerCountAvailable}
+        />
       </div>
 
       <div className="h-px bg-tarkov-border my-2" />

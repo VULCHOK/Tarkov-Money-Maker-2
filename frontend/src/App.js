@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
 import { Filters, defaultTraderFilters, defaultIntelLevel, defaultMinOffers, ALL_TRADERS } from './components/Filters';
@@ -124,11 +124,19 @@ export default function App() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
+  // Détecte si au moins 1 item du mode courant a un offer count réel.
+  // Recalculé à chaque rechargement des items (resync auto inclus).
+  const offerCountAvailable = useMemo(
+    () => items.some((item) => item.last_offer_count != null),
+    [items]
+  );
+
   const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 0.30 };
   const feeDiscount  = INTEL_DISCOUNTS[intelLevel] ?? 0;
   const minRub       = parseFloat(filters.minProfitRub) || 0;
   const searchTerm   = (filters.search || '').toLowerCase().trim();
-  const minOffers    = Number(filters.minOffers ?? 1);
+  // Si offer count indisponible pour ce mode, on ignore complètement le filtre.
+  const minOffers    = offerCountAvailable ? Number(filters.minOffers ?? 1) : 1;
   const activeMeta   = MODES.find((m) => m.key === mode) || MODES[0];
   const t            = I18N[lang] || I18N.fr;
 
@@ -232,6 +240,7 @@ export default function App() {
           onPlayerLevelChange={handlePlayerLevel}
           lang={lang}
           gameMode={mode}
+          offerCountAvailable={offerCountAvailable}
         />
         {loading && <LoadingSpinner label={t.loading} accentColor={activeMeta.accentColor} />}
         {error   && <p className="text-center py-8 text-red-400">{error}</p>}
