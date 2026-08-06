@@ -28,34 +28,31 @@ const TRADER_META = {
 
 const PAGE_SIZES = [10, 25, 50];
 
-// \u2500\u2500 Hook pour d\u00e9tecter si le tooltip doit s'ouvrir vers le haut \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-function useSmartTooltip(open) {
+// \u2500\u2500 Hook smart tooltip : d\u00e9tecte overflow haut/bas ET gauche/droite \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function useSmartTooltip(open, tooltipWidth = 208) {
   const triggerRef = useRef(null);
-  const [openUp, setOpenUp] = useState(false);
+  const [pos, setPos] = useState({ openUp: false, openLeft: false });
   useEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    setOpenUp(spaceBelow < 240);
-  }, [open]);
-  return { triggerRef, openUp };
+    setPos({
+      openUp:   window.innerHeight - rect.bottom < 260,
+      openLeft: window.innerWidth  - rect.right  < tooltipWidth + 8,
+    });
+  }, [open, tooltipWidth]);
+  return { triggerRef, pos };
 }
 
-// Classes communes du panneau tooltip
-const PANEL = 'absolute z-50 w-52 bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-none';
-const PANEL_W64 = 'absolute z-50 w-64 bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-none';
-
-// Position: bas par d\u00e9faut, haut si openUp
-function tooltipPos(openUp) {
-  return openUp
-    ? 'bottom-full mb-1 left-0'
-    : 'top-full mt-1 left-0';
+function tooltipCls(pos, extra = '') {
+  const v = pos.openUp   ? 'bottom-full mb-1' : 'top-full mt-1';
+  const h = pos.openLeft ? 'right-0'          : 'left-0';
+  return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-none`;
 }
 
 // \u2500\u2500 Tooltips \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function TraderPricesTooltip({ pricesJson, highlight, label }) {
   const [open, setOpen] = useState(false);
-  const { triggerRef, openUp } = useSmartTooltip(open);
+  const { triggerRef, pos } = useSmartTooltip(open, 208);
   let prices = {};
   try { prices = JSON.parse(pricesJson || '{}'); } catch {}
   const entries = ALL_TRADERS
@@ -81,7 +78,7 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
         <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">&#9662;</span>
       </span>
       {open && (
-        <div className={`${PANEL} ${tooltipPos(openUp)}`}>
+        <div className={tooltipCls(pos, 'w-52')}>
           <p className="text-xs text-gray-500 px-3 pt-1 pb-1.5 border-b border-tarkov-border">{label}</p>
           {entries.map(({ trader, price }) => (
             <div key={trader} className={`flex items-center justify-between px-3 py-1 text-xs ${
@@ -104,7 +101,7 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
 
 function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters }) {
   const [open, setOpen] = useState(false);
-  const { triggerRef, openUp } = useSmartTooltip(open);
+  const { triggerRef, pos } = useSmartTooltip(open, 256);
   let pricesByLevel = {};
   try { pricesByLevel = JSON.parse(pricesJson || '{}'); } catch {}
   const entries = ALL_TRADERS.map((trader) => {
@@ -137,7 +134,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
         <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">&#9662;</span>
       </span>
       {open && (
-        <div className={`${PANEL_W64} ${tooltipPos(openUp)}`}>
+        <div className={tooltipCls(pos, 'w-64')}>
           <p className="text-xs text-gray-500 px-3 pt-1 pb-1.5 border-b border-tarkov-border">{label}</p>
           {entries.map(({ trader, price, accessibleLevel, userLevel, levels }) => {
             const lockedLevels = Object.keys(levels).map(Number).filter((lvl) => lvl > userLevel);
@@ -173,7 +170,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
 
 function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) {
   const [open, setOpen] = useState(false);
-  const { triggerRef, openUp } = useSmartTooltip(open);
+  const { triggerRef, pos } = useSmartTooltip(open, 208);
   if (current == null) return <span className="text-gray-600 text-xs">\u2014</span>;
   return (
     <div className="relative inline-block" ref={triggerRef}
@@ -183,7 +180,7 @@ function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) 
         {avg24h != null && <span className="text-gray-500 text-xs">moy {fmt(avg24h)}</span>}
       </span>
       {open && (
-        <div className={`${PANEL} ${tooltipPos(openUp)}`} style={{ width: 208 }}>
+        <div className={tooltipCls(pos, 'w-52')}>
           <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 px-3 pt-1">
             Flea &#8212; 24h
           </p>
@@ -260,7 +257,6 @@ function computeRow(item, traderFilters, feeDiscount) {
   return { flea, bestSellTrader, bestSellPrice, bestBuyTrader, bestBuyPrice, profitFTS, pctFTS, profitBTF, pctBTF, bestProfit, bestPct, bestRec, bestActionTrader };
 }
 
-// \u2500\u2500 Lien wiki \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function wikiUrl(item) {
   if (item.wiki_link) return item.wiki_link;
   const slug = (item.name_en || item.name || '').trim().replace(/\s+/g, '_');
@@ -281,7 +277,6 @@ function ItemCard({ row, lang }) {
     ? 'bg-green-900/40 border-green-700/40 text-green-300'
     : 'bg-blue-900/40 border-blue-700/40 text-blue-300';
   const url = wikiUrl(row);
-
   return (
     <div className="bg-tarkov-card border border-tarkov-border rounded-lg p-3 flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -454,14 +449,12 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
 
   return (
     <div className="mt-4">
-      {/* Vue carte mobile */}
       <div className="flex flex-col gap-3 md:hidden">
         {pageRows.map((row) => (
           <ItemCard key={row.id} row={row.original} lang={lang} />
         ))}
       </div>
 
-      {/* Vue tableau desktop */}
       <div className="hidden md:block overflow-x-auto rounded-lg border border-tarkov-border">
         <table className="w-full text-sm">
           <thead className="bg-tarkov-card sticky top-0 z-10">

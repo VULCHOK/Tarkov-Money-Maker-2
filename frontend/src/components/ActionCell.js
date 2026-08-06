@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TRADER_META, FLEA_META } from './Filters';
 
-// Portrait circulaire — taille augmentée, exploit pleine hauteur du badge
 function Portrait({ meta, name, size = 26 }) {
   if (!meta?.img) {
     return (
@@ -13,9 +12,7 @@ function Portrait({ meta, name, size = 26 }) {
   }
   return (
     <img
-      src={meta.img}
-      alt={name}
-      title={name}
+      src={meta.img} alt={name} title={name}
       className="rounded-full object-cover border border-white/20 flex-shrink-0"
       style={{ width: size, height: size, objectPosition: 'center 15%' }}
       onError={(e) => {
@@ -34,12 +31,24 @@ const Arrow = () => (
 
 export function ActionCell({ rec, traderName, profit }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const [pos, setPos] = useState({ openUp: false, openLeft: false });
 
-  if (!rec) return <span className="text-gray-600 text-xs">—</span>;
+  useEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const spaceBelow  = window.innerHeight - rect.bottom;
+    const spaceRight  = window.innerWidth  - rect.right;
+    setPos({
+      openUp:   spaceBelow < 100,
+      openLeft: spaceRight < 220,
+    });
+  }, [open]);
+
+  if (!rec) return <span className="text-gray-600 text-xs">&#8212;</span>;
 
   const isFTS = rec === 'BUY_FLEA_SELL_TRADER';
   const isBTF = rec === 'BUY_TRADER_SELL_FLEA';
-
   const traderMeta = TRADER_META[traderName] ?? null;
   const fleaMeta   = FLEA_META;
 
@@ -48,18 +57,21 @@ export function ActionCell({ rec, traderName, profit }) {
     : 'bg-blue-900/50 border-blue-700/50';
 
   const tooltipText = isFTS
-    ? `Acheter sur la Flea → Vendre à ${traderName}`
-    : `Acheter chez ${traderName} → Vendre sur la Flea`;
+    ? `Acheter sur la Flea \u2192 Vendre \u00e0 ${traderName}`
+    : `Acheter chez ${traderName} \u2192 Vendre sur la Flea`;
 
-  const profitStr = profit != null ? `+${profit.toLocaleString('fr-FR')} ₽` : '';
+  const profitStr = profit != null ? `+${profit.toLocaleString('fr-FR')} \u20bd` : '';
+
+  const vPos = pos.openUp   ? 'bottom-full mb-1' : 'top-full mt-1';
+  const hPos = pos.openLeft ? 'right-0'          : 'left-0';
 
   return (
     <div
       className="relative inline-flex"
+      ref={triggerRef}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      {/* Badge — hauteur 32px, portraits 26px, gap réduit */}
       <span
         className={`inline-flex items-center justify-center gap-1 rounded border px-1.5 ${bgCls}`}
         style={{ width: 76, height: 32 }}
@@ -69,7 +81,7 @@ export function ActionCell({ rec, traderName, profit }) {
       </span>
 
       {open && (
-        <div className="absolute z-50 left-0 top-full mt-1 w-52 bg-tarkov-card border border-tarkov-border rounded shadow-lg px-3 py-2 pointer-events-none">
+        <div className={`absolute z-50 ${vPos} ${hPos} w-52 bg-tarkov-card border border-tarkov-border rounded shadow-lg px-3 py-2 pointer-events-none`}>
           <p className="text-xs text-gray-300 leading-snug">{tooltipText}</p>
           {profitStr && <p className="text-xs text-green-400 font-semibold mt-1">{profitStr}</p>}
         </div>
