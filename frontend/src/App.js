@@ -14,10 +14,38 @@ const MODES = [
   { key: 'pvp-season', label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#071525] to-[#111]', borderColor: 'border-blue-900/60',  accentColor: 'text-blue-300',  badge: 'Season 1'  },
 ];
 
+// Drapeaux SVG inline — compatibles partout, pas d'emoji
+const FLAG_GB = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="20" height="10" className="flex-shrink-0 rounded-sm">
+    <clipPath id="gb-t"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
+    <clipPath id="gb-c"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
+    <g clipPath="url(#gb-t)">
+      <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
+      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
+      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" strokeWidth="4" clipPath="url(#gb-c)"/>
+      <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
+      <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+    </g>
+  </svg>
+);
+
+const FLAG_FR = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="20" height="14" className="flex-shrink-0 rounded-sm">
+    <rect width="10" height="20" fill="#002395"/>
+    <rect x="10" width="10" height="20" fill="#fff"/>
+    <rect x="20" width="10" height="20" fill="#ED2939"/>
+  </svg>
+);
+
 const LANGS = [
-  { code: 'en', flag: '🇬🇧', label: 'EN' },
-  { code: 'fr', flag: '🇫🇷', label: 'FR' },
+  { code: 'en', flag: FLAG_GB, label: 'EN' },
+  { code: 'fr', flag: FLAG_FR, label: 'FR' },
 ];
+
+export const I18N = {
+  en: { searchPlaceholder: 'F-1, grenade, scope...', loading: 'Loading' },
+  fr: { searchPlaceholder: 'F-1, grenade, prise...', loading: 'Chargement' },
+};
 
 function defaultMinProfitRub() {
   const saved = localStorage.getItem('minProfitRub');
@@ -45,6 +73,21 @@ function getBestBuyPrice(item, traderFilters) {
     }
     return best;
   } catch { return null; }
+}
+
+// Spinner de chargement
+function LoadingSpinner({ label, accentColor }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 gap-4">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 rounded-full border-2 border-white/10" />
+        <div className="absolute inset-0 rounded-full border-2 border-t-tarkov-gold border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+      </div>
+      <p className="text-gray-400 text-sm">
+        {label} <span className={accentColor}>...</span>
+      </p>
+    </div>
+  );
 }
 
 export default function App() {
@@ -84,34 +127,29 @@ export default function App() {
   const minRub      = parseFloat(filters.minProfitRub) || 0;
   const searchTerm  = (filters.search || '').toLowerCase().trim();
   const activeMeta  = MODES.find((m) => m.key === mode) || MODES[0];
+  const t           = I18N[lang] || I18N.fr;
 
   const visibleItems = items.filter((item) => {
-    // Filtre recherche par nom (EN + FR, insensible casse et accents)
     if (searchTerm) {
-      const nameEn = (item.name_en || item.name || '').toLowerCase();
-      const nameFr = (item.name_fr || '').toLowerCase();
+      const nameEn  = (item.name_en  || item.name  || '').toLowerCase();
+      const nameFr  = (item.name_fr  || '').toLowerCase();
       const shortEn = (item.short_name_en || item.short_name || '').toLowerCase();
       const shortFr = (item.short_name_fr || '').toLowerCase();
       if (!nameEn.includes(searchTerm) && !nameFr.includes(searchTerm)
         && !shortEn.includes(searchTerm) && !shortFr.includes(searchTerm)) return false;
     }
-
-    // Filtre niveau flea
     const minFleaLevel = item.min_level_flea ?? 0;
     if (minFleaLevel > 0 && playerLevel < minFleaLevel) return false;
-
-    // Filtre profit
     try {
       const fleaPrice  = item.flea_price ?? item.last_low_price ?? 0;
       const sellPrices = JSON.parse(item.trader_prices || '{}');
-      const activeSell = Object.entries(sellPrices).filter(([t]) => traderFilters[t]?.enabled).map(([, p]) => p);
+      const activeSell = Object.entries(sellPrices).filter(([tr]) => traderFilters[tr]?.enabled).map(([, p]) => p);
       const bestSell   = activeSell.length > 0 ? Math.max(...activeSell) : 0;
       const ftsProfit  = bestSell - fleaPrice;
       const bestBuy    = getBestBuyPrice(item, traderFilters);
       const btfFee     = item.flea_fee ? item.flea_fee * (1 - feeDiscount) : 0;
       const btfProfit  = bestBuy != null ? (fleaPrice - btfFee - bestBuy) : -Infinity;
       const bestProfit = Math.max(ftsProfit, btfProfit);
-      // Si recherche active : ignorer le filtre profit pour voir tous les résultats
       if (searchTerm) return true;
       return minRub > 0 ? bestProfit >= minRub : bestProfit > 0;
     } catch { return true; }
@@ -153,7 +191,7 @@ export default function App() {
               {LANGS.map(({ code, flag, label }) => (
                 <button key={code} onClick={() => setLang(code)}
                   className={`${pillBase} ${lang === code ? pillOn : pillOff}`}>
-                  <span className="text-base leading-none">{flag}</span>
+                  {flag}
                   <span>{label}</span>
                 </button>
               ))}
@@ -178,13 +216,10 @@ export default function App() {
           onIntelLevelChange={setIntelLevel}
           playerLevel={playerLevel}
           onPlayerLevelChange={handlePlayerLevel}
+          lang={lang}
         />
-        {loading && (
-          <p className="text-center py-8 text-gray-400">
-            Chargement <span className={activeMeta.accentColor}>({activeMeta.label})</span>...
-          </p>
-        )}
-        {error && <p className="text-center py-8 text-red-400">{error}</p>}
+        {loading && <LoadingSpinner label={t.loading} accentColor={activeMeta.accentColor} />}
+        {error   && <p className="text-center py-8 text-red-400">{error}</p>}
         {!loading && !error && (
           <ItemTable items={visibleItems} lang={lang} traderFilters={traderFilters} intelLevel={intelLevel} feeDiscount={feeDiscount} />
         )}

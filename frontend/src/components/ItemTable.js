@@ -13,6 +13,8 @@ import { ActionCell } from './ActionCell';
 const col = createColumnHelper();
 const fmt = (n) => n != null ? `${n.toLocaleString('fr-FR')} ₽` : '—';
 
+const HOT_DEAL_THRESHOLD = 100_000;
+
 const TRADER_META = {
   Prapor:      { img: 'https://assets.tarkov.dev/prapor-portrait.png' },
   Therapist:   { img: 'https://assets.tarkov.dev/therapist-portrait.png' },
@@ -78,18 +80,15 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
   );
 }
 
-// Colonne Achat Trader — affiche le prix accessible selon le niveau sélectionné
 function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters }) {
   const [open, setOpen] = useState(false);
   let pricesByLevel = {};
   try { pricesByLevel = JSON.parse(pricesJson || '{}'); } catch {}
 
-  // Pour chaque trader, récupérer le prix accessible au niveau configuré
   const entries = ALL_TRADERS.map((trader) => {
     const levels = pricesByLevel[trader];
     if (!levels || typeof levels !== 'object') return null;
     const userLevel = traderFilters?.[trader]?.level ?? 1;
-    // Chercher le meilleur prix parmi les niveaux <= userLevel
     let bestPrice = null;
     let accessibleLevel = null;
     for (let lvl = 1; lvl <= userLevel; lvl++) {
@@ -125,10 +124,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
         <div className="absolute z-50 left-0 top-full mt-1 w-64 bg-tarkov-card border border-tarkov-border rounded shadow-lg py-1">
           <p className="text-xs text-gray-500 px-3 pt-1 pb-1.5 border-b border-tarkov-border">{label}</p>
           {entries.map(({ trader, price, accessibleLevel, userLevel, levels }) => {
-            // Niveaux non accessibles (> userLevel)
-            const lockedLevels = Object.keys(levels)
-              .map(Number)
-              .filter((lvl) => lvl > userLevel);
+            const lockedLevels = Object.keys(levels).map(Number).filter((lvl) => lvl > userLevel);
             return (
               <div key={trader} className={`px-3 py-1.5 text-xs ${
                 trader === bestEntry.trader ? 'bg-tarkov-border' : ''
@@ -191,9 +187,10 @@ function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount }) 
 
 function ProfitCell({ value, pct, isBest }) {
   if (value == null) return <span className="text-gray-600 text-xs">—</span>;
-  const color = value > 0 ? 'text-green-400' : 'text-red-400';
-  const fire  = isBest && value >= 50000 ? ' 🔥' : '';
-  const bold  = isBest ? 'font-bold text-sm' : 'text-xs';
+  const color   = value > 0 ? 'text-green-400' : 'text-red-400';
+  // Flamme uniquement si best profit ET >= 100 000 ₽
+  const fire    = isBest && value >= HOT_DEAL_THRESHOLD ? ' 🔥' : '';
+  const bold    = isBest ? 'font-bold text-sm' : 'text-xs';
   return (
     <span className="flex flex-col leading-tight">
       <span className={`${color} ${bold}`}>{value > 0 ? '+' : ''}{value.toLocaleString('fr-FR')} ₽{fire}</span>
@@ -202,15 +199,9 @@ function ProfitCell({ value, pct, isBest }) {
   );
 }
 
-/**
- * computeRow — calcule FTS/BTF en respectant le niveau trader sélectionné.
- * trader_buy_prices format: { "Mechanic": { "1": 25000, "3": 22997 }, ... }
- * On prend le meilleur prix parmi tous les niveaux <= userLevel.
- */
 function computeRow(item, traderFilters, feeDiscount) {
   const flea = item.flea_price ?? item.last_low_price ?? null;
 
-  // — Best sell price (trader rachète au joueur)
   let bestSellTrader = null, bestSellPrice = null;
   try {
     const sell = JSON.parse(item.trader_prices || '{}');
@@ -223,7 +214,6 @@ function computeRow(item, traderFilters, feeDiscount) {
     }
   } catch {}
 
-  // — Best buy price (trader vend au joueur) avec filtre NIVEAU
   let bestBuyTrader = null, bestBuyPrice = null;
   try {
     const buyByLevel = JSON.parse(item.trader_buy_prices || '{}');
@@ -232,7 +222,6 @@ function computeRow(item, traderFilters, feeDiscount) {
       const levels = buyByLevel[t];
       if (!levels || typeof levels !== 'object') continue;
       const userLevel = traderFilters[t]?.level ?? 1;
-      // Parcourir tous les niveaux <= userLevel, garder le moins cher
       for (let lvl = 1; lvl <= userLevel; lvl++) {
         const p = levels[String(lvl)];
         if (p != null && (bestBuyPrice === null || p < bestBuyPrice)) {
@@ -266,17 +255,14 @@ function computeRow(item, traderFilters, feeDiscount) {
 }
 
 export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
-  const rows = useMemo(
-    () => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })),
-    [items, traderFilters, feeDiscount]
-  );
+  const rows     = useMemo(() => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })), [items, traderFilters, feeDiscount]);
   const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
 
   const columns = useMemo(() => [
     col.accessor((row) => lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en, {
-      id: 'name', header: 'Item',
+      id: 'name', header: lang === 'en' ? 'Item' : 'Item',
       cell: (info) => {
-        const row = info.row.original;
+        const row  = info.row.original;
         const name = info.getValue() || row.normalized_name || row.id;
         return (
           <span className="flex items-center gap-2 min-w-[160px]">
@@ -290,12 +276,12 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       },
     }),
     col.accessor((row) => row._c.bestBuyPrice, {
-      id: 'buy_trader', header: 'Achat Trader',
+      id: 'buy_trader', header: lang === 'en' ? 'Buy (Trader)' : 'Achat Trader',
       cell: (info) => (
         <TraderBuyPricesTooltip
           pricesJson={info.row.original.trader_buy_prices}
           highlight={info.row.original._c.bestBuyTrader}
-          label="Prix d'achat chez les traders (selon votre niveau)"
+          label={lang === 'en' ? 'Buy prices by trader (your level)' : "Prix d'achat chez les traders (selon votre niveau)"}
           traderFilters={traderFilters}
         />
       ),
@@ -309,17 +295,17 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       },
     }),
     col.accessor((row) => row._c.bestSellPrice, {
-      id: 'sell_trader', header: 'Vente Trader',
-      cell: (info) => <TraderPricesTooltip pricesJson={info.row.original.trader_prices} highlight={info.row.original._c.bestSellTrader} label="Prix de rachat par les traders" />,
+      id: 'sell_trader', header: lang === 'en' ? 'Sell (Trader)' : 'Vente Trader',
+      cell: (info) => <TraderPricesTooltip pricesJson={info.row.original.trader_prices} highlight={info.row.original._c.bestSellTrader} label={lang === 'en' ? 'Trader buy-back prices' : 'Prix de rachat par les traders'} />,
       sortingFn: (a, b) => (a.original._c.bestSellPrice ?? -Infinity) - (b.original._c.bestSellPrice ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitBTF, {
-      id: 'profit_btf', header: 'Profit Trader→Flea',
+      id: 'profit_btf', header: lang === 'en' ? 'Profit Trader→Flea' : 'Profit Trader→Flea',
       cell: (info) => <ProfitCell value={info.row.original._c.profitBTF} pct={info.row.original._c.pctBTF} isBest={info.row.original._c.bestRec === 'BUY_TRADER_SELL_FLEA'} />,
       sortingFn: (a, b) => (a.original._c.profitBTF ?? -Infinity) - (b.original._c.profitBTF ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitFTS, {
-      id: 'profit_fts', header: 'Profit Flea→Trader',
+      id: 'profit_fts', header: lang === 'en' ? 'Profit Flea→Trader' : 'Profit Flea→Trader',
       cell: (info) => <ProfitCell value={info.row.original._c.profitFTS} pct={info.row.original._c.pctFTS} isBest={info.row.original._c.bestRec === 'BUY_FLEA_SELL_TRADER'} />,
       sortingFn: (a, b) => (a.original._c.profitFTS ?? -Infinity) - (b.original._c.profitFTS ?? -Infinity),
     }),
@@ -329,7 +315,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       sortingFn: (a, b) => (a.original._c.bestProfit ?? -Infinity) - (b.original._c.bestProfit ?? -Infinity),
     }),
     col.accessor((row) => row._c.bestRec, {
-      id: 'action', header: 'Action', enableSorting: false,
+      id: 'action', header: lang === 'en' ? 'Action' : 'Action', enableSorting: false,
       cell: (info) => {
         const r = info.row.original;
         return <ActionCell rec={r._c.bestRec} traderName={r._c.bestActionTrader} profit={r._c.bestProfit} />;
@@ -349,6 +335,10 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const total = filtered.length;
   const from  = total === 0 ? 0 : pageIndex * pageSize + 1;
   const to    = Math.min((pageIndex + 1) * pageSize, total);
+
+  const noItemsMsg = lang === 'en'
+    ? 'No profitable items found. Try lowering the profit threshold or enabling more traders.'
+    : 'Aucun item profitable trouvé. Essaie de diminuer le seuil de profit ou d\'activer plus de traders.';
 
   return (
     <div className="mt-4">
@@ -383,15 +373,13 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
             ))}
           </tbody>
         </table>
-        {total === 0 && (
-          <p className="text-center py-8 text-gray-500">Aucun item profitable trouvé. Essaie de diminuer le seuil de profit ou d'activer plus de traders.</p>
-        )}
+        {total === 0 && <p className="text-center py-8 text-gray-500">{noItemsMsg}</p>}
       </div>
       {total > 0 && (
         <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
-          <span>{from}–{to} sur {total} items</span>
+          <span>{from}–{to} {lang === 'en' ? 'of' : 'sur'} {total} {lang === 'en' ? 'items' : 'items'}</span>
           <div className="flex items-center gap-1">
-            <span className="text-gray-500">Par page :</span>
+            <span className="text-gray-500">{lang === 'en' ? 'Per page:' : 'Par page :'}</span>
             {PAGE_SIZES.map((s) => (
               <button key={s} onClick={() => table.setPageSize(s)}
                 className={`px-2 py-0.5 rounded border text-xs transition-colors ${
@@ -402,7 +390,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
           <div className="flex items-center gap-1">
             <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">«</button>
             <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">‹</button>
-            <span className="px-2">Page {pageIndex + 1} / {table.getPageCount()}</span>
+            <span className="px-2">{lang === 'en' ? 'Page' : 'Page'} {pageIndex + 1} / {table.getPageCount()}</span>
             <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">›</button>
             <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">»</button>
           </div>

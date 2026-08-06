@@ -1,4 +1,5 @@
 import React from 'react';
+import { I18N } from '../App';
 
 export const TRADER_LEVELS = {
   Prapor:      [1, 2, 3, 4],
@@ -132,7 +133,10 @@ export function Filters({
   traderFilters, onTraderFiltersChange,
   intelLevel, onIntelLevelChange,
   playerLevel, onPlayerLevelChange,
+  lang,
 }) {
+  const t = I18N[lang] || I18N.fr;
+
   const handleTraderToggle = (trader) => {
     const next = { ...traderFilters, [trader]: { ...traderFilters[trader], enabled: !traderFilters[trader].enabled } };
     localStorage.setItem('traderFilters', JSON.stringify(next));
@@ -158,11 +162,13 @@ export function Filters({
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-gray-400 text-sm select-none">🔍</span>
           <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 leading-none mb-0.5">Recherche</span>
+            <span className="text-[10px] text-gray-500 leading-none mb-0.5">
+              {lang === 'en' ? 'Search' : 'Recherche'}
+            </span>
             <div className="relative">
               <input
                 type="text"
-                placeholder="F-1, grenade, prise..."
+                placeholder={t.searchPlaceholder}
                 value={filters.search || ''}
                 onChange={(e) => onChange({ ...filters, search: e.target.value })}
                 className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-44 focus:outline-none focus:border-tarkov-gold pr-6"
@@ -184,7 +190,9 @@ export function Filters({
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-tarkov-gold font-bold text-sm select-none">₽</span>
           <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 leading-none mb-0.5">Profit min.</span>
+            <span className="text-[10px] text-gray-500 leading-none mb-0.5">
+              {lang === 'en' ? 'Min. profit' : 'Profit min.'}
+            </span>
             <input type="number" placeholder="20000" value={filters.minProfitRub}
               onChange={(e) => { const v = e.target.value; onChange({ ...filters, minProfitRub: v }); localStorage.setItem('minProfitRub', v); }}
               className="bg-tarkov-bg border border-tarkov-border rounded px-2 py-1 text-sm w-28 focus:outline-none focus:border-tarkov-gold" />
@@ -197,7 +205,9 @@ export function Filters({
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-lg leading-none select-none" title="Niveau joueur">🎖️</span>
           <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 leading-none mb-0.5">Niveau joueur</span>
+            <span className="text-[10px] text-gray-500 leading-none mb-0.5">
+              {lang === 'en' ? 'Player level' : 'Niveau joueur'}
+            </span>
             <div className="flex items-center gap-1.5">
               <input type="number" min={1} max={79} value={playerLevel}
                 onChange={(e) => onPlayerLevelChange(e.target.value)}
