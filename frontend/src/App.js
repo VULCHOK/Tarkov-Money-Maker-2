@@ -5,9 +5,8 @@ import { Filters } from './components/Filters';
 import { ExportButtons } from './components/ExportButtons';
 import { RefreshButton } from './components/RefreshButton';
 import { StatsBar } from './components/StatsBar';
+import { ApiStatus } from './components/ApiStatus';
 
-// Always use relative path — nginx proxies /api/ → backend:3000
-// Works on any domain/IP without rebuild
 const API_BASE = '/api';
 
 export default function App() {
@@ -46,14 +45,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-tarkov-bg text-tarkov-text">
-      <header className="border-b border-tarkov-border px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-tarkov-gold">Tarkov Money Maker 2</h1>
-          <p className="text-sm text-gray-400">Compare trader prices vs Flea Market</p>
-        </div>
-        <div className="flex gap-3">
-          <ExportButtons items={items} />
-          <RefreshButton onRefresh={handleRefresh} />
+      <header className="border-b border-tarkov-border px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-tarkov-gold">Tarkov Money Maker 2</h1>
+            <p className="text-sm text-gray-400">Compare trader prices vs Flea Market</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <ApiStatus />
+            <ExportButtons items={items} />
+            <RefreshButton onRefresh={handleRefresh} />
+          </div>
         </div>
       </header>
       <main className="px-6 py-4">

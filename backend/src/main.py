@@ -1,33 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import logging
-
-from .database import engine, Base
-from .routes import items, traders, market, refresh
+from .database import Base, engine
+from .routes import items, refresh, status
 from .scheduler import start_scheduler
+import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables ready.")
-    scheduler = start_scheduler()
-    logger.info("Background scheduler started.")
-    yield
-    scheduler.shutdown()
-    logger.info("Scheduler stopped.")
-
-
-app = FastAPI(
-    title="Tarkov Money Maker 2",
-    description="Compare EFT item prices between traders and the Flea Market.",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+app = FastAPI(title="Tarkov Money Maker 2", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,12 +17,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(items.router, prefix="/items", tags=["Items"])
-app.include_router(traders.router, prefix="/traders", tags=["Traders"])
-app.include_router(market.router, prefix="/market", tags=["Market"])
-app.include_router(refresh.router, prefix="/refresh", tags=["Refresh"])
+
+@app.on_event("startup")
+async def startup():
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables ready.")
+    start_scheduler()
+    logger.info("Background scheduler started.")
 
 
-@app.get("/health", tags=["Health"])
+app.include_router(items.router,   prefix="/items")
+app.include_router(refresh.router, prefix="/refresh")
+app.include_router(status.router,  prefix="/status")
+
+
+@app.get("/health")
 def health():
     return {"status": "ok"}
