@@ -15,27 +15,80 @@ const MODES = [
   { key: 'pvp-season', label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badgeKey: 'modeBadgeSeason' },
 ];
 
+// SVG flags — cross-platform (Windows ne supporte pas les emojis drapeaux)
+const FlagGB = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="20" height="10" style={{flexShrink:0,borderRadius:'2px'}}>
+    <clipPath id="gb-t"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
+    <clipPath id="gb-c"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
+    <g clipPath="url(#gb-t)">
+      <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
+      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
+      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" strokeWidth="4" clipPath="url(#gb-c)"/>
+      <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
+      <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+    </g>
+  </svg>
+);
+
+const FlagFR = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="20" height="14" style={{flexShrink:0,borderRadius:'2px'}}>
+    <rect width="10" height="20" fill="#002395"/>
+    <rect x="10" width="10" height="20" fill="#fff"/>
+    <rect x="20" width="10" height="20" fill="#ED2939"/>
+  </svg>
+);
+
+const FlagDE = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="20" height="14" style={{flexShrink:0,borderRadius:'2px'}}>
+    <rect width="30" height="7" fill="#000"/>
+    <rect y="7" width="30" height="7" fill="#D00"/>
+    <rect y="14" width="30" height="6" fill="#FFCE00"/>
+  </svg>
+);
+
+const FlagRU = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="20" height="14" style={{flexShrink:0,borderRadius:'2px'}}>
+    <rect width="30" height="7" fill="#fff"/>
+    <rect y="7" width="30" height="7" fill="#0039A6"/>
+    <rect y="14" width="30" height="6" fill="#D52B1E"/>
+  </svg>
+);
+
+const FlagPL = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="20" height="14" style={{flexShrink:0,borderRadius:'2px'}}>
+    <rect width="30" height="10" fill="#fff"/>
+    <rect y="10" width="30" height="10" fill="#DC143C"/>
+  </svg>
+);
+
+const FlagES = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="20" height="14" style={{flexShrink:0,borderRadius:'2px'}}>
+    <rect width="30" height="20" fill="#AA151B"/>
+    <rect y="5" width="30" height="10" fill="#F1BF00"/>
+  </svg>
+);
+
 // Toutes les langues disponibles
 // Pour ajouter une langue : ajouter une entrée ici ET créer le fichier i18n correspondant
 const LANGS = [
-  { code: 'en', flag: '🇬🇧', label: 'English' },
-  { code: 'fr', flag: '🇫🇷', label: 'Français' },
-  { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
-  { code: 'ru', flag: '🇷🇺', label: 'Русский' },
-  { code: 'pl', flag: '🇵🇱', label: 'Polski' },
-  { code: 'es', flag: '🇪🇸', label: 'Español' },
+  { code: 'en', Flag: FlagGB, label: 'English' },
+  { code: 'fr', Flag: FlagFR, label: 'Français' },
+  { code: 'de', Flag: FlagDE, label: 'Deutsch' },
+  { code: 'ru', Flag: FlagRU, label: 'Русский' },
+  { code: 'pl', Flag: FlagPL, label: 'Polski' },
+  { code: 'es', Flag: FlagES, label: 'Español' },
 ];
 
 /**
  * Dropdown de sélection de langue
  */
-function LangSelector({ lang, setLang, pillBase, pillOff, pillOn }) {
+function LangSelector({ lang, setLang, pillBase, pillOff }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
   const current = LANGS.find((l) => l.code === lang) || LANGS[0];
+  const CurrentFlag = current.Flag;
 
-  // Fermer si clic en dehors
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
@@ -50,63 +103,59 @@ function LangSelector({ lang, setLang, pillBase, pillOff, pillOn }) {
   };
 
   return (
-    <div ref={ref} className="relative">
-      {/* Trigger */}
+    <div ref={ref} style={{position:'relative'}}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`${pillBase} ${pillOff} gap-1.5`}
+        className={`${pillBase} ${pillOff}`}
+        style={{gap:'6px'}}
         aria-haspopup="listbox"
         aria-expanded={open}
         title="Language / Langue"
       >
-        <span className="text-base leading-none">{current.flag}</span>
-        <span className="font-semibold uppercase tracking-wide text-[11px]">{current.code.toUpperCase()}</span>
-        {/* Chevron */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          width="10" height="10"
-          fill="none" stroke="currentColor" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          style={{ opacity: 0.5, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}
+        <CurrentFlag />
+        <span style={{fontWeight:600,fontSize:'11px',letterSpacing:'0.05em',textTransform:'uppercase'}}>
+          {current.code}
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10"
+          fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{opacity:0.5, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 150ms'}}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
-      {/* Dropdown */}
       {open && (
         <ul
           role="listbox"
           aria-label="Select language"
-          className="
-            absolute right-0 mt-1 z-50
-            bg-[#1a1a1a] border border-white/15 rounded-lg
-            shadow-xl shadow-black/60
-            min-w-[130px] overflow-hidden
-            py-1
-          "
+          style={{
+            position:'absolute', right:0, marginTop:'4px', zIndex:50,
+            background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.15)',
+            borderRadius:'8px', boxShadow:'0 8px 24px rgba(0,0,0,0.6)',
+            minWidth:'140px', overflow:'hidden', padding:'4px 0',
+          }}
         >
-          {LANGS.map(({ code, flag, label }) => (
+          {LANGS.map(({ code, Flag, label }) => (
             <li key={code} role="option" aria-selected={code === lang}>
               <button
                 onClick={() => select(code)}
-                className={`
-                  w-full flex items-center gap-2.5 px-3 py-1.5 text-xs
-                  transition-colors cursor-pointer
-                  ${
-                    code === lang
-                      ? 'bg-tarkov-gold/15 text-tarkov-gold font-semibold'
-                      : 'text-gray-300 hover:bg-white/6 hover:text-white'
-                  }
-                `}
+                style={{
+                  width:'100%', display:'flex', alignItems:'center', gap:'10px',
+                  padding:'6px 12px', fontSize:'12px', cursor:'pointer', border:'none',
+                  background: code === lang ? 'rgba(201,168,84,0.12)' : 'transparent',
+                  color: code === lang ? '#c9a854' : '#ccc',
+                  fontWeight: code === lang ? 600 : 400,
+                  transition:'background 120ms, color 120ms',
+                }}
+                onMouseEnter={e => { if (code !== lang) { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.color='#fff'; }}}
+                onMouseLeave={e => { if (code !== lang) { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#ccc'; }}}
               >
-                <span className="text-base leading-none w-5 text-center">{flag}</span>
+                <Flag />
                 <span>{label}</span>
                 {code === lang && (
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10"
                     fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                    className="ml-auto"
+                    style={{marginLeft:'auto'}}
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -312,7 +361,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Mode selector */}
             <div className={pillGroup}>
               {MODES.map((m) => (
                 <button key={m.key} onClick={() => setMode(m.key)} title={t(m.badgeKey)}
@@ -323,7 +371,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Language dropdown */}
             <div className="bg-black/50 border border-white/10 rounded-lg p-0.5">
               <LangSelector
                 lang={lang}
@@ -334,7 +381,6 @@ export default function App() {
               />
             </div>
 
-            {/* ApiStatus + Export */}
             <div className={pillGroup}>
               <ApiStatus pillBase={pillBase} pillOff={pillOff} lang={lang} />
               <span className="w-px h-4 bg-white/10 mx-0.5" />
