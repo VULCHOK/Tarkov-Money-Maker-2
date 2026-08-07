@@ -1,3 +1,15 @@
+/**
+ * i18n — Français (fr) ✅ COMPLETE
+ *
+ * STATUS (2026-08-07)
+ * [x] en  — complete (reference)
+ * [x] fr  — complete
+ * [ ] de  — TODO tomorrow
+ * [ ] ru  — TODO tomorrow
+ * [ ] pl  — TODO tomorrow
+ * [ ] es  — TODO tomorrow
+ */
+
 const fr = {
   // App / modes
   appTitle:        'Tarkov Money Maker 2',

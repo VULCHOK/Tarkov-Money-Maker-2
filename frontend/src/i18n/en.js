@@ -1,3 +1,23 @@
+/**
+ * i18n — English (en) ✅ COMPLETE
+ * All UI strings are present and up to date.
+ *
+ * STATUS (2026-08-07)
+ * [x] en  — complete (reference)
+ * [x] fr  — complete
+ * [ ] de  — TODO tomorrow
+ * [ ] ru  — TODO tomorrow
+ * [ ] pl  — TODO tomorrow
+ * [ ] es  — TODO tomorrow
+ *
+ * HOW TO ADD A LANGUAGE
+ * 1. Duplicate this file, rename to <code>.js  (e.g. de.js)
+ * 2. Translate every value; never remove a key
+ * 3. Export as default
+ * 4. Register in hooks/useT.js : import de from '../i18n/de'; const LOCALES = { en, fr, de, ... }
+ * 5. Add to LANGS array in App.js with flag SVG + label
+ */
+
 const en = {
   // App / modes
   appTitle:        'Tarkov Money Maker 2',
@@ -8,8 +28,8 @@ const en = {
 
   // Filters — Search
   filterSearchLabel:       'Search',
-  filterSearchPlaceholder: 'Item name, Enter or click\u2026',
-  filterSearchAddTerm:     'Add another term\u2026',
+  filterSearchPlaceholder: 'Item name, Enter or click…',
+  filterSearchAddTerm:     'Add another term…',
   filterSearchAdd:         'add',
 
   // Filters — Profit
@@ -77,7 +97,7 @@ const en = {
   apiStatusOnline:       'tarkov.dev Online',
   apiStatusDegraded:     'tarkov.dev Degraded',
   apiStatusOffline:      'tarkov.dev Offline',
-  apiStatusChecking:     'Checking\u2026',
+  apiStatusChecking:     'Checking…',
   apiStatusGlobal:       'Overall status',
   apiStatusLastSync:     'Last sync',
   apiStatusItems:        'Items synced',
