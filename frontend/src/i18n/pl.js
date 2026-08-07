@@ -1,13 +1,5 @@
 /**
  * i18n — Polski (pl) ✅ COMPLETE
- *
- * STATUS (2026-08-07)
- * [x] en  — complete (reference)
- * [x] fr  — complete
- * [x] de  — complete
- * [x] ru  — complete
- * [x] pl  — complete
- * [x] es  — complete
  */
 
 const pl = {
@@ -31,15 +23,15 @@ const pl = {
   filterLevelLabel: 'Poziom gracza',
 
   // Filters — Min offers
-  filterOffersLabel:    'Min. ofert',
-  filterOffersDisabled: 'API nie dostarcza liczby ofert dla tego trybu. Filtr wyłączony.',
+  filterOffersLabel:    'Min. oferty',
+  filterOffersDisabled: 'API nie udostępnia liczby ofert dla tego trybu. Filtr wyłączony.',
 
   // Filters — Trader tooltip
   traderEnable:  'włącz',
   traderDisable: 'wyłącz',
 
   // Filters — Intel Center
-  intelNotBuilt: 'Nie zbudowano',
+  intelNotBuilt: 'Nie zbudowane',
   intelLevel1:   'Poziom 1',
   intelLevel2:   'Poziom 2',
   intelLevel3:   '-30% podatek pchli targ',
@@ -49,37 +41,37 @@ const pl = {
   colBuyTrader:  'Kup (Handlarz)',
   colSellTrader: 'Sprzedaj (Handlarz)',
   colAction:     'Akcja',
-  colBestProfit: '★ Najlepszy zysk',
-  colTraderFlea: 'Handlarz→Pchli targ',
-  colFleaTrader: 'Pchli targ→Handlarz',
+  colBestProfit: '\u2605 Najlepszy zysk',
+  colTraderFlea: 'Handlarz\u2192Pchli targ',
+  colFleaTrader: 'Pchli targ\u2192Handlarz',
   colFlea:       'Pchli targ',
 
   // ItemTable — tooltips
-  tooltipBuyPrices:  'Ceny zakupu u handlarzy (twój poziom)',
-  tooltipSellPrices: 'Ceny odkupu handlarzy',
+  tooltipBuyPrices:  'Ceny zakupu według handlarza (twój poziom)',
+  tooltipSellPrices: 'Ceny skupu handlarzy',
 
   // ItemTable — flea tooltip
-  flea24h:    'Pchli targ — 24h',
+  flea24h:    'Pchli targ \u2014 24h',
   fleaCur:    'Aktualna',
-  fleaLow:    'Min. 24h',
-  fleaAvg:    'Śr. 24h',
-  fleaHigh:   'Maks. 24h',
+  fleaLow:    'Najniższa 24h',
+  fleaAvg:    'Średnia 24h',
+  fleaHigh:   'Najwyższa 24h',
   fleaOffers: 'Oferty',
 
   // ItemTable — recommendations
-  recFTS: 'Kup na pchli targ → Sprzedaj handlarzowi',
-  recBTF: 'Kup u handlarza → Sprzedaj na pchli targ',
+  recFTS: 'Kup pchli targ \u2192 Sprzedaj handlarzowi',
+  recBTF: 'Kup u handlarza \u2192 Sprzedaj na pchlim targu',
 
   // ItemTable — mobile card
   cardBuy:    'Kup',
   cardSell:   'Sprzedaj',
-  cardOffers: 'ofert',
+  cardOffers: 'oferty',
 
   // ItemTable — pagination
   paginationOf:      'z',
   paginationPerPage: 'Na stronie:',
   paginationPage:    'Strona',
-  paginationTapSort: 'Dotknij aby posortować',
+  paginationTapSort: 'Dotknij, aby sortować',
 
   // ItemTable — empty state
   noItems: 'Nie znaleziono opłacalnych przedmiotów. Obniż próg zysku lub włącz więcej handlarzy.',
@@ -87,24 +79,24 @@ const pl = {
   // ApiStatus
   apiStatusTitle:        'Status synchronizacji',
   apiStatusOnline:       'tarkov.dev Online',
-  apiStatusDegraded:     'tarkov.dev Ograniczony',
+  apiStatusDegraded:     'tarkov.dev Obniżona wydajność',
   apiStatusOffline:      'tarkov.dev Offline',
   apiStatusChecking:     'Sprawdzanie…',
-  apiStatusGlobal:       'Status globalny',
-  apiStatusLastSync:     'Ostatnia sync',
-  apiStatusItems:        'Zsynchronizowane przedmioty',
-  apiStatusItemsSub:     'łącznie skumulowane',
+  apiStatusGlobal:       'Ogólny status',
+  apiStatusLastSync:     'Ostatnia synchronizacja',
+  apiStatusItems:        'Zsynchronizowanych przedmiotów',
+  apiStatusItemsSub:     'łącznie skumulowanych',
   apiStatusSource:       'Źródło API',
-  apiStatusSourceSub:    'auto-sprawdzanie co 30s',
+  apiStatusSourceSub:    'sprawdzane automatycznie co 30s',
   apiStatusCheckedAt:    'Sprawdzono',
   apiStatusModeStatus:   'Status',
   apiStatusModeItems:    'Przedmioty',
-  apiStatusModeLastSync: 'Ostatnia sync',
+  apiStatusModeLastSync: 'Ostatni sync',
   apiStatusModeDuration: 'Czas trwania',
   apiStatusNever:        'nigdy',
   apiStatusJustNow:      'przed chwilą',
-  apiStatusMinutesAgo:   'min temu',
-  apiStatusHoursAgo:     'godz. temu',
+  apiStatusMinutesAgo:   'min. temu',
+  apiStatusHoursAgo:     'g. temu',
   apiStatusRest:         'REST',
 
   // ExportButtons

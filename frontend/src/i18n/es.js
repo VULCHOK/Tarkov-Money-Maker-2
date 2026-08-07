@@ -1,13 +1,5 @@
 /**
  * i18n — Español (es) ✅ COMPLETE
- *
- * STATUS (2026-08-07)
- * [x] en  — complete (reference)
- * [x] fr  — complete
- * [x] de  — complete
- * [x] ru  — complete
- * [x] pl  — complete
- * [x] es  — complete
  */
 
 const es = {
@@ -25,7 +17,7 @@ const es = {
   filterSearchAdd:         'añadir',
 
   // Filters — Profit
-  filterProfitLabel: 'Beneficio mín.',
+  filterProfitLabel: 'Ganancia mín.',
 
   // Filters — Player level
   filterLevelLabel: 'Nivel del jugador',
@@ -49,9 +41,9 @@ const es = {
   colBuyTrader:  'Comprar (Comerciante)',
   colSellTrader: 'Vender (Comerciante)',
   colAction:     'Acción',
-  colBestProfit: '★ Mejor beneficio',
-  colTraderFlea: 'Comerciante→Mercadillo',
-  colFleaTrader: 'Mercadillo→Comerciante',
+  colBestProfit: '\u2605 Mejor ganancia',
+  colTraderFlea: 'Comerciante\u2192Mercadillo',
+  colFleaTrader: 'Mercadillo\u2192Comerciante',
   colFlea:       'Mercadillo',
 
   // ItemTable — tooltips
@@ -59,16 +51,16 @@ const es = {
   tooltipSellPrices: 'Precios de recompra de comerciantes',
 
   // ItemTable — flea tooltip
-  flea24h:    'Mercadillo — 24h',
+  flea24h:    'Mercadillo \u2014 24h',
   fleaCur:    'Actual',
-  fleaLow:    'Mín. 24h',
-  fleaAvg:    'Med. 24h',
-  fleaHigh:   'Máx. 24h',
+  fleaLow:    'Mínimo 24h',
+  fleaAvg:    'Promedio 24h',
+  fleaHigh:   'Máximo 24h',
   fleaOffers: 'Ofertas',
 
   // ItemTable — recommendations
-  recFTS: 'Comprar mercadillo → Vender comerciante',
-  recBTF: 'Comprar comerciante → Vender mercadillo',
+  recFTS: 'Comprar mercadillo \u2192 Vender a comerciante',
+  recBTF: 'Comprar a comerciante \u2192 Vender en mercadillo',
 
   // ItemTable — mobile card
   cardBuy:    'Comprar',
@@ -82,28 +74,28 @@ const es = {
   paginationTapSort: 'Toca para ordenar',
 
   // ItemTable — empty state
-  noItems: 'No se encontraron objetos rentables. Baja el umbral de beneficio o activa más comerciantes.',
+  noItems: 'No se encontraron objetos rentables. Reduce el umbral de ganancia o activa más comerciantes.',
 
   // ApiStatus
   apiStatusTitle:        'Estado de sincronización',
   apiStatusOnline:       'tarkov.dev Online',
   apiStatusDegraded:     'tarkov.dev Degradado',
   apiStatusOffline:      'tarkov.dev Offline',
-  apiStatusChecking:     'Comprobando…',
-  apiStatusGlobal:       'Estado global',
-  apiStatusLastSync:     'Última sync',
+  apiStatusChecking:     'Verificando…',
+  apiStatusGlobal:       'Estado general',
+  apiStatusLastSync:     'Última sincronización',
   apiStatusItems:        'Objetos sincronizados',
   apiStatusItemsSub:     'total acumulado',
-  apiStatusSource:       'Fuente API',
-  apiStatusSourceSub:    'comprobación auto cada 30s',
-  apiStatusCheckedAt:    'Comprobado',
+  apiStatusSource:       'Fuente de la API',
+  apiStatusSourceSub:    'verificado automáticamente cada 30s',
+  apiStatusCheckedAt:    'Verificado',
   apiStatusModeStatus:   'Estado',
   apiStatusModeItems:    'Objetos',
-  apiStatusModeLastSync: 'Última sync',
+  apiStatusModeLastSync: 'Último sync',
   apiStatusModeDuration: 'Duración',
   apiStatusNever:        'nunca',
   apiStatusJustNow:      'ahora mismo',
-  apiStatusMinutesAgo:   'min atrás',
+  apiStatusMinutesAgo:   'min. atrás',
   apiStatusHoursAgo:     'h atrás',
   apiStatusRest:         'REST',
 

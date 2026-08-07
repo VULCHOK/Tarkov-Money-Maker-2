@@ -1,19 +1,11 @@
 /**
  * i18n — Deutsch (de) ✅ COMPLETE
- *
- * STATUS (2026-08-07)
- * [x] en  — complete (reference)
- * [x] fr  — complete
- * [x] de  — complete
- * [x] ru  — complete
- * [x] pl  — complete
- * [x] es  — complete
  */
 
 const de = {
   // App / modes
   appTitle:        'Tarkov Money Maker 2',
-  modeBadgePvp:    'Permanent',
+  modeBadgePvp:    'Dauerhaft',
   modeBadgePve:    'Koop',
   modeBadgeSeason: 'Saison 1',
   loading:         'Laden',
@@ -28,11 +20,11 @@ const de = {
   filterProfitLabel: 'Mindestgewinn',
 
   // Filters — Player level
-  filterLevelLabel: 'Spielerlevel',
+  filterLevelLabel: 'Spielerstufe',
 
   // Filters — Min offers
-  filterOffersLabel:    'Mindestangebote',
-  filterOffersDisabled: 'Die API liefert keine Angebotsanzahl für diesen Modus. Filter deaktiviert.',
+  filterOffersLabel:    'Min. Angebote',
+  filterOffersDisabled: 'Die API liefert für diesen Modus keine Angebotszahl. Filter deaktiviert.',
 
   // Filters — Trader tooltip
   traderEnable:  'aktivieren',
@@ -42,33 +34,33 @@ const de = {
   intelNotBuilt: 'Nicht gebaut',
   intelLevel1:   'Stufe 1',
   intelLevel2:   'Stufe 2',
-  intelLevel3:   '-30% Flohmarktsteuer',
+  intelLevel3:   '-30% Flohmarkt-Steuer',
 
   // ItemTable — columns
   colItem:       'Gegenstand',
   colBuyTrader:  'Kaufen (Händler)',
   colSellTrader: 'Verkaufen (Händler)',
   colAction:     'Aktion',
-  colBestProfit: '★ Bester Gewinn',
-  colTraderFlea: 'Händler→Flohmarkt',
-  colFleaTrader: 'Flohmarkt→Händler',
+  colBestProfit: '\u2605 Bester Gewinn',
+  colTraderFlea: 'Händler\u2192Flohmarkt',
+  colFleaTrader: 'Flohmarkt\u2192Händler',
   colFlea:       'Flohmarkt',
 
   // ItemTable — tooltips
-  tooltipBuyPrices:  'Kaufpreise beim Händler (dein Level)',
-  tooltipSellPrices: 'Händler-Rückkaufpreise',
+  tooltipBuyPrices:  'Kaufpreise nach Händler (deine Stufe)',
+  tooltipSellPrices: 'Rückkaufpreise der Händler',
 
   // ItemTable — flea tooltip
-  flea24h:    'Flohmarkt — 24h',
+  flea24h:    'Flohmarkt \u2014 24h',
   fleaCur:    'Aktuell',
   fleaLow:    'Tief 24h',
-  fleaAvg:    'Durchschn. 24h',
+  fleaAvg:    'Durchschnitt 24h',
   fleaHigh:   'Hoch 24h',
   fleaOffers: 'Angebote',
 
   // ItemTable — recommendations
-  recFTS: 'Flohmarkt kaufen → Händler verkaufen',
-  recBTF: 'Händler kaufen → Flohmarkt verkaufen',
+  recFTS: 'Flohmarkt kaufen \u2192 Händler verkaufen',
+  recBTF: 'Händler kaufen \u2192 Flohmarkt verkaufen',
 
   // ItemTable — mobile card
   cardBuy:    'Kaufen',
@@ -82,16 +74,16 @@ const de = {
   paginationTapSort: 'Tippen zum Sortieren',
 
   // ItemTable — empty state
-  noItems: 'Keine profitablen Gegenstände gefunden. Gewinngrenze senken oder mehr Händler aktivieren.',
+  noItems: 'Keine profitablen Gegenstände gefunden. Mindestgewinn senken oder mehr Händler aktivieren.',
 
   // ApiStatus
-  apiStatusTitle:        'Synchronisierungsstatus',
+  apiStatusTitle:        'Sync-Status',
   apiStatusOnline:       'tarkov.dev Online',
   apiStatusDegraded:     'tarkov.dev Eingeschränkt',
   apiStatusOffline:      'tarkov.dev Offline',
-  apiStatusChecking:     'Wird geprüft…',
+  apiStatusChecking:     'Prüfen…',
   apiStatusGlobal:       'Gesamtstatus',
-  apiStatusLastSync:     'Letzte Sync',
+  apiStatusLastSync:     'Letzter Sync',
   apiStatusItems:        'Synchronisierte Gegenstände',
   apiStatusItemsSub:     'kumulativ gesamt',
   apiStatusSource:       'API-Quelle',
@@ -99,7 +91,7 @@ const de = {
   apiStatusCheckedAt:    'Geprüft',
   apiStatusModeStatus:   'Status',
   apiStatusModeItems:    'Gegenstände',
-  apiStatusModeLastSync: 'Letzte Sync',
+  apiStatusModeLastSync: 'Letzter Sync',
   apiStatusModeDuration: 'Dauer',
   apiStatusNever:        'nie',
   apiStatusJustNow:      'gerade eben',

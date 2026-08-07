@@ -1,13 +1,5 @@
 /**
  * i18n — Русский (ru) ✅ COMPLETE
- *
- * STATUS (2026-08-07)
- * [x] en  — complete (reference)
- * [x] fr  — complete
- * [x] de  — complete
- * [x] ru  — complete
- * [x] pl  — complete
- * [x] es  — complete
  */
 
 const ru = {
@@ -20,7 +12,7 @@ const ru = {
 
   // Filters — Search
   filterSearchLabel:       'Поиск',
-  filterSearchPlaceholder: 'Название предмета, Enter или клик…',
+  filterSearchPlaceholder: 'Название предмета, Enter или нажмите…',
   filterSearchAddTerm:     'Добавить ещё термин…',
   filterSearchAdd:         'добавить',
 
@@ -32,7 +24,7 @@ const ru = {
 
   // Filters — Min offers
   filterOffersLabel:    'Мин. предложений',
-  filterOffersDisabled: 'API не предоставляет кол-во предложений для этого режима. Фильтр отключён.',
+  filterOffersDisabled: 'API не предоставляет количество предложений для этого режима. Фильтр отключён.',
 
   // Filters — Trader tooltip
   traderEnable:  'включить',
@@ -42,33 +34,33 @@ const ru = {
   intelNotBuilt: 'Не построен',
   intelLevel1:   'Уровень 1',
   intelLevel2:   'Уровень 2',
-  intelLevel3:   '-30% налог барахолки',
+  intelLevel3:   '-30% налог на барахолке',
 
   // ItemTable — columns
   colItem:       'Предмет',
-  colBuyTrader:  'Купить (Торговец)',
-  colSellTrader: 'Продать (Торговец)',
+  colBuyTrader:  'Купить (торговец)',
+  colSellTrader: 'Продать (торговец)',
   colAction:     'Действие',
-  colBestProfit: '★ Лучшая прибыль',
-  colTraderFlea: 'Торговец→Барахолка',
-  colFleaTrader: 'Барахолка→Торговец',
+  colBestProfit: '\u2605 Лучшая прибыль',
+  colTraderFlea: 'Торговец\u2192Барахолка',
+  colFleaTrader: 'Барахолка\u2192Торговец',
   colFlea:       'Барахолка',
 
   // ItemTable — tooltips
   tooltipBuyPrices:  'Цены покупки у торговцев (ваш уровень)',
-  tooltipSellPrices: 'Цены выкупа торговцами',
+  tooltipSellPrices: 'Цены выкупа у торговцев',
 
   // ItemTable — flea tooltip
-  flea24h:    'Барахолка — 24ч',
+  flea24h:    'Барахолка \u2014 24ч',
   fleaCur:    'Текущая',
   fleaLow:    'Мин. 24ч',
-  fleaAvg:    'Средн. 24ч',
+  fleaAvg:    'Средняя 24ч',
   fleaHigh:   'Макс. 24ч',
-  fleaOffers: 'Предложения',
+  fleaOffers: 'Предложений',
 
   // ItemTable — recommendations
-  recFTS: 'Купить на барахолке → Продать торговцу',
-  recBTF: 'Купить у торговца → Продать на барахолке',
+  recFTS: 'Купить на барахолке \u2192 Продать торговцу',
+  recBTF: 'Купить у торговца \u2192 Продать на барахолке',
 
   // ItemTable — mobile card
   cardBuy:    'Купить',
@@ -78,28 +70,28 @@ const ru = {
   // ItemTable — pagination
   paginationOf:      'из',
   paginationPerPage: 'На странице:',
-  paginationPage:    'Страница',
+  paginationPage:    'Стр.',
   paginationTapSort: 'Нажмите для сортировки',
 
   // ItemTable — empty state
-  noItems: 'Выгодных предметов не найдено. Снизьте порог прибыли или включите больше торговцев.',
+  noItems: 'Прибыльных предметов не найдено. Снизьте минимальную прибыль или включите больше торговцев.',
 
   // ApiStatus
   apiStatusTitle:        'Статус синхронизации',
   apiStatusOnline:       'tarkov.dev Онлайн',
-  apiStatusDegraded:     'tarkov.dev Ограничен',
+  apiStatusDegraded:     'tarkov.dev Нестабилен',
   apiStatusOffline:      'tarkov.dev Офлайн',
   apiStatusChecking:     'Проверка…',
   apiStatusGlobal:       'Общий статус',
-  apiStatusLastSync:     'Последняя синхр.',
-  apiStatusItems:        'Синхронизировано предметов',
-  apiStatusItemsSub:     'всего накопленно',
+  apiStatusLastSync:     'Последний синхр.',
+  apiStatusItems:        'Синхр. предметов',
+  apiStatusItemsSub:     'всего накопленных',
   apiStatusSource:       'Источник API',
-  apiStatusSourceSub:    'авто-проверка каждые 30с',
+  apiStatusSourceSub:    'проверяется каждые 30с',
   apiStatusCheckedAt:    'Проверено',
   apiStatusModeStatus:   'Статус',
   apiStatusModeItems:    'Предметы',
-  apiStatusModeLastSync: 'Последняя синхр.',
+  apiStatusModeLastSync: 'Последний синхр.',
   apiStatusModeDuration: 'Длительность',
   apiStatusNever:        'никогда',
   apiStatusJustNow:      'только что',

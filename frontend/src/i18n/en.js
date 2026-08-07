@@ -5,10 +5,10 @@
  * STATUS (2026-08-07)
  * [x] en  — complete (reference)
  * [x] fr  — complete
- * [ ] de  — TODO tomorrow
- * [ ] ru  — TODO tomorrow
- * [ ] pl  — TODO tomorrow
- * [ ] es  — TODO tomorrow
+ * [x] de  — complete
+ * [x] ru  — complete
+ * [x] pl  — complete
+ * [x] es  — complete
  *
  * HOW TO ADD A LANGUAGE
  * 1. Duplicate this file, rename to <code>.js  (e.g. de.js)
