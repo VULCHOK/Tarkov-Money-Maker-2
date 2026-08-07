@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
 import { Filters, defaultTraderFilters, defaultIntelLevel, defaultMinOffers, ALL_TRADERS } from './components/Filters';
@@ -15,37 +15,114 @@ const MODES = [
   { key: 'pvp-season', label: 'Kord Breach', icon: '/images/mode-season.png', headerBg: 'from-[#0a2010] to-[#111]', borderColor: 'border-green-900/60', accentColor: 'text-green-300', badgeKey: 'modeBadgeSeason' },
 ];
 
-const FLAG_GB = (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="20" height="10" className="flex-shrink-0 rounded-sm">
-    <clipPath id="gb-t"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
-    <clipPath id="gb-c"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
-    <g clipPath="url(#gb-t)">
-      <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
-      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
-      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" strokeWidth="4" clipPath="url(#gb-c)"/>
-      <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
-      <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
-    </g>
-  </svg>
-);
-
-const FLAG_FR = (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20" width="20" height="14" className="flex-shrink-0 rounded-sm">
-    <rect width="10" height="20" fill="#002395"/>
-    <rect x="10" width="10" height="20" fill="#fff"/>
-    <rect x="20" width="10" height="20" fill="#ED2939"/>
-  </svg>
-);
-
+// Toutes les langues disponibles
+// Pour ajouter une langue : ajouter une entrée ici ET créer le fichier i18n correspondant
 const LANGS = [
-  { code: 'en', flag: FLAG_GB, label: 'EN' },
-  { code: 'fr', flag: FLAG_FR, label: 'FR' },
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'fr', flag: '🇫🇷', label: 'Français' },
+  { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
+  { code: 'ru', flag: '🇷🇺', label: 'Русский' },
+  { code: 'pl', flag: '🇵🇱', label: 'Polski' },
+  { code: 'es', flag: '🇪🇸', label: 'Español' },
 ];
+
+/**
+ * Dropdown de sélection de langue
+ */
+function LangSelector({ lang, setLang, pillBase, pillOff, pillOn }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const current = LANGS.find((l) => l.code === lang) || LANGS[0];
+
+  // Fermer si clic en dehors
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const select = (code) => {
+    setLang(code);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`${pillBase} ${pillOff} gap-1.5`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title="Language / Langue"
+      >
+        <span className="text-base leading-none">{current.flag}</span>
+        <span className="font-semibold uppercase tracking-wide text-[11px]">{current.code.toUpperCase()}</span>
+        {/* Chevron */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          width="10" height="10"
+          fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round"
+          style={{ opacity: 0.5, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Select language"
+          className="
+            absolute right-0 mt-1 z-50
+            bg-[#1a1a1a] border border-white/15 rounded-lg
+            shadow-xl shadow-black/60
+            min-w-[130px] overflow-hidden
+            py-1
+          "
+        >
+          {LANGS.map(({ code, flag, label }) => (
+            <li key={code} role="option" aria-selected={code === lang}>
+              <button
+                onClick={() => select(code)}
+                className={`
+                  w-full flex items-center gap-2.5 px-3 py-1.5 text-xs
+                  transition-colors cursor-pointer
+                  ${
+                    code === lang
+                      ? 'bg-tarkov-gold/15 text-tarkov-gold font-semibold'
+                      : 'text-gray-300 hover:bg-white/6 hover:text-white'
+                  }
+                `}
+              >
+                <span className="text-base leading-none w-5 text-center">{flag}</span>
+                <span>{label}</span>
+                {code === lang && (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10"
+                    fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                    className="ml-auto"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 /**
  * Retourne le nom d'un item dans la langue demandée.
  * Fallback : 'en', puis normalized_name, puis id.
- * Compatible avec le nouveau schéma JSON names/short_names.
  */
 export function getItemName(item, lang = 'en') {
   try {
@@ -101,7 +178,6 @@ function normalize(str) {
     .trim();
 }
 
-// itemMatchesTag : utilise getItemName/getItemShortName pour matcher la langue active
 function itemMatchesTag(item, tag, lang) {
   const q = normalize(tag);
   if (!q) return true;
@@ -236,6 +312,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Mode selector */}
             <div className={pillGroup}>
               {MODES.map((m) => (
                 <button key={m.key} onClick={() => setMode(m.key)} title={t(m.badgeKey)}
@@ -245,15 +322,19 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div className={pillGroup}>
-              {LANGS.map(({ code, flag, label }) => (
-                <button key={code} onClick={() => setLang(code)}
-                  className={`${pillBase} ${lang === code ? pillOn : pillOff}`}>
-                  {flag}
-                  <span>{label}</span>
-                </button>
-              ))}
+
+            {/* Language dropdown */}
+            <div className="bg-black/50 border border-white/10 rounded-lg p-0.5">
+              <LangSelector
+                lang={lang}
+                setLang={setLang}
+                pillBase={pillBase}
+                pillOff={pillOff}
+                pillOn={pillOn}
+              />
             </div>
+
+            {/* ApiStatus + Export */}
             <div className={pillGroup}>
               <ApiStatus pillBase={pillBase} pillOff={pillOff} lang={lang} />
               <span className="w-px h-4 bg-white/10 mx-0.5" />
