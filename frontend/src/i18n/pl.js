@@ -1,19 +1,19 @@
 /**
- * i18n — Polski (pl) ✅ COMPLETE
+ * i18n — Polski (pl) \u2705 COMPLETE
  */
 
 const pl = {
   // App / modes
   appTitle:        'Tarkov Money Maker 2',
-  modeBadgePvp:    'Stały',
-  modeBadgePve:    'Kooperacja',
+  modeBadgePvp:    'Sta\u0142y',
+  modeBadgePve:    'Co-op',
   modeBadgeSeason: 'Sezon 1',
-  loading:         'Ładowanie',
+  loading:         '\u0141adowanie',
 
   // Filters — Search
   filterSearchLabel:       'Szukaj',
-  filterSearchPlaceholder: 'Nazwa przedmiotu, Enter lub kliknij…',
-  filterSearchAddTerm:     'Dodaj kolejny termin…',
+  filterSearchPlaceholder: 'Nazwa przedmiotu, Enter lub klik\u2026',
+  filterSearchAddTerm:     'Dodaj kolejny termin\u2026',
   filterSearchAdd:         'dodaj',
 
   // Filters — Profit
@@ -23,81 +23,82 @@ const pl = {
   filterLevelLabel: 'Poziom gracza',
 
   // Filters — Min offers
-  filterOffersLabel:    'Min. oferty',
-  filterOffersDisabled: 'API nie udostępnia liczby ofert dla tego trybu. Filtr wyłączony.',
+  filterOffersLabel:    'Min. ofert',
+  filterOffersDisabled: 'API nie podaje liczby ofert dla tego trybu. Filtr wy\u0142\u0105czony.',
 
   // Filters — Trader tooltip
-  traderEnable:  'włącz',
-  traderDisable: 'wyłącz',
+  traderEnable:  'w\u0142\u0105cz',
+  traderDisable: 'wy\u0142\u0105cz',
 
   // Filters — Intel Center
-  intelNotBuilt: 'Nie zbudowane',
+  intelNotBuilt: 'Nie zbudowany',
   intelLevel1:   'Poziom 1',
   intelLevel2:   'Poziom 2',
-  intelLevel3:   '-30% podatek pchli targ',
+  intelLevel3:   '-30% podatek flea',
 
   // ItemTable — columns
   colItem:       'Przedmiot',
-  colBuyTrader:  'Kup (Handlarz)',
-  colSellTrader: 'Sprzedaj (Handlarz)',
+  colBuyTrader:  'Kup (Trader)',
+  colSellTrader: 'Sprzedaj (Trader)',
   colAction:     'Akcja',
   colBestProfit: '\u2605 Najlepszy zysk',
-  colTraderFlea: 'Handlarz\u2192Pchli targ',
-  colFleaTrader: 'Pchli targ\u2192Handlarz',
-  colFlea:       'Pchli targ',
+  colTraderFlea: 'Trader\u2192Flea',
+  colFleaTrader: 'Flea\u2192Trader',
+  colFlea:       'Flea',
 
   // ItemTable — tooltips
-  tooltipBuyPrices:  'Ceny zakupu według handlarza (twój poziom)',
-  tooltipSellPrices: 'Ceny skupu handlarzy',
+  tooltipBuyPrices:  'Ceny zakupu u trader\u00f3w (tw\u00f3j poziom)',
+  tooltipSellPrices: 'Ceny odkupu u trader\u00f3w',
 
   // ItemTable — flea tooltip
-  flea24h:    'Pchli targ \u2014 24h',
+  flea24h:    'Flea \u2014 24h',
   fleaCur:    'Aktualna',
-  fleaLow:    'Najniższa 24h',
-  fleaAvg:    'Średnia 24h',
-  fleaHigh:   'Najwyższa 24h',
+  fleaLow:    'Min. 24h',
+  fleaAvg:    '\u015ar. 24h',
+  fleaHigh:   'Maks. 24h',
   fleaOffers: 'Oferty',
 
   // ItemTable — recommendations
-  recFTS: 'Kup pchli targ \u2192 Sprzedaj handlarzowi',
-  recBTF: 'Kup u handlarza \u2192 Sprzedaj na pchlim targu',
+  recFTS: 'Kup Flea \u2192 Sprzedaj Trader',
+  recBTF: 'Kup Trader \u2192 Sprzedaj Flea',
 
   // ItemTable — mobile card
   cardBuy:    'Kup',
   cardSell:   'Sprzedaj',
-  cardOffers: 'oferty',
+  cardOffers: 'ofert',
 
   // ItemTable — pagination
   paginationOf:      'z',
-  paginationPerPage: 'Na stronie:',
+  paginationPerPage: 'Na stron\u0119:',
   paginationPage:    'Strona',
-  paginationTapSort: 'Dotknij, aby sortować',
+  paginationTapSort: 'Dotknij aby sortowa\u0107',
 
   // ItemTable — empty state
-  noItems: 'Nie znaleziono opłacalnych przedmiotów. Obniż próg zysku lub włącz więcej handlarzy.',
+  noItems: 'Nie znaleziono op\u0142acalnych przedmiot\u00f3w. Obni\u017c pr\u00f3g zysku lub w\u0142\u0105cz wi\u0119cej trader\u00f3w.',
 
   // ApiStatus
-  apiStatusTitle:        'Status synchronizacji',
-  apiStatusOnline:       'tarkov.dev Online',
-  apiStatusDegraded:     'tarkov.dev Obniżona wydajność',
-  apiStatusOffline:      'tarkov.dev Offline',
-  apiStatusChecking:     'Sprawdzanie…',
-  apiStatusGlobal:       'Ogólny status',
-  apiStatusLastSync:     'Ostatnia synchronizacja',
-  apiStatusItems:        'Zsynchronizowanych przedmiotów',
-  apiStatusItemsSub:     'łącznie skumulowanych',
-  apiStatusSource:       'Źródło API',
-  apiStatusSourceSub:    'sprawdzane automatycznie co 30s',
-  apiStatusCheckedAt:    'Sprawdzono',
-  apiStatusModeStatus:   'Status',
-  apiStatusModeItems:    'Przedmioty',
-  apiStatusModeLastSync: 'Ostatni sync',
-  apiStatusModeDuration: 'Czas trwania',
-  apiStatusNever:        'nigdy',
-  apiStatusJustNow:      'przed chwilą',
-  apiStatusMinutesAgo:   'min. temu',
-  apiStatusHoursAgo:     'g. temu',
-  apiStatusRest:         'REST',
+  apiStatusTitle:          'Status synchronizacji',
+  apiStatusOnline:         'tarkov.dev Online',
+  apiStatusDegraded:       'tarkov.dev Ograniczony',
+  apiStatusOffline:        'tarkov.dev Offline',
+  apiStatusChecking:       'Sprawdzanie\u2026',
+  apiStatusGlobal:         'Og\u00f3lny status',
+  apiStatusLastSync:       'Ostatnia sync.',
+  apiStatusItems:          'Zsynchronizowanych przedmiot\u00f3w',
+  apiStatusItemsSub:       '\u0142\u0105cznie skumulowanych',
+  apiStatusSource:         '\u0179r\u00f3d\u0142o API',
+  apiStatusSourceSub:      'sprawdzane automatycznie co 30s',
+  apiStatusCheckedAt:      'Sprawdzono',
+  apiStatusModeStatus:     'Status',
+  apiStatusModeItems:      'Przedmioty',
+  apiStatusModeLastSync:   'Ostatnia sync.',
+  apiStatusModeDuration:   'Czas trwania',
+  apiStatusNever:          'nigdy',
+  apiStatusJustNow:        'przed chwil\u0105',
+  apiStatusTimeAgoPrefix:  '',
+  apiStatusMinutesAgo:     ' min. temu',
+  apiStatusHoursAgo:       ' godz. temu',
+  apiStatusRest:           'REST',
 
   // ExportButtons
   exportCSV:  'Eksportuj jako CSV',

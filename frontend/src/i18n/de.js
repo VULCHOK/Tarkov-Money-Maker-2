@@ -1,5 +1,5 @@
 /**
- * i18n — Deutsch (de) ✅ COMPLETE
+ * i18n — Deutsch (de) \u2705 COMPLETE
  */
 
 const de = {
@@ -12,9 +12,9 @@ const de = {
 
   // Filters — Search
   filterSearchLabel:       'Suche',
-  filterSearchPlaceholder: 'Gegenstandsname, Enter oder klicken…',
-  filterSearchAddTerm:     'Weiteren Begriff hinzufügen…',
-  filterSearchAdd:         'hinzufügen',
+  filterSearchPlaceholder: 'Gegenstandsname, Enter oder klicken\u2026',
+  filterSearchAddTerm:     'Weiteren Begriff hinzuf\u00fcgen\u2026',
+  filterSearchAdd:         'hinzuf\u00fcgen',
 
   // Filters — Profit
   filterProfitLabel: 'Mindestgewinn',
@@ -24,7 +24,7 @@ const de = {
 
   // Filters — Min offers
   filterOffersLabel:    'Min. Angebote',
-  filterOffersDisabled: 'Die API liefert für diesen Modus keine Angebotszahl. Filter deaktiviert.',
+  filterOffersDisabled: 'Die API liefert f\u00fcr diesen Modus keine Angebotszahl. Filter deaktiviert.',
 
   // Filters — Trader tooltip
   traderEnable:  'aktivieren',
@@ -38,17 +38,17 @@ const de = {
 
   // ItemTable — columns
   colItem:       'Gegenstand',
-  colBuyTrader:  'Kaufen (Händler)',
-  colSellTrader: 'Verkaufen (Händler)',
+  colBuyTrader:  'Kaufen (H\u00e4ndler)',
+  colSellTrader: 'Verkaufen (H\u00e4ndler)',
   colAction:     'Aktion',
   colBestProfit: '\u2605 Bester Gewinn',
-  colTraderFlea: 'Händler\u2192Flohmarkt',
-  colFleaTrader: 'Flohmarkt\u2192Händler',
+  colTraderFlea: 'H\u00e4ndler\u2192Flohmarkt',
+  colFleaTrader: 'Flohmarkt\u2192H\u00e4ndler',
   colFlea:       'Flohmarkt',
 
   // ItemTable — tooltips
-  tooltipBuyPrices:  'Kaufpreise nach Händler (deine Stufe)',
-  tooltipSellPrices: 'Rückkaufpreise der Händler',
+  tooltipBuyPrices:  'Kaufpreise nach H\u00e4ndler (deine Stufe)',
+  tooltipSellPrices: 'R\u00fcckkaufpreise der H\u00e4ndler',
 
   // ItemTable — flea tooltip
   flea24h:    'Flohmarkt \u2014 24h',
@@ -59,8 +59,8 @@ const de = {
   fleaOffers: 'Angebote',
 
   // ItemTable — recommendations
-  recFTS: 'Flohmarkt kaufen \u2192 Händler verkaufen',
-  recBTF: 'Händler kaufen \u2192 Flohmarkt verkaufen',
+  recFTS: 'Flohmarkt kaufen \u2192 H\u00e4ndler verkaufen',
+  recBTF: 'H\u00e4ndler kaufen \u2192 Flohmarkt verkaufen',
 
   // ItemTable — mobile card
   cardBuy:    'Kaufen',
@@ -74,30 +74,31 @@ const de = {
   paginationTapSort: 'Tippen zum Sortieren',
 
   // ItemTable — empty state
-  noItems: 'Keine profitablen Gegenstände gefunden. Mindestgewinn senken oder mehr Händler aktivieren.',
+  noItems: 'Keine profitablen Gegenst\u00e4nde gefunden. Mindestgewinn senken oder mehr H\u00e4ndler aktivieren.',
 
   // ApiStatus
-  apiStatusTitle:        'Sync-Status',
-  apiStatusOnline:       'tarkov.dev Online',
-  apiStatusDegraded:     'tarkov.dev Eingeschränkt',
-  apiStatusOffline:      'tarkov.dev Offline',
-  apiStatusChecking:     'Prüfen…',
-  apiStatusGlobal:       'Gesamtstatus',
-  apiStatusLastSync:     'Letzter Sync',
-  apiStatusItems:        'Synchronisierte Gegenstände',
-  apiStatusItemsSub:     'kumulativ gesamt',
-  apiStatusSource:       'API-Quelle',
-  apiStatusSourceSub:    'alle 30s automatisch geprüft',
-  apiStatusCheckedAt:    'Geprüft',
-  apiStatusModeStatus:   'Status',
-  apiStatusModeItems:    'Gegenstände',
-  apiStatusModeLastSync: 'Letzter Sync',
-  apiStatusModeDuration: 'Dauer',
-  apiStatusNever:        'nie',
-  apiStatusJustNow:      'gerade eben',
-  apiStatusMinutesAgo:   'Min. her',
-  apiStatusHoursAgo:     'Std. her',
-  apiStatusRest:         'REST',
+  apiStatusTitle:          'Sync-Status',
+  apiStatusOnline:         'tarkov.dev Online',
+  apiStatusDegraded:       'tarkov.dev Eingeschr\u00e4nkt',
+  apiStatusOffline:        'tarkov.dev Offline',
+  apiStatusChecking:       'Pr\u00fcfen\u2026',
+  apiStatusGlobal:         'Gesamtstatus',
+  apiStatusLastSync:       'Letzter Sync',
+  apiStatusItems:          'Synchronisierte Gegenst\u00e4nde',
+  apiStatusItemsSub:       'kumulativ gesamt',
+  apiStatusSource:         'API-Quelle',
+  apiStatusSourceSub:      'alle 30s automatisch gepr\u00fcft',
+  apiStatusCheckedAt:      'Gepr\u00fcft',
+  apiStatusModeStatus:     'Status',
+  apiStatusModeItems:      'Gegenst\u00e4nde',
+  apiStatusModeLastSync:   'Letzter Sync',
+  apiStatusModeDuration:   'Dauer',
+  apiStatusNever:          'nie',
+  apiStatusJustNow:        'gerade eben',
+  apiStatusTimeAgoPrefix:  'vor',
+  apiStatusMinutesAgo:     ' Min.',
+  apiStatusHoursAgo:       ' Std.',
+  apiStatusRest:           'REST',
 
   // ExportButtons
   exportCSV:  'Als CSV exportieren',

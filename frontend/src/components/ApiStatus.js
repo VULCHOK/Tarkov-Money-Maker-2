@@ -3,9 +3,9 @@ import axios from 'axios';
 import { useT } from '../hooks/useT';
 
 const MODE_LABELS = {
-  regular:      { label: 'PVP',         emoji: '⚔️' },
-  pve:          { label: 'PVE',         emoji: '🤖' },
-  'pvp-season': { label: 'Kord Breach', emoji: '❄️' },
+  regular:      { label: 'PVP',         emoji: '\u2694\ufe0f' },
+  pve:          { label: 'PVE',         emoji: '\ud83e\udd16' },
+  'pvp-season': { label: 'Kord Breach', emoji: '\u2744\ufe0f' },
 };
 
 function fmtTime(isoString, t) {
@@ -13,18 +13,26 @@ function fmtTime(isoString, t) {
   const d = new Date(isoString);
   const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
   if (diffMin < 1)  return t('apiStatusJustNow');
-  if (diffMin < 60) return `il y a ${diffMin}${t('apiStatusMinutesAgo')}`;
-  return `il y a ${Math.round(diffMin / 60)}${t('apiStatusHoursAgo')}`;
+  const prefix = t('apiStatusTimeAgoPrefix');
+  if (diffMin < 60) {
+    return prefix
+      ? `${prefix} ${diffMin}${t('apiStatusMinutesAgo')}`
+      : `${diffMin}${t('apiStatusMinutesAgo')}`;
+  }
+  const hrs = Math.round(diffMin / 60);
+  return prefix
+    ? `${prefix} ${hrs}${t('apiStatusHoursAgo')}`
+    : `${hrs}${t('apiStatusHoursAgo')}`;
 }
 
-function fmtDate(isoString) {
-  if (!isoString) return '—';
-  return new Date(isoString).toLocaleString('fr-FR', {
+function fmtDate(isoString, lang = 'en') {
+  if (!isoString) return '\u2014';
+  return new Date(isoString).toLocaleString(lang, {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 }
 
-export function ApiStatus({ pillBase = '', pillOff = '', lang = 'fr' }) {
+export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
   const t = useT(lang);
   const [status, setStatus]           = useState(null);
   const [open, setOpen]               = useState(false);
@@ -90,26 +98,26 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'fr' }) {
                 <span className={`inline-flex rounded-full h-2.5 w-2.5 ${dot.color}`} />
                 {t('apiStatusTitle')}
               </h2>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">×</button>
+              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">\u00d7</button>
             </div>
 
             {status && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 text-xs">
                 {[{
                   label: t('apiStatusGlobal'),
-                  value: status.overall ?? '—',
+                  value: status.overall ?? '\u2014',
                   cls: status.overall === 'online' ? 'text-green-400' : status.overall === 'degraded' ? 'text-orange-400' : 'text-red-400',
                 }, {
                   label: t('apiStatusLastSync'),
-                  value: fmtDate(status.last_sync),
+                  value: fmtDate(status.last_sync, lang),
                   sub:   fmtTime(status.last_sync, t),
                 }, {
                   label: t('apiStatusItems'),
-                  value: status.items_synced?.toLocaleString('fr-FR') ?? '—',
+                  value: status.items_synced?.toLocaleString(lang) ?? '\u2014',
                   sub:   t('apiStatusItemsSub'),
                 }, {
                   label: t('apiStatusSource'),
-                  value: status.api_source_used ?? '—',
+                  value: status.api_source_used ?? '\u2014',
                   sub:   t('apiStatusSourceSub'),
                 }].map(({ label, value, sub, cls }) => (
                   <div key={label} className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
@@ -133,9 +141,9 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'fr' }) {
                     <div className="space-y-1.5 text-xs">
                       {[
                         [t('apiStatusModeStatus'),   modeData?.status ?? 'N/A', modeData?.status === 'success' ? 'text-green-400' : modeData?.status === 'error' ? 'text-red-400' : 'text-gray-500'],
-                        [t('apiStatusModeItems'),    modeData?.items_synced?.toLocaleString('fr-FR') ?? '—', 'text-white'],
+                        [t('apiStatusModeItems'),    modeData?.items_synced?.toLocaleString(lang) ?? '\u2014', 'text-white'],
                         [t('apiStatusModeLastSync'), fmtTime(modeData?.last_sync, t), 'text-gray-300'],
-                        [t('apiStatusModeDuration'), modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '—', 'text-gray-300'],
+                        [t('apiStatusModeDuration'), modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '\u2014', 'text-gray-300'],
                       ].map(([lbl, val, cls]) => (
                         <div key={lbl} className="flex justify-between gap-3">
                           <span className="text-gray-400">{lbl}</span>
@@ -143,7 +151,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'fr' }) {
                         </div>
                       ))}
                       {modeData?.error && (
-                        <div className="text-red-400 text-xs mt-1 break-all">⚠ {modeData.error.slice(0, 80)}</div>
+                        <div className="text-red-400 text-xs mt-1 break-all">\u26a0 {modeData.error.slice(0, 80)}</div>
                       )}
                     </div>
                   </div>
@@ -156,7 +164,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'fr' }) {
                 <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border flex gap-2 items-center">
                   <span className="text-gray-400">{t('apiStatusRest')}</span>
                   <span className={status.sources.rest === 'online' ? 'text-green-400' : status.sources.rest === 'degraded' ? 'text-orange-400' : 'text-red-400'}>
-                    {status.sources.rest ?? '—'}
+                    {status.sources.rest ?? '\u2014'}
                   </span>
                 </div>
                 {lastChecked && (

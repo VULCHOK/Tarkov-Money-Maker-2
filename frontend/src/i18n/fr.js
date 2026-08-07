@@ -1,13 +1,5 @@
 /**
- * i18n — Français (fr) ✅ COMPLETE
- *
- * STATUS (2026-08-07)
- * [x] en  — complete (reference)
- * [x] fr  — complete
- * [ ] de  — TODO tomorrow
- * [ ] ru  — TODO tomorrow
- * [ ] pl  — TODO tomorrow
- * [ ] es  — TODO tomorrow
+ * i18n — Fran\u00e7ais (fr) \u2705 COMPLETE
  */
 
 const fr = {
@@ -85,27 +77,28 @@ const fr = {
   noItems: 'Aucun item profitable trouv\u00e9. Diminue le seuil ou active plus de traders.',
 
   // ApiStatus
-  apiStatusTitle:        'Statut de synchronisation',
-  apiStatusOnline:       'tarkov.dev Online',
-  apiStatusDegraded:     'tarkov.dev D\u00e9grad\u00e9',
-  apiStatusOffline:      'tarkov.dev Offline',
-  apiStatusChecking:     'V\u00e9rification\u2026',
-  apiStatusGlobal:       'Statut global',
-  apiStatusLastSync:     'Derni\u00e8re sync',
-  apiStatusItems:        'Items synchronis\u00e9s',
-  apiStatusItemsSub:     'total cumul\u00e9',
-  apiStatusSource:       'Source API',
-  apiStatusSourceSub:    'check auto toutes les 30s',
-  apiStatusCheckedAt:    'V\u00e9rifi\u00e9',
-  apiStatusModeStatus:   'Statut',
-  apiStatusModeItems:    'Items',
-  apiStatusModeLastSync: 'Derni\u00e8re sync',
-  apiStatusModeDuration: 'Dur\u00e9e',
-  apiStatusNever:        'jamais',
-  apiStatusJustNow:      '\u00e0 l\u2019instant',
-  apiStatusMinutesAgo:   'min',
-  apiStatusHoursAgo:     'h',
-  apiStatusRest:         'REST',
+  apiStatusTitle:          'Statut de synchronisation',
+  apiStatusOnline:         'tarkov.dev Online',
+  apiStatusDegraded:       'tarkov.dev D\u00e9grad\u00e9',
+  apiStatusOffline:        'tarkov.dev Offline',
+  apiStatusChecking:       'V\u00e9rification\u2026',
+  apiStatusGlobal:         'Statut global',
+  apiStatusLastSync:       'Derni\u00e8re sync',
+  apiStatusItems:          'Items synchronis\u00e9s',
+  apiStatusItemsSub:       'total cumul\u00e9',
+  apiStatusSource:         'Source API',
+  apiStatusSourceSub:      'check auto toutes les 30s',
+  apiStatusCheckedAt:      'V\u00e9rifi\u00e9',
+  apiStatusModeStatus:     'Statut',
+  apiStatusModeItems:      'Items',
+  apiStatusModeLastSync:   'Derni\u00e8re sync',
+  apiStatusModeDuration:   'Dur\u00e9e',
+  apiStatusNever:          'jamais',
+  apiStatusJustNow:        '\u00e0 l\u2019instant',
+  apiStatusTimeAgoPrefix:  'il y a',
+  apiStatusMinutesAgo:     'min',
+  apiStatusHoursAgo:       'h',
+  apiStatusRest:           'REST',
 
   // ExportButtons
   exportCSV:  'Exporter en CSV',
