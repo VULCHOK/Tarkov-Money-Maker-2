@@ -33,7 +33,6 @@ done
 # ---------------------------------------------------------------------------
 command -v git          &>/dev/null || die "git non trouvé"
 command -v docker       &>/dev/null || die "docker non trouvé"
-command -v curl         &>/dev/null || die "curl non trouvé"
 docker compose version  &>/dev/null || die "docker compose plugin non trouvé"
 
 cd "$(dirname "$0")"
@@ -91,11 +90,15 @@ $COMPOSE up -d
 
 # ---------------------------------------------------------------------------
 # 7. Attente que le backend soit prêt
+#    On teste depuis l'intérieur du container backend via docker exec
+#    pour éviter tout problème de réseau entre le deployer et le backend.
 # ---------------------------------------------------------------------------
 log "Attente du backend..."
 MAX=60
 i=0
-until curl -sf http://localhost:3000/health &>/dev/null; do
+until docker compose -f docker/docker-compose.yml exec -T backend \
+      python -c "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')" \
+      &>/dev/null; do
     i=$((i+1))
     if [ $i -ge $MAX ]; then
         echo
