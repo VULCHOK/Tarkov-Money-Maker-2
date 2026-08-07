@@ -3,6 +3,10 @@ tarkov_api.py  –  Fetches data from json.tarkov.dev
 
 Supporte 3 modes : regular (PVP), pve, pvp-season (Seasonal)
 Endpoints : /{mode}/items  /{mode}/items_en  /{mode}/items_fr
+
+Noms localisés stockés dans names/short_names (JSON) :
+  Actuellement EN + FR ; extensible en ajoutant des entrées dans LANG_CODES
+  et en fetchant les endpoints correspondants.
 """
 
 import asyncio
@@ -13,8 +17,11 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://json.tarkov.dev"
+BASE_URL   = "https://json.tarkov.dev"
 GAME_MODES = ["regular", "pve", "pvp-season"]
+
+# Langues actuellement fetchées. Pour en ajouter, il suffit d'ajouter le code ici.
+LANG_CODES = ["en", "fr"]
 
 last_api_source: str = "rest"
 
@@ -108,13 +115,26 @@ def _all_buy_prices_by_level(buy_list: list[dict]) -> dict[str, dict[str, int]]:
     }
 
 
-def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories: dict, mode: str) -> dict:
+def _normalize_item(
+    item: dict,
+    translations: dict[str, dict],  # {"en": {...}, "fr": {...}}
+    item_categories: dict,
+    mode: str,
+) -> dict:
     item_id = item["id"]
 
-    name_en       = trans_en.get(f"{item_id} Name",      "")
-    name_fr       = trans_fr.get(f"{item_id} Name",      name_en)
-    short_name_en = trans_en.get(f"{item_id} ShortName", "")
-    short_name_fr = trans_fr.get(f"{item_id} ShortName", short_name_en)
+    # Construire les dicts de noms localisés
+    # Fallback : si la traduction manque pour une langue, on prend l'EN
+    en_trans = translations.get("en", {})
+    names: dict[str, str] = {}
+    short_names: dict[str, str] = {}
+    for lang, trans in translations.items():
+        name  = trans.get(f"{item_id} Name", "") or en_trans.get(f"{item_id} Name", "")
+        short = trans.get(f"{item_id} ShortName", "") or en_trans.get(f"{item_id} ShortName", "")
+        if name:
+            names[lang] = name
+        if short:
+            short_names[lang] = short
 
     category_slug = None
     for cat_id in item.get("categories", []):
@@ -132,7 +152,6 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
         e for e in buy_list
         if TRADER_ID_TO_NAME.get(e.get("trader", "")) not in (None, "Fence")
     ]
-
     best_buy_trader, best_buy_trader_price = _best_buy_from_trader(
         buy_list_traders, trader_levels={t: 1 for t in TRADER_ID_TO_NAME.values()}
     )
@@ -146,10 +165,8 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
     return {
         "id":               item_id,
         "mode":             mode,
-        "name_en":          name_en,
-        "name_fr":          name_fr,
-        "short_name_en":    short_name_en,
-        "short_name_fr":    short_name_fr,
+        "names":            _json.dumps(names, ensure_ascii=False),
+        "short_names":      _json.dumps(short_names, ensure_ascii=False),
         "normalized_name":  item.get("normalizedName"),
         "category":         category_slug,
         "types":            ",".join(item.get("types", [])),
@@ -178,26 +195,32 @@ def _normalize_item(item: dict, trans_en: dict, trans_fr: dict, item_categories:
 
 
 async def _fetch_one_mode(client: httpx.AsyncClient, mode: str) -> list[dict]:
-    resp_items, resp_en, resp_fr = await asyncio.gather(
+    # Fetch items + toutes les langues en parallèle
+    items_resp, *lang_resps = await asyncio.gather(
         client.get(f"{BASE_URL}/{mode}/items",    headers={"Accept": "application/json"}),
-        client.get(f"{BASE_URL}/{mode}/items_en", headers={"Accept": "application/json"}),
-        client.get(f"{BASE_URL}/{mode}/items_fr", headers={"Accept": "application/json"}),
+        *[
+            client.get(f"{BASE_URL}/{mode}/items_{lang}", headers={"Accept": "application/json"})
+            for lang in LANG_CODES
+        ],
     )
-    resp_items.raise_for_status()
-    resp_en.raise_for_status()
-    resp_fr.raise_for_status()
+    items_resp.raise_for_status()
+    for resp in lang_resps:
+        resp.raise_for_status()
 
-    data            = _get_data(resp_items.json())
+    data            = _get_data(items_resp.json())
     items_dict      = data.get("items", {})
     item_categories = data.get("itemCategories", {})
-    trans_en        = _get_data(resp_en.json())
-    trans_fr        = _get_data(resp_fr.json())
+
+    translations: dict[str, dict] = {
+        lang: _get_data(resp.json())
+        for lang, resp in zip(LANG_CODES, lang_resps)
+    }
 
     if not items_dict:
         raise ValueError(f"[tarkov_api] Mode '{mode}': items_dict est vide. Clés: {list(data.keys())}")
 
     result = [
-        _normalize_item(item, trans_en, trans_fr, item_categories, mode)
+        _normalize_item(item, translations, item_categories, mode)
         for item in items_dict.values()
     ]
 
@@ -207,7 +230,7 @@ async def _fetch_one_mode(client: httpx.AsyncClient, mode: str) -> list[dict]:
     else:
         logger.info("[tarkov_api] Mode '%s': %s items avec offer count", mode, with_offer_count)
 
-    logger.info(f"[tarkov_api] Mode '{mode}': {len(result)} items récupérés")
+    logger.info(f"[tarkov_api] Mode '{mode}': {len(result)} items récupérés (langs: {LANG_CODES})")
     return result
 
 
@@ -230,5 +253,5 @@ async def fetch_items(modes: list[str] | None = None) -> list[dict]:
         else:
             all_items.extend(res)
 
-    logger.info(f"[tarkov_api] Total: {len(all_items)} items ({len(modes)} modes)")
+    logger.info(f"[tarkov_api] Total: {len(all_items)} items ({len(modes)} modes, langs: {LANG_CODES})")
     return all_items
