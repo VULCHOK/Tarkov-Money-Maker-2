@@ -1,5 +1,7 @@
 -- Tarkov Money Maker 2 — PostgreSQL Schema
--- v5: add trader BUY prices (trader vend AU joueur) + flea_fee computed column
+-- v6: i18n — remplace name_en/fr + short_name_en/fr par names/short_names (JSON TEXT)
+--     Format: {"en": "...", "fr": "...", <future langs>}
+--     Extensible à toutes les langues tarkov.dev sans migration.
 -- PK = (id, mode) pour stocker les 3 modes en parallèle.
 
 CREATE TABLE IF NOT EXISTS items (
@@ -7,10 +9,11 @@ CREATE TABLE IF NOT EXISTS items (
     id                VARCHAR(24)   NOT NULL,
     mode              VARCHAR(20)   NOT NULL DEFAULT 'regular',  -- regular | pve | pvp-season
     normalized_name   VARCHAR(255),
-    name_en           VARCHAR(255)  NOT NULL DEFAULT '',
-    name_fr           VARCHAR(255),
-    short_name_en     VARCHAR(50),
-    short_name_fr     VARCHAR(50),
+
+    -- Noms localisés — JSON {"en": "...", "fr": "...", <future langs>}
+    names             TEXT          NOT NULL DEFAULT '{}',
+    short_names       TEXT                   DEFAULT '{}',
+
     category          VARCHAR(100),
     types             VARCHAR(255),
     icon_link         TEXT,
@@ -40,7 +43,7 @@ CREATE TABLE IF NOT EXISTS items (
     -- Trader BUY data (trader VEND au joueur)
     best_trader_buy       VARCHAR(50),  -- trader le moins cher
     best_trader_buy_price INTEGER,      -- prix RUB le moins cher
-    trader_buy_prices     TEXT,         -- JSON: {"Mechanic": 5000, ...}
+    trader_buy_prices     TEXT,         -- JSON: {"Mechanic": {"1": 5000}, ...}
 
     -- Computed
     flea_price        INTEGER,
