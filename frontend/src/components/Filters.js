@@ -56,7 +56,6 @@ export function defaultMinOffers() {
 }
 
 const INTEL_DISCOUNTS = { 0: 0, 1: 0, 2: 0, 3: 30 };
-// Les labels sont injectés via t() dans IntelCard, on garde uniquement level + labelKey
 const INTEL_OPTIONS = [
   { level: 0, label: 'x',  titleKey: 'intelNotBuilt' },
   { level: 1, label: 'L1', titleKey: 'intelLevel1' },
@@ -117,12 +116,14 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
     const q = normalize(val);
     const seen = new Set();
     const results = [];
+
     for (const item of allItems) {
-      // Nouveau schéma : on cherche dans toutes les langues disponibles via getItemName/getItemShortName
-      const LANGS = ['en', 'fr', 'de', 'ru'];
+      // Only search in the active language + normalized_name (lang-neutral slug)
+      // normalized_name is always English-based but serves as a universal fallback
+      // when the active lang has no translation yet.
       const candidates = [
-        ...LANGS.map((l) => getItemName(item, l)),
-        ...LANGS.map((l) => getItemShortName(item, l)),
+        getItemName(item, lang),
+        getItemShortName(item, lang),
         item.normalized_name || '',
       ].filter(Boolean);
 
@@ -130,7 +131,7 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
         const key = normalize(name);
         if (seen.has(key)) continue;
         const score = fuzzyScore(name, val);
-        if (score < 999 && key.includes(q)) {
+        if (score < 3 && key.includes(q)) {
           seen.add(key);
           results.push({ label: name, score });
         }
@@ -138,7 +139,7 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
     }
     results.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
     setSuggestions(results.slice(0, 12).map((r) => r.label));
-  }, [allItems]);
+  }, [allItems, lang]);
 
   const handleInput = (val) => {
     setInputVal(val);
@@ -325,7 +326,7 @@ function MinOffersCard({ value, onChange, lang, offerCountAvailable }) {
           <span className="text-[9px] font-bold text-tarkov-gold leading-none block text-center">{value} {t('cardOffers')}</span>
         </div>
       </div>
-      <div className="flex flex-col justify-center px-2 py-2 gap-2 flex-1 min-w-0">
+      <div className="flex flex-col justify-around px-2 py-2 gap-2 flex-1 min-w-0">
         <span className="text-[10px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none">{t('filterOffersLabel')}</span>
         <input type="range" min={1} max={100} step={1} value={value}
           onChange={(e) => { const v = Number(e.target.value); onChange(v); localStorage.setItem('minOffers', String(v)); }}
