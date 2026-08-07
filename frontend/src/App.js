@@ -68,8 +68,6 @@ const FlagES = () => (
   </svg>
 );
 
-// Toutes les langues disponibles
-// Pour ajouter une langue : ajouter une entrée ici ET créer le fichier i18n correspondant
 const LANGS = [
   { code: 'en', Flag: FlagGB, label: 'English' },
   { code: 'fr', Flag: FlagFR, label: 'Français' },
@@ -79,9 +77,34 @@ const LANGS = [
   { code: 'es', Flag: FlagES, label: 'Español' },
 ];
 
-/**
- * Dropdown de sélection de langue
- */
+/** Bouton Ko-fi discret dans le header */
+function KofiButton({ pillBase, pillOff }) {
+  return (
+    <a
+      href="https://ko-fi.com/vulchok"
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${pillBase} ${pillOff}`}
+      title="Support the project on Ko-fi"
+      style={{ textDecoration: 'none', gap: '5px' }}
+    >
+      {/* Ko-fi cup icon */}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14"
+        fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+        style={{ color: '#ff5e5b', flexShrink: 0 }}
+      >
+        <path d="M17 8h1a4 4 0 0 1 0 8h-1" />
+        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+        <line x1="6" y1="2" x2="6" y2="4" />
+        <line x1="10" y1="2" x2="10" y2="4" />
+        <line x1="14" y1="2" x2="14" y2="4" />
+      </svg>
+      <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.03em' }}>Ko-fi</span>
+    </a>
+  );
+}
+
+/** Dropdown de sélection de langue */
 function LangSelector({ lang, setLang, pillBase, pillOff }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -97,10 +120,7 @@ function LangSelector({ lang, setLang, pillBase, pillOff }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const select = (code) => {
-    setLang(code);
-    setOpen(false);
-  };
+  const select = (code) => { setLang(code); setOpen(false); };
 
   return (
     <div ref={ref} style={{position:'relative'}}>
@@ -169,10 +189,6 @@ function LangSelector({ lang, setLang, pillBase, pillOff }) {
   );
 }
 
-/**
- * Retourne le nom d'un item dans la langue demandée.
- * Fallback : 'en', puis normalized_name, puis id.
- */
 export function getItemName(item, lang = 'en') {
   try {
     const names = typeof item.names === 'string' ? JSON.parse(item.names) : (item.names || {});
@@ -220,11 +236,7 @@ function getBestBuyPrice(item, traderFilters) {
 }
 
 function normalize(str) {
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
 
 function itemMatchesTag(item, tag, lang) {
@@ -372,19 +384,15 @@ export default function App() {
             </div>
 
             <div className="bg-black/50 border border-white/10 rounded-lg p-0.5">
-              <LangSelector
-                lang={lang}
-                setLang={setLang}
-                pillBase={pillBase}
-                pillOff={pillOff}
-                pillOn={pillOn}
-              />
+              <LangSelector lang={lang} setLang={setLang} pillBase={pillBase} pillOff={pillOff} pillOn={pillOn} />
             </div>
 
             <div className={pillGroup}>
               <ApiStatus pillBase={pillBase} pillOff={pillOff} lang={lang} />
               <span className="w-px h-4 bg-white/10 mx-0.5" />
               <ExportButtons items={visibleItems} lang={lang} pillBase={pillBase} pillOff={pillOff} />
+              <span className="w-px h-4 bg-white/10 mx-0.5" />
+              <KofiButton pillBase={pillBase} pillOff={pillOff} />
             </div>
           </div>
         </div>
