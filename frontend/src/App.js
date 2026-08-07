@@ -42,6 +42,29 @@ const LANGS = [
   { code: 'fr', flag: FLAG_FR, label: 'FR' },
 ];
 
+/**
+ * Retourne le nom d'un item dans la langue demandée.
+ * Fallback : 'en', puis normalized_name, puis id.
+ * Compatible avec le nouveau schéma JSON names/short_names.
+ */
+export function getItemName(item, lang = 'en') {
+  try {
+    const names = typeof item.names === 'string' ? JSON.parse(item.names) : (item.names || {});
+    return names[lang] || names['en'] || item.normalized_name || item.id || '';
+  } catch {
+    return item.normalized_name || item.id || '';
+  }
+}
+
+export function getItemShortName(item, lang = 'en') {
+  try {
+    const shorts = typeof item.short_names === 'string' ? JSON.parse(item.short_names) : (item.short_names || {});
+    return shorts[lang] || shorts['en'] || '';
+  } catch {
+    return '';
+  }
+}
+
 function defaultMinProfitRub() {
   const saved = localStorage.getItem('minProfitRub');
   return saved !== null ? saved : '20000';
@@ -78,14 +101,13 @@ function normalize(str) {
     .trim();
 }
 
-// itemMatchesTag : matche uniquement les champs de la langue active pour éviter les doublons
+// itemMatchesTag : utilise getItemName/getItemShortName pour matcher la langue active
 function itemMatchesTag(item, tag, lang) {
   const q = normalize(tag);
   if (!q) return true;
-  const fields = lang === 'fr'
-    ? [item.name_fr || item.name_en || item.name || '', item.short_name_fr || item.short_name_en || item.short_name || '']
-    : [item.name_en || item.name || '',                 item.short_name_en || item.short_name || ''];
-  return fields.some((f) => normalize(f).includes(q));
+  const name      = getItemName(item, lang);
+  const shortName = getItemShortName(item, lang);
+  return [name, shortName].some((f) => normalize(f).includes(q));
 }
 
 function LoadingSpinner({ label, accentColor }) {

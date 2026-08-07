@@ -10,6 +10,7 @@ import {
 import { ALL_TRADERS } from './Filters';
 import { ActionCell } from './ActionCell';
 import { useT } from '../hooks/useT';
+import { getItemName } from '../App';
 
 const col = createColumnHelper();
 const RUB = '\u20BD';
@@ -263,9 +264,11 @@ function computeRow(item, traderFilters, feeDiscount) {
   return { flea, bestSellTrader, bestSellPrice, bestBuyTrader, bestBuyPrice, profitFTS, pctFTS, profitBTF, pctBTF, bestProfit, bestPct, bestRec, bestActionTrader };
 }
 
+// Génère l'URL wiki en utilisant le nom EN (slug universel)
 function wikiUrl(item) {
   if (item.wiki_link) return item.wiki_link;
-  const slug = (item.name_en || item.name || '').trim().replace(/\s+/g, '_');
+  const nameEn = getItemName(item, 'en');
+  const slug = nameEn.trim().replace(/\s+/g, '_');
   if (!slug) return null;
   return `https://escapefromtarkov.fandom.com/wiki/${encodeURIComponent(slug)}`;
 }
@@ -309,7 +312,8 @@ function MobileSortBar({ sorting, onSort, t, total, from, to }) {
 
 function ItemCard({ row, lang, t }) {
   const { _c: c } = row;
-  const name  = lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en;
+  // Utilise le helper centralisé getItemName
+  const name  = getItemName(row, lang);
   const isHot = c.bestProfit != null && c.bestProfit >= HOT_DEAL_THRESHOLD;
   const isBTF = c.bestRec === 'BUY_TRADER_SELL_FLEA';
   const url   = wikiUrl(row);
@@ -492,7 +496,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const handleMobileSort = (id, desc) => setMobileSorting([{ id, desc }]);
 
   const columns = useMemo(() => [
-    col.accessor((row) => lang === 'fr' ? (row.name_fr || row.name_en) : row.name_en, {
+    col.accessor((row) => getItemName(row, lang), {
       id: 'name', header: t('colItem'),
       cell: (info) => {
         const row  = info.row.original;
