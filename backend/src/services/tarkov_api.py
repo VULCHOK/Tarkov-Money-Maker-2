@@ -2,11 +2,11 @@
 tarkov_api.py  –  Fetches data from json.tarkov.dev
 
 Supporte 3 modes : regular (PVP), pve, pvp-season (Seasonal)
-Endpoints : /{mode}/items  /{mode}/items_en  /{mode}/items_fr
+Endpoints : /{mode}/items  /{mode}/items_{lang}
 
 Noms localisés stockés dans names/short_names (JSON) :
-  Actuellement EN + FR ; extensible en ajoutant des entrées dans LANG_CODES
-  et en fetchant les endpoints correspondants.
+  Pour ajouter une langue : ajouter son code dans LANG_CODES ci-dessous.
+  Le reste du code (fetch parallèle, stockage, fallback EN) est générique.
 """
 
 import asyncio
@@ -20,8 +20,9 @@ logger = logging.getLogger(__name__)
 BASE_URL   = "https://json.tarkov.dev"
 GAME_MODES = ["regular", "pve", "pvp-season"]
 
-# Langues actuellement fetchées. Pour en ajouter, il suffit d'ajouter le code ici.
-LANG_CODES = ["en", "fr"]
+# Langues fetchées depuis json.tarkov.dev (endpoints /{mode}/items_{lang})
+# Pour ajouter une langue, il suffit d'ajouter son code ici.
+LANG_CODES = ["en", "fr", "de", "ru", "pl", "es"]
 
 last_api_source: str = "rest"
 
@@ -117,7 +118,7 @@ def _all_buy_prices_by_level(buy_list: list[dict]) -> dict[str, dict[str, int]]:
 
 def _normalize_item(
     item: dict,
-    translations: dict[str, dict],  # {"en": {...}, "fr": {...}}
+    translations: dict[str, dict],  # {"en": {...}, "fr": {...}, ...}
     item_categories: dict,
     mode: str,
 ) -> dict:
