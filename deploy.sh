@@ -4,10 +4,15 @@
 # Modes :
 #   ./deploy.sh          → build avec cache (déploiement normal, rapide)
 #   ./deploy.sh --fresh  → destroy volumes + rebuild sans cache (reset complet)
+#
+# Variable d'environnement optionnelle :
+#   TRAEFIK_DOMAIN  Si définie, active l'overlay Traefik (docker-compose.traefik.yml)
+#                   Ex : TRAEFIK_DOMAIN=tmm.example.com ./deploy.sh
 # =============================================================================
 set -euo pipefail
 
-COMPOSE="docker compose -f docker/docker-compose.yml"
+BASE_COMPOSE="docker/docker-compose.yml"
+TRAEFIK_COMPOSE="docker/docker-compose.traefik.yml"
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
 RED="\033[0;31m"
@@ -16,6 +21,18 @@ NC="\033[0m"
 log()  { echo -e "${GREEN}[deploy]${NC} $*"; }
 warn() { echo -e "${YELLOW}[deploy]${NC} $*"; }
 die()  { echo -e "${RED}[deploy] ERREUR${NC} $*"; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Détection du mode Traefik
+# ---------------------------------------------------------------------------
+if [ -n "${TRAEFIK_DOMAIN:-}" ]; then
+    TRAEFIK_MODE=true
+    COMPOSE="docker compose -f $BASE_COMPOSE -f $TRAEFIK_COMPOSE"
+    log "Mode Traefik activé — domaine : ${TRAEFIK_DOMAIN}"
+else
+    TRAEFIK_MODE=false
+    COMPOSE="docker compose -f $BASE_COMPOSE"
+fi
 
 # ---------------------------------------------------------------------------
 # Parse args
@@ -96,7 +113,7 @@ $COMPOSE up -d
 log "Attente du backend..."
 MAX=60
 i=0
-until docker compose -f docker/docker-compose.yml exec -T backend \
+until docker compose -f $BASE_COMPOSE exec -T backend \
       python -c "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')" \
       &>/dev/null; do
     i=$((i+1))
@@ -127,6 +144,10 @@ log "  Tarkov Money Maker 2 est up  "
 if [ "$FRESH" = true ]; then
     warn "  Mode --fresh : DB réinitialisée, sync auto dans ~10 min"
 fi
-log "  http://localhost (ou ton IP/domaine)"
-log "  Logs : docker compose -f docker/docker-compose.yml logs -f"
+if [ "$TRAEFIK_MODE" = true ]; then
+    log "  https://${TRAEFIK_DOMAIN}"
+else
+    log "  http://localhost:3001 (ou ton IP/domaine)"
+fi
+log "  Logs : docker compose -f $BASE_COMPOSE logs -f"
 log "======================================="

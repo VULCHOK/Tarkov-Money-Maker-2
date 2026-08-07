@@ -1,0 +1,30 @@
+# =============================================================================
+# docker-compose.traefik.yml  —  Overlay Traefik optionnel
+#
+# Usage :
+#   Définir la variable d'environnement TRAEFIK_DOMAIN avant de lancer deploy.sh
+#   Ex : TRAEFIK_DOMAIN=tmm.example.com ./deploy.sh
+#
+# Variables disponibles :
+#   TRAEFIK_DOMAIN        (obligatoire) domaine exposé par Traefik
+#   TRAEFIK_IP            (optionnel)   IP fixe dans le réseau traefik (défaut: 172.19.0.100)
+#   TRAEFIK_CERTRESOLVER  (optionnel)   nom du cert resolver (défaut: myresolver)
+#   TRAEFIK_ENTRYPOINT    (optionnel)   entrypoint Traefik (défaut: websecure)
+# =============================================================================
+services:
+  frontend:
+    networks:
+      traefik:
+        ipv4_address: ${TRAEFIK_IP:-172.19.0.100}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tmm.rule=Host(`${TRAEFIK_DOMAIN}`)"
+      - "traefik.http.routers.tmm.tls=true"
+      - "traefik.http.routers.tmm.tls.certresolver=${TRAEFIK_CERTRESOLVER:-myresolver}"
+      - "traefik.http.routers.tmm.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+      - "traefik.http.services.tmm.loadbalancer.server.port=80"
+
+networks:
+  traefik:
+    external: true
+    name: traefik
