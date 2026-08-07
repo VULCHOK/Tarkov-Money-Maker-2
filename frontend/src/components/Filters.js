@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { RankBadge, getRankThreshold, RANK_NAMES } from './RankBadge';
 import { useT } from '../hooks/useT';
+import { getItemName, getItemShortName } from '../App';
 
 export const TRADER_LEVELS = {
   Prapor:      [1, 2, 3, 4],
@@ -117,14 +118,15 @@ export function SearchCard({ tags, onTagsChange, allItems, lang }) {
     const seen = new Set();
     const results = [];
     for (const item of allItems) {
+      // Nouveau schéma : on cherche dans toutes les langues disponibles via getItemName/getItemShortName
+      const LANGS = ['en', 'fr', 'de', 'ru'];
       const candidates = [
-        item.name_en || item.name || '',
-        item.name_fr || '',
-        item.short_name_en || item.short_name || '',
-        item.short_name_fr || '',
-      ];
+        ...LANGS.map((l) => getItemName(item, l)),
+        ...LANGS.map((l) => getItemShortName(item, l)),
+        item.normalized_name || '',
+      ].filter(Boolean);
+
       for (const name of candidates) {
-        if (!name) continue;
         const key = normalize(name);
         if (seen.has(key)) continue;
         const score = fuzzyScore(name, val);
