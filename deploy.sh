@@ -93,11 +93,22 @@ $COMPOSE up -d
 # 7. Attente que le backend soit prêt
 # ---------------------------------------------------------------------------
 log "Attente du backend..."
-MAX=30
+MAX=60
 i=0
 until curl -sf http://localhost:3000/health &>/dev/null; do
     i=$((i+1))
-    [ $i -ge $MAX ] && die "Backend ne répond pas après ${MAX}s."
+    if [ $i -ge $MAX ]; then
+        echo
+        echo -e "${RED}[deploy] ERREUR${NC} Backend ne répond pas après ${MAX}s."
+        echo
+        warn "=== Logs du backend ==="
+        $COMPOSE logs --tail=100 backend || true
+        echo
+        warn "=== État des conteneurs ==="
+        $COMPOSE ps || true
+        $COMPOSE down --remove-orphans || true
+        exit 1
+    fi
     echo -n "."
     sleep 1
 done
