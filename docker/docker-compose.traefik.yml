@@ -7,15 +7,17 @@
 #
 # Variables disponibles :
 #   TRAEFIK_DOMAIN        (obligatoire) domaine exposé par Traefik
-#   TRAEFIK_IP            (optionnel)   IP fixe dans le réseau traefik (défaut: 172.19.0.100)
+#   TRAEFIK_IP            (optionnel)   IP fixe dans le réseau traefik (défaut: 172.19.0.101)
 #   TRAEFIK_CERTRESOLVER  (optionnel)   nom du cert resolver (défaut: myresolver)
 #   TRAEFIK_ENTRYPOINT    (optionnel)   entrypoint Traefik (défaut: websecure)
 # =============================================================================
 services:
   frontend:
+    ports: []  # Supprime l'exposition du port 3001 sur l'hôte
     networks:
+      default:  # Reste dans docker_default pour résoudre 'backend'
       traefik:
-        ipv4_address: ${TRAEFIK_IP:-172.19.0.100}
+        ipv4_address: ${TRAEFIK_IP:-172.19.0.101}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.tmm.rule=Host(`${TRAEFIK_DOMAIN}`)"
@@ -23,8 +25,10 @@ services:
       - "traefik.http.routers.tmm.tls.certresolver=${TRAEFIK_CERTRESOLVER:-myresolver}"
       - "traefik.http.routers.tmm.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
       - "traefik.http.services.tmm.loadbalancer.server.port=80"
+      - "traefik.docker.network=traefik"
 
 networks:
+  default: {}
   traefik:
     external: true
     name: traefik
