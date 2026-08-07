@@ -1,0 +1,15 @@
+# =============================================================================
+# docker-compose.dev.yml  —  Overlay développement local
+#
+# Usage :
+#   ./deploy.sh --dev
+#
+# Expose le frontend sur http://localhost:3001
+# =============================================================================
+services:
+  frontend:
+    ports:
+      - "3001:80"
+  backend:
+    ports:
+      - "3000:3000"

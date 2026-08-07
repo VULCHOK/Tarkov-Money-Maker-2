@@ -2,8 +2,9 @@
 # =============================================================================
 # deploy.sh  —  Tarkov Money Maker 2
 # Modes :
-#   ./deploy.sh          → build avec cache (déploiement normal, rapide)
+#   ./deploy.sh          → build avec cache (déploiement normal)
 #   ./deploy.sh --fresh  → destroy volumes + rebuild sans cache (reset complet)
+#   ./deploy.sh --dev    → expose les ports 3001 (frontend) et 3000 (backend) sur l'hôte
 #
 # Variable d'environnement optionnelle :
 #   TRAEFIK_DOMAIN  Si définie, active l'overlay Traefik (docker-compose.traefik.yml)
@@ -13,6 +14,7 @@ set -euo pipefail
 
 BASE_COMPOSE="docker/docker-compose.yml"
 TRAEFIK_COMPOSE="docker/docker-compose.traefik.yml"
+DEV_COMPOSE="docker/docker-compose.dev.yml"
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
 RED="\033[0;31m"
@@ -27,23 +29,35 @@ die()  { echo -e "${RED}[deploy] ERREUR${NC} $*"; exit 1; }
 # ---------------------------------------------------------------------------
 if [ -n "${TRAEFIK_DOMAIN:-}" ]; then
     TRAEFIK_MODE=true
-    COMPOSE="docker compose -f $BASE_COMPOSE -f $TRAEFIK_COMPOSE"
     log "Mode Traefik activé — domaine : ${TRAEFIK_DOMAIN}"
 else
     TRAEFIK_MODE=false
-    COMPOSE="docker compose -f $BASE_COMPOSE"
 fi
 
 # ---------------------------------------------------------------------------
 # Parse args
 # ---------------------------------------------------------------------------
 FRESH=false
+DEV=false
 for arg in "$@"; do
   case $arg in
     --fresh) FRESH=true ;;
-    *) die "Argument inconnu: $arg. Usage: ./deploy.sh [--fresh]" ;;
+    --dev)   DEV=true ;;
+    *) die "Argument inconnu: $arg. Usage: ./deploy.sh [--fresh] [--dev]" ;;
   esac
 done
+
+# ---------------------------------------------------------------------------
+# Construction de la commande compose finale
+# ---------------------------------------------------------------------------
+COMPOSE="docker compose -f $BASE_COMPOSE"
+if [ "$TRAEFIK_MODE" = true ]; then
+    COMPOSE="$COMPOSE -f $TRAEFIK_COMPOSE"
+fi
+if [ "$DEV" = true ]; then
+    COMPOSE="$COMPOSE -f $DEV_COMPOSE"
+    warn "Mode --dev : ports 3001 (frontend) et 3000 (backend) exposés sur l'hôte"
+fi
 
 # ---------------------------------------------------------------------------
 # 0. Vérifications préalables
@@ -107,8 +121,6 @@ $COMPOSE up -d
 
 # ---------------------------------------------------------------------------
 # 7. Attente que le backend soit prêt
-#    On teste depuis l'intérieur du container backend via docker exec
-#    pour éviter tout problème de réseau entre le deployer et le backend.
 # ---------------------------------------------------------------------------
 log "Attente du backend..."
 MAX=60
@@ -146,8 +158,11 @@ if [ "$FRESH" = true ]; then
 fi
 if [ "$TRAEFIK_MODE" = true ]; then
     log "  https://${TRAEFIK_DOMAIN}"
+elif [ "$DEV" = true ]; then
+    log "  http://localhost:3001  (frontend)"
+    log "  http://localhost:3000  (backend API)"
 else
-    log "  http://localhost:3001 (ou ton IP/domaine)"
+    log "  Accès via IP/domaine du serveur"
 fi
 log "  Logs : docker compose -f $BASE_COMPOSE logs -f"
 log "======================================="
