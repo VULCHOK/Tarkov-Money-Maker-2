@@ -13,13 +13,11 @@
 
 import React, { useState, useEffect, useRef, useId } from 'react';
 
-// En développement REACT_APP_API_URL = 'http://localhost:8000'.
-// En production (même origine), on utilise une URL relative vide ''.
 const API_BASE = process.env.REACT_APP_API_URL || '';
 
 const RUB = '\u20BD';
 const fmtK = (n) => {
-  if (n == null) return '—';
+  if (n == null) return '\u2014';
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 1_000)     return `${(n / 1_000).toFixed(0)}k`;
   return `${n}`;
@@ -42,7 +40,7 @@ function SvgTooltip({ tooltip, svgWidth }) {
 }
 
 /* ── Mini SVG sparkline — prend 100% de la largeur de son conteneur ── */
-function Sparkline({ points, color, valueFormatter, label, height = 100 }) {
+function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
   const [tooltip, setTooltip]   = useState(null);
   const [svgWidth, setSvgWidth] = useState(300);
   const wrapRef = useRef(null);
@@ -65,10 +63,10 @@ function Sparkline({ points, color, valueFormatter, label, height = 100 }) {
 
   if (!points || points.length === 0) {
     return (
-      <div className="flex-1 min-w-0">
+      <div style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }} ref={wrapRef}>
         <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-1">{label}</p>
         <div className="flex items-center justify-center" style={{ height }}>
-          <span className="text-xs text-gray-600">—</span>
+          <span className="text-xs text-gray-600">\u2014</span>
         </div>
       </div>
     );
@@ -113,13 +111,13 @@ function Sparkline({ points, color, valueFormatter, label, height = 100 }) {
   };
 
   return (
-    <div className="flex-1 min-w-0" ref={wrapRef}>
+    <div style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }} ref={wrapRef}>
       <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-1">{label}</p>
       <svg
         ref={svgRef}
         width={svgWidth}
         height={height}
-        style={{ cursor: 'crosshair', display: 'block', width: '100%' }}
+        style={{ cursor: 'crosshair', display: 'block', width: '100%', height }}
         viewBox={`0 0 ${svgWidth} ${height}`}
         preserveAspectRatio="none"
         onMouseMove={handleMouseMove}
@@ -180,13 +178,27 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
     setLoading(true);
-    fetch(`${API_BASE}/items/${encodeURIComponent(itemId)}/history?mode=${mode || 'regular'}`)
+
+    const controller = new AbortController();
+    const url = `${API_BASE}/items/${encodeURIComponent(itemId)}/history?mode=${mode || 'regular'}`;
+
+    fetch(url, { signal: controller.signal })
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${r.statusText}`);
         return r.json();
       })
       .then((json) => { setData(json); setLoading(false); })
-      .catch((e)   => { setError(e.message); setLoading(false); });
+      .catch((e) => {
+        if (e.name === 'AbortError') return;
+        // "Failed to fetch" = réseau / CORS / serveur injoignable
+        const msg = e.message?.includes('Failed to fetch')
+          ? 'Serveur injoignable — les données historiques seront disponibles une fois le backend démarré.'
+          : e.message;
+        setError(msg);
+        setLoading(false);
+      });
+
+    return () => controller.abort();
   }, [itemId, mode]);
 
   const pricePoints = data?.points?.filter((p) => p.flea_price  != null).map((p) => ({ ts: p.ts, value: p.flea_price  })) ?? [];
@@ -203,27 +215,27 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
           </div>
         )}
         {error && (
-          <p className="text-xs text-red-400 py-1">Erreur : {error}</p>
+          <p className="text-xs text-yellow-600/80 py-1 italic">{error}</p>
         )}
         {!loading && !error && !hasData && (
           <p className="text-xs text-gray-600 py-1">
-            Pas encore de données historiques — elles s’accumulent après chaque sync.
+            Pas encore de données historiques — elles s'accumulent après chaque sync.
           </p>
         )}
         {!loading && !error && hasData && (
-          /* Les deux graphiques en flex, chacun flex-1 = 50% / 50% */
-          <div className="flex gap-4 w-full">
+          /* Flex row : chaque Sparkline a flex:1 1 0 → exactement 50%/50% */
+          <div style={{ display: 'flex', gap: '16px', width: '100%', overflow: 'hidden' }}>
             <Sparkline
               points={pricePoints}
               color="#5ba8c4"
-              label={`Prix Flea — ${pricePoints.length} points`}
-              valueFormatter={(v) => `${fmtK(v)} ${RUB}`}
+              label={`Prix Flea — ${pricePoints.length} pts`}
+              valueFormatter={(v) => `${fmtK(v)} ${RUB}`}
               height={110}
             />
             <Sparkline
               points={offerPoints}
               color="#7ab87a"
-              label={`Offres disponibles — ${offerPoints.length} points`}
+              label={`Offres disponibles — ${offerPoints.length} pts`}
               valueFormatter={(v) => `${v} offres`}
               height={110}
             />
@@ -234,23 +246,26 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
   );
 }
 
-/* ── Bouton flèche ▶ / ▼ ── */
+/* ── Bouton flèche ▶ / ▼ — plus visible, avec label ── */
 export function ExpandArrow({ expanded, onToggle }) {
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
       aria-label={expanded ? 'Masquer graphiques' : 'Afficher graphiques 24h'}
       title={expanded ? 'Masquer graphiques' : 'Afficher les graphiques 24h'}
-      className={`flex-shrink-0 flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ${
-        expanded ? 'text-tarkov-gold' : 'text-gray-500 hover:text-tarkov-gold'
+      className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all duration-150 text-[10px] font-semibold select-none ${
+        expanded
+          ? 'border-tarkov-gold/60 text-tarkov-gold bg-tarkov-gold/10'
+          : 'border-tarkov-border text-gray-500 hover:border-tarkov-gold/50 hover:text-tarkov-gold hover:bg-tarkov-gold/5'
       }`}
     >
       <svg
-        width="9" height="9" viewBox="0 0 9 9" fill="currentColor"
-        style={{ transition: 'transform 180ms ease', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+        width="7" height="7" viewBox="0 0 9 9" fill="currentColor"
+        style={{ transition: 'transform 180ms ease', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
       >
         <polygon points="2,1 8,4.5 2,8" />
       </svg>
+      <span>24h</span>
     </button>
   );
 }
