@@ -68,7 +68,7 @@ const fr = {
   apiStatusModeLastSync: 'Dernière sync',
   apiStatusModeDuration: 'Durée',
   apiStatusNever: 'jamais',
-  apiStatusJustNow: 'à l'instant',
+  apiStatusJustNow: "\u00e0 l'instant",
   apiStatusTimeAgoPrefix: 'il y a',
   apiStatusMinutesAgo: 'min',
   apiStatusHoursAgo: 'h',
