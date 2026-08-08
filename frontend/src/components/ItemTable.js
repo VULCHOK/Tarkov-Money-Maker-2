@@ -196,7 +196,7 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
     .map((t) => ({ trader: t, price: prices[t] }))
     .filter((e) => e.price != null)
     .sort((a, b) => b.price - a.price);
-  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">\u2014</span>;
   const best = entries[0];
   const bestEntry = highlight ? entries.find((e) => e.trader === highlight) || best : best;
   return (
@@ -212,7 +212,7 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
           <span className="text-tarkov-gold text-xs font-semibold">{bestEntry.trader}</span>
           <span className="text-white text-xs">{fmt(bestEntry.price)}</span>
         </span>
-        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">▼</span>
+        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">\u25bc</span>
       </span>
       {open && (
         <div className={tooltipCls(pos, 'w-52')}>
@@ -253,7 +253,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
     if (bestPrice === null) return null;
     return { trader, price: bestPrice, accessibleLevel, userLevel, levels };
   }).filter(Boolean).sort((a, b) => a.price - b.price);
-  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">\u2014</span>;
   const bestEntry = highlight ? entries.find((e) => e.trader === highlight) || entries[0] : entries[0];
   return (
     <div className="relative inline-block" ref={triggerRef}
@@ -268,7 +268,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
           <span className="text-tarkov-gold text-xs font-semibold">{bestEntry.trader}</span>
           <span className="text-white text-xs">{fmt(bestEntry.price)}</span>
         </span>
-        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">▼</span>
+        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">\u25bc</span>
       </span>
       {open && (
         <div className={tooltipCls(pos, 'w-64')}>
@@ -311,7 +311,7 @@ function FleaPriceTooltip({ item, t }) {
   const { triggerRef, pos } = useSmartTooltip(open, 232);
   const { flea_price, last_low_price, low24h_price, avg24h_price, high24h_price, last_offer_count } = item;
   const current = flea_price ?? last_low_price ?? null;
-  if (current == null) return <span className="text-gray-600 text-xs">—</span>;
+  if (current == null) return <span className="text-gray-600 text-xs">\u2014</span>;
   const handleMouseEnter = () => { if (closeTimer.current) clearTimeout(closeTimer.current); setOpen(true); };
   const handleMouseLeave = () => { closeTimer.current = setTimeout(() => setOpen(false), 120); };
   return (
@@ -319,7 +319,7 @@ function FleaPriceTooltip({ item, t }) {
       onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <span className="flex flex-col leading-tight cursor-default">
         <span className="text-blue-300 text-xs font-semibold">{fmt(current)}</span>
-        {avg24h_price != null && <span className="text-gray-500 text-xs">ø {fmt(avg24h_price)}</span>}
+        {avg24h_price != null && <span className="text-gray-500 text-xs">\u00f8 {fmt(avg24h_price)}</span>}
       </span>
       {open && (
         <div
@@ -348,7 +348,7 @@ function FleaPriceTooltip({ item, t }) {
 }
 
 function ProfitCell({ value, pct, isBest }) {
-  if (value == null) return <span className="text-gray-600 text-xs">—</span>;
+  if (value == null) return <span className="text-gray-600 text-xs">\u2014</span>;
   const color = value > 0 ? 'text-green-400' : 'text-red-400';
   const fire  = isBest && value >= HOT_DEAL_THRESHOLD ? ' \uD83D\uDD25' : '';
   const bold  = isBest ? 'font-bold text-sm' : 'text-xs';
@@ -422,7 +422,7 @@ function MobileSortBar({ sorting, onSort, t, total, from, to }) {
   return (
     <div className="sticky top-0 z-20 bg-tarkov-bg border-b border-tarkov-border px-3 py-2 flex flex-col gap-2">
       <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>{from}–{to} {t('paginationOf')} <span className="text-tarkov-gold font-semibold">{total}</span></span>
+        <span>{from}\u2013{to} {t('paginationOf')} <span className="text-tarkov-gold font-semibold">{total}</span></span>
         <span className="text-gray-600">{t('paginationTapSort')}</span>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
@@ -529,13 +529,13 @@ function ItemCard({ row, lang, t }) {
           c.bestRec === 'BUY_FLEA_SELL_TRADER' ? 'border-green-700/60 bg-green-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea → Trader</span>
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea \u2192 Trader</span>
             {c.bestSellTrader && (
               <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
           <p className={`text-sm font-bold leading-none ${c.profitFTS > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '—'}
+            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '\u2014'}
           </p>
           {c.pctFTS != null && <p className="text-gray-500 text-[10px] mt-0.5">{c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%</p>}
         </div>
@@ -543,13 +543,13 @@ function ItemCard({ row, lang, t }) {
           c.bestRec === 'BUY_TRADER_SELL_FLEA' ? 'border-blue-700/60 bg-blue-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader → Flea</span>
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader \u2192 Flea</span>
             {c.bestBuyTrader && (
               <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
           <p className={`text-sm font-bold leading-none ${c.profitBTF > 0 ? 'text-blue-300' : 'text-red-400'}`}>
-            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '—'}
+            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '\u2014'}
           </p>
           {c.pctBTF != null && <p className="text-gray-500 text-[10px] mt-0.5">{c.pctBTF > 0 ? '+' : ''}{c.pctBTF.toFixed(1)}%</p>}
         </div>
@@ -581,16 +581,16 @@ function PaginationBar({ table, t, mobile }) {
           ))}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">‹</button>
+          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">\u2039</button>
           <span className="text-xs text-gray-400 px-1">{pageIndex + 1} / {table.getPageCount()}</span>
-          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">›</button>
+          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">\u203a</button>
         </div>
       </div>
     );
   }
   return (
     <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
-      <span>{from}–{to} {t('paginationOf')} {total}</span>
+      <span>{from}\u2013{to} {t('paginationOf')} {total}</span>
       <div className="flex items-center gap-1">
         <span className="text-gray-500">{t('paginationPerPage')}</span>
         {PAGE_SIZES.map((s) => (
@@ -601,11 +601,11 @@ function PaginationBar({ table, t, mobile }) {
         ))}
       </div>
       <div className="flex items-center gap-1">
-        <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">«</button>
-        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">‹</button>
+        <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u00ab</button>
+        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u2039</button>
         <span className="px-2">{t('paginationPage')} {pageIndex + 1} / {table.getPageCount()}</span>
-        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">›</button>
-        <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">»</button>
+        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u203a</button>
+        <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u00bb</button>
       </div>
     </div>
   );
@@ -630,31 +630,42 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const handleMobileSort = (id, desc) => setMobileSorting([{ id, desc }]);
 
   const columns = useMemo(() => [
-    /* ─── Colonne "Item" : icon + flèche expand + nom + copy — tout sur une ligne ─── */
+    /* ─── Col 0 : ExpandArrow + CopyNameButton ─── */
+    col.display({
+      id: 'expand',
+      header: '',
+      enableSorting: false,
+      cell: (info) => {
+        const row   = info.row.original;
+        const rowId = row.id + '_' + (row.mode || 'regular');
+        const expanded = expandedRows.has(rowId);
+        const name  = getItemName(row, lang) || row.normalized_name || row.id;
+        return (
+          <span className="flex items-center gap-1.5">
+            <ExpandArrow expanded={expanded} onToggle={() => toggleExpand(rowId)} />
+            <CopyNameButton name={name} toastLabel={t('copyToast')} />
+          </span>
+        );
+      },
+    }),
+    /* ─── Col 1 : icône + nom (wiki link) ─── */
     col.accessor((row) => getItemName(row, lang), {
       id: 'name',
       header: t('colItem'),
       cell: (info) => {
-        const row     = info.row.original;
-        const rowId   = row.id + '_' + (row.mode || 'regular');
-        const expanded = expandedRows.has(rowId);
-        const name    = info.getValue() || row.normalized_name || row.id;
-        const url     = wikiUrl(row);
+        const row  = info.row.original;
+        const name = info.getValue() || row.normalized_name || row.id;
+        const url  = wikiUrl(row);
         return (
-          <span className="flex items-center gap-1.5 min-w-[180px]">
-            {/* Icône item */}
+          <span className="flex items-center gap-1.5 min-w-[160px]">
             {row.icon_link
               ? <img src={row.icon_link} alt="" className="w-8 h-8 rounded object-contain bg-tarkov-card border border-tarkov-border flex-shrink-0" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
               : <span className="w-8 h-8 rounded bg-tarkov-card border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
             }
-            {/* Flèche expand inline — même ligne que le nom */}
-            <ExpandArrow expanded={expanded} onToggle={() => toggleExpand(rowId)} />
-            {/* Nom cliquable + copy */}
             {url
               ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm leading-tight hover:text-tarkov-gold hover:underline transition-colors">{name}</a>
               : <span className="font-medium text-sm leading-tight">{name}</span>
             }
-            <CopyNameButton name={name} toastLabel={t('copyToast')} />
           </span>
         );
       },
@@ -674,12 +685,12 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       sortingFn: (a, b) => (a.original._c.bestSellPrice ?? -Infinity) - (b.original._c.bestSellPrice ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitBTF, {
-      id: 'profit_btf', header: 'Trader→Flea',
+      id: 'profit_btf', header: 'Trader\u2192Flea',
       cell: (info) => <ProfitCell value={info.row.original._c.profitBTF} pct={info.row.original._c.pctBTF} isBest={info.row.original._c.bestRec === 'BUY_TRADER_SELL_FLEA'} />,
       sortingFn: (a, b) => (a.original._c.profitBTF ?? -Infinity) - (b.original._c.profitBTF ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitFTS, {
-      id: 'profit_fts', header: 'Flea→Trader',
+      id: 'profit_fts', header: 'Flea\u2192Trader',
       cell: (info) => <ProfitCell value={info.row.original._c.profitFTS} pct={info.row.original._c.pctFTS} isBest={info.row.original._c.bestRec === 'BUY_FLEA_SELL_TRADER'} />,
       sortingFn: (a, b) => (a.original._c.profitFTS ?? -Infinity) - (b.original._c.profitFTS ?? -Infinity),
     }),

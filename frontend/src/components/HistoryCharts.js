@@ -1,19 +1,10 @@
 /**
  * HistoryCharts.js
- *
- * Ligne expansible sous chaque item de la table.
- * Affiche 2 mini-graphiques SVG pur (pas de librairie externe) :
- *   - Graphique 1 : flea_price toutes les 10 min sur 24h
- *   - Graphique 2 : offer_count toutes les 10 min sur 24h
- *
- * Fix: URL relative si REACT_APP_API_URL n'est pas défini (prod).
- * Fix: Les deux graphiques prennent chacun 50% de la largeur disponible.
- * Fix: ids de gradient uniques par instance via useId().
  */
 
 import React, { useState, useEffect, useRef, useId } from 'react';
 
-const API_BASE = process.env.REACT_APP_API_URL || '';
+const API_BASE = process.env.REACT_APP_API_URL || '/api';
 
 const RUB = '\u20BD';
 const fmtK = (n) => {
@@ -39,7 +30,7 @@ function SvgTooltip({ tooltip, svgWidth }) {
   );
 }
 
-/* ── Mini SVG sparkline — prend 100% de la largeur de son conteneur ── */
+/* ── Mini SVG sparkline ── */
 function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
   const [tooltip, setTooltip]   = useState(null);
   const [svgWidth, setSvgWidth] = useState(300);
@@ -48,7 +39,6 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
   const uid     = useId().replace(/:/g, '');
   const gradId  = `sparkGrad_${uid}`;
 
-  /* Mesure la largeur du wrapper et écoute les resize */
   useEffect(() => {
     if (!wrapRef.current) return;
     const measure = () => {
@@ -130,7 +120,6 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
           </linearGradient>
         </defs>
 
-        {/* Grille Y */}
         {yTicks.map((v, i) => (
           <g key={i}>
             <line x1={PAD_L} y1={toY(v)} x2={PAD_L + W} y2={toY(v)} stroke="#2a2826" strokeWidth="1" />
@@ -140,7 +129,6 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
           </g>
         ))}
 
-        {/* Axe X : étiquettes toutes les 6h */}
         {points.map((p, i) => {
           const ts = new Date(p.ts);
           if (ts.getMinutes() !== 0 || ts.getHours() % 6 !== 0) return null;
@@ -152,11 +140,9 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
           );
         })}
 
-        {/* Zone remplie + courbe */}
         <path d={areaD} fill={`url(#${gradId})`} />
         <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
 
-        {/* Curseur hover */}
         {tooltip && (
           <circle cx={tooltip.x} cy={tooltip.y} r="4" fill={color} stroke="#1e1c19" strokeWidth="1.5" />
         )}
@@ -184,15 +170,14 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
 
     fetch(url, { signal: controller.signal })
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} — ${r.statusText}`);
+        if (!r.ok) throw new Error(`HTTP ${r.status} \u2014 ${r.statusText}`);
         return r.json();
       })
       .then((json) => { setData(json); setLoading(false); })
       .catch((e) => {
         if (e.name === 'AbortError') return;
-        // "Failed to fetch" = réseau / CORS / serveur injoignable
         const msg = e.message?.includes('Failed to fetch')
-          ? 'Serveur injoignable — les données historiques seront disponibles une fois le backend démarré.'
+          ? 'Serveur injoignable \u2014 les donn\u00e9es historiques seront disponibles une fois le backend d\u00e9marr\u00e9.'
           : e.message;
         setError(msg);
         setLoading(false);
@@ -211,7 +196,7 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
         {loading && (
           <div className="flex items-center gap-2 py-2">
             <span className="inline-block w-3 h-3 rounded-full border-2 border-tarkov-gold border-t-transparent animate-spin" />
-            <span className="text-xs text-gray-500">Chargement historique…</span>
+            <span className="text-xs text-gray-500">Chargement historique\u2026</span>
           </div>
         )}
         {error && (
@@ -219,23 +204,22 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
         )}
         {!loading && !error && !hasData && (
           <p className="text-xs text-gray-600 py-1">
-            Pas encore de données historiques — elles s'accumulent après chaque sync.
+            Pas encore de donn\u00e9es historiques \u2014 elles s'accumulent apr\u00e8s chaque sync.
           </p>
         )}
         {!loading && !error && hasData && (
-          /* Flex row : chaque Sparkline a flex:1 1 0 → exactement 50%/50% */
           <div style={{ display: 'flex', gap: '16px', width: '100%', overflow: 'hidden' }}>
             <Sparkline
               points={pricePoints}
               color="#5ba8c4"
-              label={`Prix Flea — ${pricePoints.length} pts`}
+              label={`Prix Flea \u2014 ${pricePoints.length} pts`}
               valueFormatter={(v) => `${fmtK(v)} ${RUB}`}
               height={110}
             />
             <Sparkline
               points={offerPoints}
               color="#7ab87a"
-              label={`Offres disponibles — ${offerPoints.length} pts`}
+              label={`Offres disponibles \u2014 ${offerPoints.length} pts`}
               valueFormatter={(v) => `${v} offres`}
               height={110}
             />
@@ -246,7 +230,7 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
   );
 }
 
-/* ── Bouton flèche ▶ / ▼ — plus visible, avec label ── */
+/* ── Bouton flèche ▶/▼ avec label 24h ── */
 export function ExpandArrow({ expanded, onToggle }) {
   return (
     <button
