@@ -3,7 +3,6 @@ import axios from 'axios';
 import { ItemTable } from './components/ItemTable';
 import { Filters, defaultTraderFilters, defaultIntelLevel, defaultMinOffers, ALL_TRADERS } from './components/Filters';
 import { ExportButtons } from './components/ExportButtons';
-import { StatsBar } from './components/StatsBar';
 import { ApiStatus } from './components/ApiStatus';
 import { LangSelector } from './components/LangSelector';
 import { KofiButton } from './components/KofiButton';
@@ -195,7 +194,6 @@ export default function App() {
       </header>
 
       <main className="px-5 py-4">
-        <StatsBar items={visibleItems} />
         <Filters
           filters={filters}
           onChange={setFilters}
