@@ -61,7 +61,8 @@ function useSmartTooltip(open, tooltipWidth = 208) {
 function tooltipCls(pos, extra = '') {
   const v = pos.openUp   ? 'bottom-full mb-1' : 'top-full mt-1';
   const h = pos.openLeft ? 'right-0'          : 'left-0';
-  return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-none`;
+  // pointer-events-auto so the tooltip stays open when the mouse moves into it
+  return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-auto`;
 }
 
 /* ── CopyBurst rendered via portal at fixed screen coords ───────────────── */
@@ -308,7 +309,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
                 {lockedLevels.length > 0 && (
                   <div className="text-gray-600 text-[10px] mt-0.5 pl-5">
                     {lockedLevels.map((lvl) => (
-                      <span key={lvl} className="mr-2">🔒 LL{lvl}: {fmt(levels[String(lvl)])}</span>
+                      <span key={lvl} className="mr-2">\uD83D\uDD12 LL{lvl}: {fmt(levels[String(lvl)])}</span>
                     ))}
                   </div>
                 )}
@@ -328,14 +329,24 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
  */
 function FleaPriceTooltip({ item, t }) {
   const [open, setOpen] = useState(false);
+  const closeTimer = useRef(null);
   // Tooltip plus large pour accueillir le graphique
   const { triggerRef, pos } = useSmartTooltip(open, 232);
   const { flea_price, last_low_price, low24h_price, avg24h_price, high24h_price, last_offer_count } = item;
   const current = flea_price ?? last_low_price ?? null;
   if (current == null) return <span className="text-gray-600 text-xs">—</span>;
+
+  const handleMouseEnter = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const handleMouseLeave = () => {
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+
   return (
     <div className="relative inline-block" ref={triggerRef}
-      onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <span className="flex flex-col leading-tight cursor-default">
         <span className="text-blue-300 text-xs font-semibold">{fmt(current)}</span>
         {avg24h_price != null && (
@@ -343,7 +354,11 @@ function FleaPriceTooltip({ item, t }) {
         )}
       </span>
       {open && (
-        <div className={tooltipCls(pos, 'w-56 px-3 pb-2')}>
+        <div
+          className={tooltipCls(pos, 'w-56 px-3 pb-2')}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 pt-1">
             {t('flea24h')}
           </p>
@@ -370,7 +385,7 @@ function FleaPriceTooltip({ item, t }) {
 function ProfitCell({ value, pct, isBest }) {
   if (value == null) return <span className="text-gray-600 text-xs">—</span>;
   const color = value > 0 ? 'text-green-400' : 'text-red-400';
-  const fire  = isBest && value >= HOT_DEAL_THRESHOLD ? ' 🔥' : '';
+  const fire  = isBest && value >= HOT_DEAL_THRESHOLD ? ' \uD83D\uDD25' : '';
   const bold  = isBest ? 'font-bold text-sm' : 'text-xs';
   return (
     <span className="flex flex-col leading-tight">
@@ -502,7 +517,7 @@ function ItemCard({ row, lang, t }) {
           <span className="text-[9px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none mb-0.5">{topLabel}</span>
           {topProfit != null && (
             <span className="text-sm font-extrabold leading-none text-tarkov-gold">
-              {topProfit > 0 ? '+' : ''}{fmtK(topProfit)}{isHot ? '🔥' : ''}
+              {topProfit > 0 ? '+' : ''}{fmtK(topProfit)}{isHot ? '\uD83D\uDD25' : ''}
             </span>
           )}
           {topPct != null && (
@@ -695,7 +710,6 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     }),
     col.accessor((row) => row._c.flea, {
       id: 'flea_price', header: () => <span>Flea</span>,
-      // On passe maintenant l'objet item complet à FleaPriceTooltip
       cell: (info) => <FleaPriceTooltip item={info.row.original} t={t} />,
     }),
     col.accessor((row) => row._c.bestSellPrice, {
@@ -714,7 +728,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       sortingFn: (a, b) => (a.original._c.profitFTS ?? -Infinity) - (b.original._c.profitFTS ?? -Infinity),
     }),
     col.accessor((row) => row._c.bestProfit, {
-      id: 'best_profit', header: '★ Best Profit',
+      id: 'best_profit', header: '\u2605 Best Profit',
       cell: (info) => <ProfitCell value={info.row.original._c.bestProfit} pct={info.row.original._c.bestPct} isBest={true} />,
       sortingFn: (a, b) => (a.original._c.bestProfit ?? -Infinity) - (b.original._c.bestProfit ?? -Infinity),
     }),
