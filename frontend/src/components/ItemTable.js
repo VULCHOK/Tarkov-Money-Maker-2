@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -55,6 +55,54 @@ function tooltipCls(pos, extra = '') {
   const v = pos.openUp   ? 'bottom-full mb-1' : 'top-full mt-1';
   const h = pos.openLeft ? 'right-0'          : 'left-0';
   return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-none`;
+}
+
+/* ── Copy-name button ───────────────────────────────────────────────────── */
+function CopyNameButton({ name }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!name) return;
+    navigator.clipboard.writeText(name).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {
+      // fallback for older browsers
+      const el = document.createElement('textarea');
+      el.value = name;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [name]);
+
+  return (
+    <button
+      onClick={handleCopy}
+      title={copied ? 'Copied!' : 'Copy name'}
+      className={`flex-shrink-0 p-0.5 rounded transition-all ${
+        copied
+          ? 'text-green-400'
+          : 'text-gray-600 hover:text-tarkov-gold opacity-0 group-hover:opacity-100'
+      }`}
+      style={{ lineHeight: 1 }}
+    >
+      {copied ? (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
+  );
 }
 
 function TraderPricesTooltip({ pricesJson, highlight, label }) {
@@ -312,7 +360,6 @@ function MobileSortBar({ sorting, onSort, t, total, from, to }) {
 
 function ItemCard({ row, lang, t }) {
   const { _c: c } = row;
-  // Utilise le helper centralisé getItemName
   const name  = getItemName(row, lang);
   const isHot = c.bestProfit != null && c.bestProfit >= HOT_DEAL_THRESHOLD;
   const isBTF = c.bestRec === 'BUY_TRADER_SELL_FLEA';
@@ -340,6 +387,7 @@ function ItemCard({ row, lang, t }) {
             ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-sm leading-snug text-tarkov-text hover:text-tarkov-gold hover:underline line-clamp-2 block">{name || row.id}</a>
             : <p className="font-semibold text-sm leading-snug text-tarkov-text line-clamp-2">{name || row.id}</p>
           }
+          <CopyNameButton name={name || row.id} />
         </div>
         <div className="flex-shrink-0 flex flex-col items-end min-w-[64px]">
           <span className="text-[9px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none mb-0.5">{topLabel}</span>
@@ -503,7 +551,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
         const name = info.getValue() || row.normalized_name || row.id;
         const url  = wikiUrl(row);
         return (
-          <span className="flex items-center gap-2 min-w-[160px]">
+          <span className="group flex items-center gap-2 min-w-[160px]">
             {row.icon_link
               ? <img src={row.icon_link} alt="" className="w-8 h-8 rounded object-contain bg-tarkov-card border border-tarkov-border flex-shrink-0" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
               : <span className="w-8 h-8 rounded bg-tarkov-card border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
@@ -512,6 +560,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
               ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm leading-tight hover:text-tarkov-gold hover:underline transition-colors">{name}</a>
               : <span className="font-medium text-sm leading-tight">{name}</span>
             }
+            <CopyNameButton name={name} />
           </span>
         );
       },

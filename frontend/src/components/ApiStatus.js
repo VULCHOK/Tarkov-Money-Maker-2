@@ -8,6 +8,9 @@ const MODE_LABELS = {
   'pvp-season': { label: 'Kord Breach', emoji: '\u2744\ufe0f' },
 };
 
+// Interval between backend syncs in seconds
+const SYNC_INTERVAL_S = 1800; // 30 min
+
 function fmtTime(isoString, t) {
   if (!isoString) return t('apiStatusNever');
   const d = new Date(isoString);
@@ -30,6 +33,37 @@ function fmtDate(isoString, lang = 'en') {
   return new Date(isoString).toLocaleString(lang, {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
+}
+
+/* ── Sync countdown displayed in the pill ──────────────────────────────── */
+function SyncCountdown({ lastSyncIso }) {
+  const [remaining, setRemaining] = useState(null);
+
+  useEffect(() => {
+    if (!lastSyncIso) { setRemaining(null); return; }
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - new Date(lastSyncIso).getTime()) / 1000);
+      const rem = Math.max(0, SYNC_INTERVAL_S - elapsed);
+      setRemaining(rem);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastSyncIso]);
+
+  if (remaining === null) return null;
+
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  const label = remaining === 0
+    ? 'sync…'
+    : `${m}:${String(s).padStart(2, '0')}`;
+
+  return (
+    <span className="text-[10px] text-gray-500 tabular-nums" title="Next data sync">
+      ⏱ {label}
+    </span>
+  );
 }
 
 export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
@@ -71,11 +105,16 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
     }
   })();
 
+  // Best last_sync across all modes
+  const lastSyncIso = status?.last_sync
+    ?? Object.values(status?.modes ?? {}).map((m) => m?.last_sync).filter(Boolean).sort().at(-1)
+    ?? null;
+
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className={`${pillBase} ${pillOff}`}
+        className={`${pillBase} ${pillOff} flex items-center gap-1.5`}
         title={t('apiStatusTitle')}
       >
         <span className="relative flex h-2 w-2 flex-shrink-0">
@@ -85,6 +124,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
           <span className={`relative inline-flex rounded-full h-2 w-2 ${dot.color}`} />
         </span>
         <span>{dot.label}</span>
+        <SyncCountdown lastSyncIso={lastSyncIso} />
       </button>
 
       {open && (
@@ -176,6 +216,12 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                 {lastChecked && (
                   <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border text-gray-500">
                     {t('apiStatusCheckedAt')} {fmtTime(lastChecked.toISOString(), t)}
+                  </div>
+                )}
+                {lastSyncIso && (
+                  <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border flex items-center gap-2 text-gray-500">
+                    <span>{t('apiStatusNextSync') || 'Next sync'}</span>
+                    <SyncCountdown lastSyncIso={lastSyncIso} />
                   </div>
                 )}
               </div>
