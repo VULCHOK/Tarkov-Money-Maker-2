@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-table';
 import { ALL_TRADERS } from './Filters';
 import { ActionCell } from './ActionCell';
+import { PriceChart } from './PriceChart';
 import { useT } from '../hooks/useT';
 import { getItemName } from '../App';
 
@@ -50,7 +51,7 @@ function useSmartTooltip(open, tooltipWidth = 208) {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     setPos({
-      openUp:   window.innerHeight - rect.bottom < 260,
+      openUp:   window.innerHeight - rect.bottom < 320,
       openLeft: window.innerWidth  - rect.right  < tooltipWidth + 8,
     });
   }, [open, tooltipWidth]);
@@ -320,34 +321,46 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
   );
 }
 
-function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount, t }) {
+/**
+ * FleaPriceTooltip
+ * Affiche le tooltip flea 24h + PriceChart.
+ * PriceChart retourne null automatiquement si last_offer_count est absent (PVE/saison).
+ */
+function FleaPriceTooltip({ item, t }) {
   const [open, setOpen] = useState(false);
-  const { triggerRef, pos } = useSmartTooltip(open, 208);
+  // Tooltip plus large pour accueillir le graphique
+  const { triggerRef, pos } = useSmartTooltip(open, 232);
+  const { flea_price, last_low_price, low24h_price, avg24h_price, high24h_price, last_offer_count } = item;
+  const current = flea_price ?? last_low_price ?? null;
   if (current == null) return <span className="text-gray-600 text-xs">—</span>;
   return (
     <div className="relative inline-block" ref={triggerRef}
       onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <span className="flex flex-col leading-tight cursor-default">
         <span className="text-blue-300 text-xs font-semibold">{fmt(current)}</span>
-        {avg24h != null && <span className="text-gray-500 text-xs">{t('fleaAvg').replace('Avg','moy').replace('Moy','')} {fmt(avg24h)}</span>}
+        {avg24h_price != null && (
+          <span className="text-gray-500 text-xs">ø {fmt(avg24h_price)}</span>
+        )}
       </span>
       {open && (
-        <div className={tooltipCls(pos, 'w-52')}>
-          <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 px-3 pt-1">
+        <div className={tooltipCls(pos, 'w-56 px-3 pb-2')}>
+          <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 pt-1">
             {t('flea24h')}
           </p>
-          <div className="flex flex-col gap-1 text-xs px-3 pb-1">
+          <div className="flex flex-col gap-1 text-xs">
             <div className="flex justify-between"><span className="text-gray-400">{t('fleaCur')}</span><span className="text-blue-300 font-semibold">{fmt(current)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">{t('fleaLow')}</span><span className="text-green-400">{fmt(low24h)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">{t('fleaAvg')}</span><span className="text-gray-200">{fmt(avg24h)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">{t('fleaHigh')}</span><span className="text-red-400">{fmt(high24h)}</span></div>
-            {lastOfferCount != null && (
+            <div className="flex justify-between"><span className="text-gray-400">{t('fleaLow')}</span><span className="text-green-400">{fmt(low24h_price)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">{t('fleaAvg')}</span><span className="text-gray-200">{fmt(avg24h_price)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">{t('fleaHigh')}</span><span className="text-red-400">{fmt(high24h_price)}</span></div>
+            {last_offer_count != null && (
               <div className="flex justify-between border-t border-tarkov-border mt-1 pt-1">
                 <span className="text-gray-500">{t('fleaOffers')}</span>
-                <span className="text-gray-400">{lastOfferCount}</span>
+                <span className="text-gray-400">{last_offer_count}</span>
               </div>
             )}
           </div>
+          {/* Graphique 24h — masqué automatiquement si last_offer_count absent */}
+          <PriceChart item={item} t={t} />
         </div>
       )}
     </div>
@@ -682,7 +695,8 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     }),
     col.accessor((row) => row._c.flea, {
       id: 'flea_price', header: () => <span>Flea</span>,
-      cell: (info) => { const r = info.row.original; return <FleaPriceTooltip current={r._c.flea} low24h={r.low24h_price} avg24h={r.avg24h_price} high24h={r.high24h_price} lastOfferCount={r.last_offer_count} t={t} />; },
+      // On passe maintenant l'objet item complet à FleaPriceTooltip
+      cell: (info) => <FleaPriceTooltip item={info.row.original} t={t} />,
     }),
     col.accessor((row) => row._c.bestSellPrice, {
       id: 'sell_trader', header: t('colSellTrader'),
