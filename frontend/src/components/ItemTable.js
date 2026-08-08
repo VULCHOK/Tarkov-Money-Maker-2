@@ -845,6 +845,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
                       itemId={row.original.id}
                       mode={row.original.mode || 'regular'}
                       colSpan={colCount}
+                      t={t}
                     />
                   )}
                 </React.Fragment>
