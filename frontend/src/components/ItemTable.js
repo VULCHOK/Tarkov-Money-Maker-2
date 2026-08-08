@@ -40,7 +40,7 @@ const TRADER_META = {
 
 const PAGE_SIZES = [10, 25, 50];
 
-/* ── Portal helper ──────────────────────────────────────────────────────── */
+/* ── Portal helper ── */
 function Portal({ children }) {
   return ReactDOM.createPortal(children, document.body);
 }
@@ -65,10 +65,9 @@ function tooltipCls(pos, extra = '') {
   return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-auto`;
 }
 
-/* ── CopyBurst rendered via portal at fixed screen coords ───────────────── */
+/* ── CopyBurst via portal ── */
 function CopyBurst({ label, anchorRef }) {
   const [style, setStyle] = useState(null);
-
   useEffect(() => {
     if (!anchorRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
@@ -81,24 +80,22 @@ function CopyBurst({ label, anchorRef }) {
       zIndex: 9999,
     });
   }, [anchorRef]);
-
   if (!style) return null;
-
   return (
     <Portal>
       <span style={style}>
         <style>{`
           @keyframes copyBurst {
-            0%   { opacity: 0; transform: translateY(0) translateX(-6px) scale(0.75); }
-            18%  { opacity: 1; transform: translateY(-10px) translateX(0) scale(1.14); }
-            38%  { opacity: 1; transform: translateY(-14px) translateX(0) scale(0.96); }
-            62%  { opacity: 1; transform: translateY(-18px) translateX(2px) scale(1.02); }
-            100% { opacity: 0; transform: translateY(-28px) translateX(6px) scale(0.9); }
+            0%   { opacity:0; transform:translateY(0) translateX(-6px) scale(0.75); }
+            18%  { opacity:1; transform:translateY(-10px) translateX(0) scale(1.14); }
+            38%  { opacity:1; transform:translateY(-14px) translateX(0) scale(0.96); }
+            62%  { opacity:1; transform:translateY(-18px) translateX(2px) scale(1.02); }
+            100% { opacity:0; transform:translateY(-28px) translateX(6px) scale(0.9); }
           }
           @keyframes copyGlow {
-            0%   { opacity: 0; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.0); }
-            30%  { opacity: 1; box-shadow: 0 0 0 8px rgba(74, 222, 128, 0.16); }
-            100% { opacity: 0; box-shadow: 0 0 0 18px rgba(74, 222, 128, 0.0); }
+            0%   { opacity:0; box-shadow:0 0 0 0 rgba(74,222,128,0.0); }
+            30%  { opacity:1; box-shadow:0 0 0 8px rgba(74,222,128,0.16); }
+            100% { opacity:0; box-shadow:0 0 0 18px rgba(74,222,128,0.0); }
           }
         `}</style>
         <span className="relative inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-green-500/15 px-2 py-1 shadow-lg animate-[copyBurst_900ms_ease-out_forwards]">
@@ -112,22 +109,17 @@ function CopyBurst({ label, anchorRef }) {
   );
 }
 
-/* ── Copy-name button ───────────────────────────────────────────────────── */
+/* ── Copy-name button ── */
 function CopyNameButton({ name, toastLabel, mobile = false }) {
   const [copied, setCopied] = useState(false);
   const timerRef  = useRef(null);
   const buttonRef = useRef(null);
-
-  useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-  }, []);
-
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
   const showCopiedState = useCallback(() => {
     setCopied(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setCopied(false), 1200);
   }, []);
-
   const fallbackCopy = useCallback(() => {
     const el = document.createElement('textarea');
     el.value = name;
@@ -140,12 +132,10 @@ function CopyNameButton({ name, toastLabel, mobile = false }) {
     document.body.removeChild(el);
     return success;
   }, [name]);
-
   const handleCopy = useCallback(async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!name) return;
-
     let success = false;
     try {
       if (navigator.clipboard?.writeText && window.isSecureContext) {
@@ -154,21 +144,17 @@ function CopyNameButton({ name, toastLabel, mobile = false }) {
       } else {
         success = fallbackCopy();
       }
-    } catch {
-      success = fallbackCopy();
-    }
-
+    } catch { success = fallbackCopy(); }
     if (success) showCopiedState();
   }, [name, fallbackCopy, showCopiedState]);
-
   return (
     <span className={`relative inline-flex ${mobile ? 'self-start' : 'items-center justify-center'}`}>
       <style>{`
         @keyframes copyButtonPop {
-          0%   { transform: scale(1); }
-          35%  { transform: scale(1.18); }
-          60%  { transform: scale(0.92); }
-          100% { transform: scale(1); }
+          0%   { transform:scale(1); }
+          35%  { transform:scale(1.18); }
+          60%  { transform:scale(0.92); }
+          100% { transform:scale(1); }
         }
       `}</style>
       <button
@@ -183,10 +169,7 @@ function CopyNameButton({ name, toastLabel, mobile = false }) {
             ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.45)]'
             : 'text-gray-500 hover:text-tarkov-gold hover:scale-110'
         }`}
-        style={{
-          lineHeight: 1,
-          animation: copied ? 'copyButtonPop 420ms ease-out' : 'none',
-        }}
+        style={{ lineHeight: 1, animation: copied ? 'copyButtonPop 420ms ease-out' : 'none' }}
       >
         {copied ? (
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -329,23 +312,14 @@ function FleaPriceTooltip({ item, t }) {
   const { flea_price, last_low_price, low24h_price, avg24h_price, high24h_price, last_offer_count } = item;
   const current = flea_price ?? last_low_price ?? null;
   if (current == null) return <span className="text-gray-600 text-xs">—</span>;
-
-  const handleMouseEnter = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const handleMouseLeave = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 120);
-  };
-
+  const handleMouseEnter = () => { if (closeTimer.current) clearTimeout(closeTimer.current); setOpen(true); };
+  const handleMouseLeave = () => { closeTimer.current = setTimeout(() => setOpen(false), 120); };
   return (
     <div className="relative inline-block" ref={triggerRef}
       onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <span className="flex flex-col leading-tight cursor-default">
         <span className="text-blue-300 text-xs font-semibold">{fmt(current)}</span>
-        {avg24h_price != null && (
-          <span className="text-gray-500 text-xs">ø {fmt(avg24h_price)}</span>
-        )}
+        {avg24h_price != null && <span className="text-gray-500 text-xs">ø {fmt(avg24h_price)}</span>}
       </span>
       {open && (
         <div
@@ -353,9 +327,7 @@ function FleaPriceTooltip({ item, t }) {
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 pt-1">
-            {t('flea24h')}
-          </p>
+          <p className="text-xs text-tarkov-gold font-semibold mb-2 border-b border-tarkov-border pb-1.5 pt-1">{t('flea24h')}</p>
           <div className="flex flex-col gap-1 text-xs">
             <div className="flex justify-between"><span className="text-gray-400">{t('fleaCur')}</span><span className="text-blue-300 font-semibold">{fmt(current)}</span></div>
             <div className="flex justify-between"><span className="text-gray-400">{t('fleaLow')}</span><span className="text-green-400">{fmt(low24h_price)}</span></div>
@@ -466,7 +438,7 @@ function MobileSortBar({ sorting, onSort, t, total, from, to }) {
                   : 'border-tarkov-border text-gray-400 hover:border-tarkov-gold hover:text-tarkov-gold'
               }`}>
               {t(labelKey)}
-              {active && <span className="text-[10px]">{isDesc ? '↓' : '↑'}</span>}
+              {active && <span className="text-[10px]">{isDesc ? '\u2193' : '\u2191'}</span>}
             </button>
           );
         })}
@@ -485,7 +457,6 @@ function ItemCard({ row, lang, t }) {
   const cardBorder  = isBTF ? 'border-blue-700/40'  : 'border-green-700/40';
   const cardBg      = isBTF ? 'bg-blue-900/10'       : 'bg-green-900/10';
   const accentColor = isBTF ? 'text-blue-300'        : 'text-green-300';
-
   const recLabel    = isBTF ? t('recBTF') : t('recFTS');
   const topLabel    = isBTF ? (c.bestBuyTrader ?? 'Trader') : 'Flea';
   const topProfit   = c.bestProfit;
@@ -531,10 +502,7 @@ function ItemCard({ row, lang, t }) {
           <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{t('cardBuy')}</p>
           <p className="text-white text-xs font-bold leading-none">{fmtK(c.bestBuyPrice)}</p>
           {c.bestBuyTrader
-            ? <div className="flex items-center gap-1 mt-1">
-                <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader} className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0" onError={(e) => { e.target.style.display = 'none'; }} />
-                <span className="text-tarkov-gold text-[9px] truncate">{c.bestBuyTrader}</span>
-              </div>
+            ? <div className="flex items-center gap-1 mt-1"><img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader} className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0" onError={(e) => { e.target.style.display = 'none'; }} /><span className="text-tarkov-gold text-[9px] truncate">{c.bestBuyTrader}</span></div>
             : <div className="mt-1 h-3.5" />
           }
         </div>
@@ -542,10 +510,7 @@ function ItemCard({ row, lang, t }) {
           <p className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide leading-none mb-1">{t('cardSell')}</p>
           <p className="text-white text-xs font-bold leading-none">{fmtK(c.bestSellPrice)}</p>
           {c.bestSellTrader
-            ? <div className="flex items-center gap-1 mt-1">
-                <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader} className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0" onError={(e) => { e.target.style.display = 'none'; }} />
-                <span className="text-tarkov-gold text-[9px] truncate">{c.bestSellTrader}</span>
-              </div>
+            ? <div className="flex items-center gap-1 mt-1"><img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader} className="w-3.5 h-3.5 rounded-full object-cover border border-tarkov-border flex-shrink-0" onError={(e) => { e.target.style.display = 'none'; }} /><span className="text-tarkov-gold text-[9px] truncate">{c.bestSellTrader}</span></div>
             : <div className="mt-1 h-3.5" />
           }
         </div>
@@ -572,9 +537,7 @@ function ItemCard({ row, lang, t }) {
           <p className={`text-sm font-bold leading-none ${c.profitFTS > 0 ? 'text-green-400' : 'text-red-400'}`}>
             {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '—'}
           </p>
-          {c.pctFTS != null && (
-            <p className="text-gray-500 text-[10px] mt-0.5">{c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%</p>
-          )}
+          {c.pctFTS != null && <p className="text-gray-500 text-[10px] mt-0.5">{c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%</p>}
         </div>
         <div className={`rounded-lg px-2.5 py-2 border ${
           c.bestRec === 'BUY_TRADER_SELL_FLEA' ? 'border-blue-700/60 bg-blue-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
@@ -588,9 +551,7 @@ function ItemCard({ row, lang, t }) {
           <p className={`text-sm font-bold leading-none ${c.profitBTF > 0 ? 'text-blue-300' : 'text-red-400'}`}>
             {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '—'}
           </p>
-          {c.pctBTF != null && (
-            <p className="text-gray-500 text-[10px] mt-0.5">{c.pctBTF > 0 ? '+' : ''}{c.pctBTF.toFixed(1)}%</p>
-          )}
+          {c.pctBTF != null && <p className="text-gray-500 text-[10px] mt-0.5">{c.pctBTF > 0 ? '+' : ''}{c.pctBTF.toFixed(1)}%</p>}
         </div>
       </div>
 
@@ -608,7 +569,6 @@ function PaginationBar({ table, t, mobile }) {
   const total = table.getFilteredRowModel().rows.length;
   const from  = total === 0 ? 0 : pageIndex * pageSize + 1;
   const to    = Math.min((pageIndex + 1) * pageSize, total);
-
   if (mobile) {
     return (
       <div className="flex items-center justify-between gap-2 px-3 py-3 border-t border-tarkov-border">
@@ -628,7 +588,6 @@ function PaginationBar({ table, t, mobile }) {
       </div>
     );
   }
-
   return (
     <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
       <span>{from}–{to} {t('paginationOf')} {total}</span>
@@ -657,8 +616,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const rows     = useMemo(() => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })), [items, traderFilters, feeDiscount]);
   const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
   const [mobileSorting, setMobileSorting] = useState([{ id: 'best_profit', desc: true }]);
-  // Set d'IDs des lignes expansées
-  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [expandedRows, setExpandedRows]   = useState(new Set());
 
   const toggleExpand = useCallback((rowId) => {
     setExpandedRows((prev) => {
@@ -672,52 +630,31 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const handleMobileSort = (id, desc) => setMobileSorting([{ id, desc }]);
 
   const columns = useMemo(() => [
-    col.display({
-      id: 'expand',
-      header: '',
-      cell: (info) => {
-        const rowId = info.row.original.id + '_' + (info.row.original.mode || 'regular');
-        const expanded = expandedRows.has(rowId);
-        return (
-          <span className="flex items-center justify-center gap-0.5">
-            <ExpandArrow expanded={expanded} onToggle={() => toggleExpand(rowId)} />
-          </span>
-        );
-      },
-      size: 24,
-      enableSorting: false,
-    }),
-    col.display({
-      id: 'copy',
-      header: '',
-      cell: (info) => {
-        const row  = info.row.original;
-        const name = getItemName(row, lang) || row.normalized_name || row.id;
-        return (
-          <span className="flex items-center justify-center">
-            <CopyNameButton name={name} toastLabel={t('copyToast')} />
-          </span>
-        );
-      },
-      size: 36,
-      enableSorting: false,
-    }),
+    /* ─── Colonne "Item" : icon + flèche expand + nom + copy — tout sur une ligne ─── */
     col.accessor((row) => getItemName(row, lang), {
-      id: 'name', header: t('colItem'),
+      id: 'name',
+      header: t('colItem'),
       cell: (info) => {
-        const row  = info.row.original;
-        const name = info.getValue() || row.normalized_name || row.id;
-        const url  = wikiUrl(row);
+        const row     = info.row.original;
+        const rowId   = row.id + '_' + (row.mode || 'regular');
+        const expanded = expandedRows.has(rowId);
+        const name    = info.getValue() || row.normalized_name || row.id;
+        const url     = wikiUrl(row);
         return (
-          <span className="flex items-center gap-2 min-w-[160px]">
+          <span className="flex items-center gap-1.5 min-w-[180px]">
+            {/* Icône item */}
             {row.icon_link
               ? <img src={row.icon_link} alt="" className="w-8 h-8 rounded object-contain bg-tarkov-card border border-tarkov-border flex-shrink-0" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />
               : <span className="w-8 h-8 rounded bg-tarkov-card border border-tarkov-border flex items-center justify-center text-xs text-gray-500 flex-shrink-0">?</span>
             }
+            {/* Flèche expand inline — même ligne que le nom */}
+            <ExpandArrow expanded={expanded} onToggle={() => toggleExpand(rowId)} />
+            {/* Nom cliquable + copy */}
             {url
               ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm leading-tight hover:text-tarkov-gold hover:underline transition-colors">{name}</a>
               : <span className="font-medium text-sm leading-tight">{name}</span>
             }
+            <CopyNameButton name={name} toastLabel={t('copyToast')} />
           </span>
         );
       },
@@ -786,11 +723,11 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const mFrom  = mTotal === 0 ? 0 : mpi * mps + 1;
   const mTo    = Math.min((mpi + 1) * mps, mTotal);
 
-  // Nombre total de colonnes pour le colSpan de la ligne expansée
   const colCount = columns.length;
 
   return (
     <div className="mt-4">
+      {/* ── Mobile ── */}
       <div className="lg:hidden rounded-xl border border-tarkov-border overflow-hidden">
         <MobileSortBar sorting={mobileSorting} onSort={handleMobileSort} t={t} total={mTotal} from={mFrom} to={mTo} />
         <div className="flex flex-col gap-3 p-3">
@@ -801,23 +738,20 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
         <PaginationBar table={mobileTable} t={t} mobile />
       </div>
 
+      {/* ── Desktop ── */}
       <div className="hidden lg:block overflow-x-auto rounded-lg border border-tarkov-border">
         <table className="w-full text-sm">
           <thead className="bg-tarkov-card sticky top-0 z-10">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((header) => (
-                  <th key={header.id} onClick={header.column.getToggleSortingHandler()}
-                    style={
-                      header.column.id === 'expand' ? { width: '24px', padding: '0 2px' } :
-                      header.column.id === 'copy'   ? { width: '36px', padding: '0 4px' } :
-                      {}
-                    }
+                  <th key={header.id}
+                    onClick={header.column.getToggleSortingHandler()}
                     className={`px-3 py-2 text-left font-semibold text-tarkov-gold select-none whitespace-nowrap ${
                       header.column.getCanSort() ? 'cursor-pointer hover:bg-tarkov-border transition-colors' : ''
                     }`}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' ? ' ↑' : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
+                    {header.column.getIsSorted() === 'asc' ? ' \u2191' : header.column.getIsSorted() === 'desc' ? ' \u2193' : ''}
                   </th>
                 ))}
               </tr>
@@ -825,7 +759,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
           </thead>
           <tbody>
             {desktopRows.map((row, i) => {
-              const rowId   = row.original.id + '_' + (row.original.mode || 'regular');
+              const rowId    = row.original.id + '_' + (row.original.mode || 'regular');
               const expanded = expandedRows.has(rowId);
               return (
                 <React.Fragment key={row.id}>
@@ -833,13 +767,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
                     i % 2 === 0 ? 'bg-tarkov-bg' : 'bg-tarkov-card'
                   } hover:bg-tarkov-border transition-colors`}>
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id}
-                        style={
-                          cell.column.id === 'expand' ? { width: '24px', padding: '0 2px' } :
-                          cell.column.id === 'copy'   ? { width: '36px', padding: '0 4px' } :
-                          {}
-                        }
-                        className="px-3 py-2">
+                      <td key={cell.id} className="px-3 py-2">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
