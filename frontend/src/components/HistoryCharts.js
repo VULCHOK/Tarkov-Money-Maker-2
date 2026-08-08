@@ -28,20 +28,20 @@ const fallbackT = (key) => FALLBACK_STRINGS[key] ?? key;
 function SvgTooltip({ tooltip, svgWidth }) {
   if (!tooltip) return null;
   const { x, y, label, value } = tooltip;
-  const W = 110, H = 38;
+  const W = 120, H = 44;
   const tx = Math.min(Math.max(x - W / 2, 4), (svgWidth || 300) - W - 4);
   const ty = y > 60 ? y - H - 10 : y + 14;
   return (
     <g style={{ pointerEvents: 'none' }}>
-      <rect x={tx} y={ty} width={W} height={H} rx="4" fill="#1e1c19" stroke="#3a3836" strokeWidth="1" />
-      <text x={tx + W / 2} y={ty + 14} textAnchor="middle" fill="#a89060" fontSize="9" fontWeight="600" fontFamily="monospace">{label}</text>
-      <text x={tx + W / 2} y={ty + 28} textAnchor="middle" fill="#e0d9cc" fontSize="11" fontWeight="700" fontFamily="monospace">{value}</text>
+      <rect x={tx} y={ty} width={W} height={H} rx="5" fill="#1e1c19" stroke="#4a4846" strokeWidth="1" />
+      <text x={tx + W / 2} y={ty + 15} textAnchor="middle" fill="#a89060" fontSize="11" fontWeight="600" fontFamily="monospace">{label}</text>
+      <text x={tx + W / 2} y={ty + 33} textAnchor="middle" fill="#e8e0d0" fontSize="14" fontWeight="700" fontFamily="monospace">{value}</text>
     </g>
   );
 }
 
 /* ── Mini SVG sparkline ── */
-function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
+function Sparkline({ points, color, valueFormatter, label, height = 130 }) {
   const [tooltip, setTooltip]   = useState(null);
   const [svgWidth, setSvgWidth] = useState(300);
   const wrapRef = useRef(null);
@@ -64,7 +64,7 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
   if (!points || points.length === 0) {
     return (
       <div style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }} ref={wrapRef}>
-        <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest mb-1">{label}</p>
         <div className="flex items-center justify-center" style={{ height }}>
           <span className="text-xs text-gray-600">—</span>
         </div>
@@ -77,7 +77,8 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
   const maxVal = Math.max(...vals);
   const range  = maxVal - minVal || 1;
 
-  const PAD_L = 40, PAD_R = 8, PAD_T = 10, PAD_B = 20;
+  /* Left padding larger to accommodate bigger axis labels */
+  const PAD_L = 48, PAD_R = 8, PAD_T = 10, PAD_B = 22;
   const W = Math.max(1, svgWidth - PAD_L - PAD_R);
   const H = height - PAD_T - PAD_B;
 
@@ -112,7 +113,7 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
 
   return (
     <div style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }} ref={wrapRef}>
-      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest mb-1">{label}</p>
       <svg
         ref={svgRef}
         width={svgWidth}
@@ -130,21 +131,23 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
           </linearGradient>
         </defs>
 
+        {/* Y-axis grid lines + labels */}
         {yTicks.map((v, i) => (
           <g key={i}>
             <line x1={PAD_L} y1={toY(v)} x2={PAD_L + W} y2={toY(v)} stroke="#2a2826" strokeWidth="1" />
-            <text x={PAD_L - 4} y={toY(v) + 4} textAnchor="end" fill="#605e5b" fontSize="8" fontFamily="monospace">
+            <text x={PAD_L - 5} y={toY(v) + 4} textAnchor="end" fill="#888480" fontSize="11" fontFamily="monospace">
               {fmtK(Math.round(v))}
             </text>
           </g>
         ))}
 
+        {/* X-axis time labels every 6 hours */}
         {points.map((p, i) => {
           const ts = new Date(p.ts);
           if (ts.getMinutes() !== 0 || ts.getHours() % 6 !== 0) return null;
           return (
-            <text key={i} x={toX(i)} y={PAD_T + H + 14}
-              textAnchor="middle" fill="#504e4b" fontSize="8" fontFamily="monospace">
+            <text key={i} x={toX(i)} y={PAD_T + H + 16}
+              textAnchor="middle" fill="#706e6b" fontSize="10" fontFamily="monospace">
               {ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </text>
           );
@@ -153,8 +156,14 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
         <path d={areaD} fill={`url(#${gradId})`} />
         <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
 
+        {/* Data point dots */}
+        {points.map((p, i) => (
+          <circle key={i} cx={toX(i)} cy={toY(p.value)} r="2.5" fill={color} opacity="0.7" />
+        ))}
+
+        {/* Highlighted dot on hover */}
         {tooltip && (
-          <circle cx={tooltip.x} cy={tooltip.y} r="4" fill={color} stroke="#1e1c19" strokeWidth="1.5" />
+          <circle cx={tooltip.x} cy={tooltip.y} r="5" fill={color} stroke="#1e1c19" strokeWidth="2" />
         )}
 
         <SvgTooltip tooltip={tooltip} svgWidth={svgWidth} />
@@ -223,14 +232,14 @@ export function HistoryExpandRow({ itemId, mode, colSpan, t: tProp }) {
               color="#5ba8c4"
               label={t('histFleaPrice')}
               valueFormatter={(v) => `${fmtK(v)} ${RUB}`}
-              height={110}
+              height={130}
             />
             <Sparkline
               points={offerPoints}
               color="#7ab87a"
               label={t('histOffers')}
               valueFormatter={(v) => `${v}`}
-              height={110}
+              height={130}
             />
           </div>
         )}
