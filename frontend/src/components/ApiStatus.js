@@ -98,7 +98,13 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                 <span className={`inline-flex rounded-full h-2.5 w-2.5 ${dot.color}`} />
                 {t('apiStatusTitle')}
               </h2>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">\u00d7</button>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
+                aria-label="Close"
+              >
+                &times;
+              </button>
             </div>
 
             {status && (
@@ -151,7 +157,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                         </div>
                       ))}
                       {modeData?.error && (
-                        <div className="text-red-400 text-xs mt-1 break-all">\u26a0 {modeData.error.slice(0, 80)}</div>
+                        <div className="text-red-400 text-xs mt-1 break-all">&#9888; {modeData.error.slice(0, 80)}</div>
                       )}
                     </div>
                   </div>
