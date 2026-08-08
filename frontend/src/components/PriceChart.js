@@ -17,7 +17,7 @@
 
 import React, { useId } from 'react';
 
-const RUB = '\u20BD';
+const RUB = '₽';
 
 function buildPolyline(points, W, H, PAD) {
   if (points.length < 2) return '';
@@ -71,7 +71,25 @@ function buildDots(points, W, H, PAD) {
     cx: (PAD + (i / (points.length - 1)) * innerW).toFixed(1),
     cy: (PAD + (1 - (p.value - min) / range) * innerH).toFixed(1),
     color: p.color,
+    label: p.timeLabel,
   }));
+}
+
+/* Génère les labels d'heure relatifs à maintenant */
+function buildTimeLabels(count) {
+  const now = new Date();
+  // On répartit les points sur 24h, le dernier point = maintenant
+  const hours = [];
+  for (let i = 0; i < count; i++) {
+    const offsetH = Math.round(((count - 1 - i) / (count - 1)) * 24);
+    if (offsetH === 0) {
+      hours.push('now');
+    } else {
+      const d = new Date(now.getTime() - offsetH * 3600 * 1000);
+      hours.push(`${d.getHours().toString().padStart(2, '0')}h`);
+    }
+  }
+  return hours;
 }
 
 export function PriceChart({ item, t }) {
@@ -94,16 +112,21 @@ export function PriceChart({ item, t }) {
     { labelKey: 'fleaHigh', value: high24h_price, color: '#f87171' },
   ];
 
-  const points   = raw.filter((p) => p.value != null);
+  const points = raw.filter((p) => p.value != null);
   const hasChart = points.length >= 2;
 
-  const W   = 200;
-  const H   = 56;
-  const PAD = 8;
+  // Ajoute les labels d'heure aux points filtrés
+  const timeLabels = buildTimeLabels(points.length);
+  const pointsWithTime = points.map((p, i) => ({ ...p, timeLabel: timeLabels[i] }));
 
-  const polyline = hasChart ? buildPolyline(points, W, H, PAD) : '';
-  const fillPath = hasChart ? buildFillPath(points, W, H, PAD) : '';
-  const dots     = hasChart ? buildDots(points, W, H, PAD) : [];
+  const W      = 200;
+  const H      = 56;
+  const PAD    = 8;
+  const X_AXIS = 12; // hauteur réservée pour les labels d'heure sous le SVG
+
+  const polyline = hasChart ? buildPolyline(pointsWithTime, W, H, PAD) : '';
+  const fillPath = hasChart ? buildFillPath(pointsWithTime, W, H, PAD) : '';
+  const dots     = hasChart ? buildDots(pointsWithTime, W, H, PAD) : [];
 
   const change48Positive = change_48h != null && change_48h >= 0;
   const changeColor = change48Positive ? 'text-green-400' : 'text-red-400';
@@ -116,24 +139,58 @@ export function PriceChart({ item, t }) {
       </p>
 
       {hasChart ? (
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible" aria-hidden="true">
-          <defs>
-            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#facc15" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#facc15" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path d={fillPath} fill={`url(#${gradId})`} />
-          <polyline
-            points={polyline}
-            fill="none" stroke="#facc15" strokeWidth="1.5"
-            strokeLinejoin="round" strokeLinecap="round" opacity="0.8"
-          />
-          {dots.map((d, i) => (
-            <circle key={i} cx={d.cx} cy={d.cy} r="2.5"
-              fill={d.color} stroke="#1a1a1a" strokeWidth="1" />
-          ))}
-        </svg>
+        <div className="relative">
+          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible" aria-hidden="true">
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#facc15" stopOpacity="0.18" />
+                <stop offset="100%" stopColor="#facc15" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path d={fillPath} fill={`url(#${gradId})`} />
+            <polyline
+              points={polyline}
+              fill="none" stroke="#facc15" strokeWidth="1.5"
+              strokeLinejoin="round" strokeLinecap="round" opacity="0.8"
+            />
+            {dots.map((d, i) => (
+              <g key={i}>
+                {/* Halo */}
+                <circle cx={d.cx} cy={d.cy} r="5"
+                  fill={d.color} opacity="0.15" />
+                {/* Point principal */}
+                <circle cx={d.cx} cy={d.cy} r="3"
+                  fill={d.color} stroke="#111" strokeWidth="1.2" />
+              </g>
+            ))}
+          </svg>
+          {/* Labels d'heure sous chaque point */}
+          <div
+            className="flex justify-between"
+            style={{ width: W, marginTop: 2 }}
+          >
+            {dots.map((d, i) => (
+              <span
+                key={i}
+                className="text-[8px] text-gray-600"
+                style={{
+                  position: 'absolute',
+                  left: `${d.cx}px`,
+                  transform: 'translateX(-50%)',
+                  top: `${H + 2}px`,
+                  color: d.color,
+                  opacity: 0.7,
+                }}
+              >
+                {d.label}
+              </span>
+            ))}
+            {/* spacer pour la hauteur */}
+            <span style={{ height: X_AXIS, display: 'block', visibility: 'hidden' }}>&nbsp;</span>
+          </div>
+          {/* Espace pour les labels */}
+          <div style={{ height: X_AXIS }} />
+        </div>
       ) : (
         <p className="text-gray-600 text-[10px]">{t('chartNoData')}</p>
       )}
