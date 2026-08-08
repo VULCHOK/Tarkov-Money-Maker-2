@@ -57,50 +57,118 @@ function tooltipCls(pos, extra = '') {
   return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-none`;
 }
 
+function CopyBurst({ label }) {
+  return (
+    <span className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap">
+      <span className="relative inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-green-500/15 px-2 py-1 shadow-lg animate-[copyBurst_900ms_ease-out_forwards]">
+        <span className="absolute inset-0 rounded-full animate-[copyGlow_900ms_ease-out_forwards]" />
+        <span className="relative text-[10px] font-extrabold uppercase tracking-[0.18em] text-green-300 drop-shadow-[0_0_8px_rgba(74,222,128,0.35)]">
+          + {label}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 /* ── Copy-name button ───────────────────────────────────────────────────── */
-function CopyNameButton({ name }) {
+function CopyNameButton({ name, toastLabel, mobile = false }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback((e) => {
+  const timerRef = useRef(null);
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  const showCopiedState = useCallback(() => {
+    setCopied(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopied(false), 1200);
+  }, []);
+
+  const fallbackCopy = useCallback(() => {
+    const el = document.createElement('textarea');
+    el.value = name;
+    el.setAttribute('readonly', '');
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+    document.body.appendChild(el);
+    el.select();
+    const success = document.execCommand('copy');
+    document.body.removeChild(el);
+    return success;
+  }, [name]);
+
+  const handleCopy = useCallback(async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!name) return;
-    navigator.clipboard.writeText(name).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    }).catch(() => {
-      const el = document.createElement('textarea');
-      el.value = name;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [name]);
+
+    let success = false;
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(name);
+        success = true;
+      } else {
+        success = fallbackCopy();
+      }
+    } catch {
+      success = fallbackCopy();
+    }
+
+    if (success) showCopiedState();
+  }, [name, fallbackCopy, showCopiedState]);
 
   return (
-    <button
-      onClick={handleCopy}
-      title={copied ? 'Copied!' : 'Copy name'}
-      className={`flex-shrink-0 p-1 rounded transition-all ${
-        copied
-          ? 'text-green-400'
-          : 'text-gray-500 hover:text-tarkov-gold'
-      }`}
-      style={{ lineHeight: 1 }}
-    >
-      {copied ? (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      ) : (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="9" y="9" width="13" height="13" rx="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        </svg>
-      )}
-    </button>
+    <span className={`relative inline-flex ${mobile ? 'self-start' : 'items-center justify-center'}`}>
+      <style>{`
+        @keyframes copyBurst {
+          0%   { opacity: 0; transform: translateY(-50%) translateX(-6px) scale(0.75); }
+          18%  { opacity: 1; transform: translateY(calc(-50% - 10px)) translateX(0) scale(1.14); }
+          38%  { opacity: 1; transform: translateY(calc(-50% - 14px)) translateX(0) scale(0.96); }
+          62%  { opacity: 1; transform: translateY(calc(-50% - 18px)) translateX(2px) scale(1.02); }
+          100% { opacity: 0; transform: translateY(calc(-50% - 28px)) translateX(6px) scale(0.9); }
+        }
+        @keyframes copyGlow {
+          0%   { opacity: 0; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.0); }
+          30%  { opacity: 1; box-shadow: 0 0 0 8px rgba(74, 222, 128, 0.16); }
+          100% { opacity: 0; box-shadow: 0 0 0 18px rgba(74, 222, 128, 0.0); }
+        }
+        @keyframes copyButtonPop {
+          0%   { transform: scale(1); }
+          35%  { transform: scale(1.18); }
+          60%  { transform: scale(0.92); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+      <button
+        onClick={handleCopy}
+        title={copied ? toastLabel : 'Copy name'}
+        aria-label={copied ? toastLabel : 'Copy name'}
+        className={`relative flex-shrink-0 rounded transition-all duration-200 ${
+          mobile ? 'p-1.5' : 'p-1'
+        } ${
+          copied
+            ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.45)]'
+            : 'text-gray-500 hover:text-tarkov-gold hover:scale-110'
+        }`}
+        style={{
+          lineHeight: 1,
+          animation: copied ? 'copyButtonPop 420ms ease-out' : 'none',
+        }}
+      >
+        {copied ? (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+      {copied && <CopyBurst label={toastLabel} />}
+    </span>
   );
 }
 
@@ -113,7 +181,7 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
     .map((t) => ({ trader: t, price: prices[t] }))
     .filter((e) => e.price != null)
     .sort((a, b) => b.price - a.price);
-  if (entries.length === 0) return <span className="text-gray-600 text-xs">\u2014</span>;
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
   const best = entries[0];
   const bestEntry = highlight ? entries.find((e) => e.trader === highlight) || best : best;
   return (
@@ -129,7 +197,7 @@ function TraderPricesTooltip({ pricesJson, highlight, label }) {
           <span className="text-tarkov-gold text-xs font-semibold">{bestEntry.trader}</span>
           <span className="text-white text-xs">{fmt(bestEntry.price)}</span>
         </span>
-        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">&#9662;</span>
+        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">▼</span>
       </span>
       {open && (
         <div className={tooltipCls(pos, 'w-52')}>
@@ -170,7 +238,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
     if (bestPrice === null) return null;
     return { trader, price: bestPrice, accessibleLevel, userLevel, levels };
   }).filter(Boolean).sort((a, b) => a.price - b.price);
-  if (entries.length === 0) return <span className="text-gray-600 text-xs">\u2014</span>;
+  if (entries.length === 0) return <span className="text-gray-600 text-xs">—</span>;
   const bestEntry = highlight ? entries.find((e) => e.trader === highlight) || entries[0] : entries[0];
   return (
     <div className="relative inline-block" ref={triggerRef}
@@ -185,7 +253,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
           <span className="text-tarkov-gold text-xs font-semibold">{bestEntry.trader}</span>
           <span className="text-white text-xs">{fmt(bestEntry.price)}</span>
         </span>
-        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">&#9662;</span>
+        <span className="text-gray-600 text-xs ml-0.5 group-hover:text-gray-400">▼</span>
       </span>
       {open && (
         <div className={tooltipCls(pos, 'w-64')}>
@@ -209,7 +277,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
                 {lockedLevels.length > 0 && (
                   <div className="text-gray-600 text-[10px] mt-0.5 pl-5">
                     {lockedLevels.map((lvl) => (
-                      <span key={lvl} className="mr-2">\uD83D\uDD12 LL{lvl}: {fmt(levels[String(lvl)])}</span>
+                      <span key={lvl} className="mr-2">🔒 LL{lvl}: {fmt(levels[String(lvl)])}</span>
                     ))}
                   </div>
                 )}
@@ -225,7 +293,7 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
 function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount, t }) {
   const [open, setOpen] = useState(false);
   const { triggerRef, pos } = useSmartTooltip(open, 208);
-  if (current == null) return <span className="text-gray-600 text-xs">\u2014</span>;
+  if (current == null) return <span className="text-gray-600 text-xs">—</span>;
   return (
     <div className="relative inline-block" ref={triggerRef}
       onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
@@ -257,9 +325,9 @@ function FleaPriceTooltip({ current, low24h, avg24h, high24h, lastOfferCount, t 
 }
 
 function ProfitCell({ value, pct, isBest }) {
-  if (value == null) return <span className="text-gray-600 text-xs">\u2014</span>;
+  if (value == null) return <span className="text-gray-600 text-xs">—</span>;
   const color = value > 0 ? 'text-green-400' : 'text-red-400';
-  const fire  = isBest && value >= HOT_DEAL_THRESHOLD ? ' \uD83D\uDD25' : '';
+  const fire  = isBest && value >= HOT_DEAL_THRESHOLD ? ' 🔥' : '';
   const bold  = isBest ? 'font-bold text-sm' : 'text-xs';
   return (
     <span className="flex flex-col leading-tight">
@@ -331,7 +399,7 @@ function MobileSortBar({ sorting, onSort, t, total, from, to }) {
   return (
     <div className="sticky top-0 z-20 bg-tarkov-bg border-b border-tarkov-border px-3 py-2 flex flex-col gap-2">
       <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>{from}\u2013{to} {t('paginationOf')} <span className="text-tarkov-gold font-semibold">{total}</span></span>
+        <span>{from}–{to} {t('paginationOf')} <span className="text-tarkov-gold font-semibold">{total}</span></span>
         <span className="text-gray-600">{t('paginationTapSort')}</span>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
@@ -347,7 +415,7 @@ function MobileSortBar({ sorting, onSort, t, total, from, to }) {
                   : 'border-tarkov-border text-gray-400 hover:border-tarkov-gold hover:text-tarkov-gold'
               }`}>
               {t(labelKey)}
-              {active && <span className="text-[10px]">{isDesc ? '\u2193' : '\u2191'}</span>}
+              {active && <span className="text-[10px]">{isDesc ? '↓' : '↑'}</span>}
             </button>
           );
         })}
@@ -385,14 +453,13 @@ function ItemCard({ row, lang, t }) {
             ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-sm leading-snug text-tarkov-text hover:text-tarkov-gold hover:underline line-clamp-2 block">{name || row.id}</a>
             : <p className="font-semibold text-sm leading-snug text-tarkov-text line-clamp-2">{name || row.id}</p>
           }
-          {/* Always-visible copy button below name on mobile */}
-          <CopyNameButton name={name || row.id} />
+          <CopyNameButton name={name || row.id} toastLabel={t('copyToast')} mobile />
         </div>
         <div className="flex-shrink-0 flex flex-col items-end min-w-[64px]">
           <span className="text-[9px] text-tarkov-gold font-semibold uppercase tracking-wide leading-none mb-0.5">{topLabel}</span>
           {topProfit != null && (
             <span className="text-sm font-extrabold leading-none text-tarkov-gold">
-              {topProfit > 0 ? '+' : ''}{fmtK(topProfit)}{isHot ? '\uD83D\uDD25' : ''}
+              {topProfit > 0 ? '+' : ''}{fmtK(topProfit)}{isHot ? '🔥' : ''}
             </span>
           )}
           {topPct != null && (
@@ -446,13 +513,13 @@ function ItemCard({ row, lang, t }) {
           c.bestRec === 'BUY_FLEA_SELL_TRADER' ? 'border-green-700/60 bg-green-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea \u2192 Trader</span>
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Flea → Trader</span>
             {c.bestSellTrader && (
               <img src={TRADER_META[c.bestSellTrader]?.img} alt={c.bestSellTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
           <p className={`text-sm font-bold leading-none ${c.profitFTS > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '\u2014'}
+            {c.profitFTS != null ? `${c.profitFTS > 0 ? '+' : ''}${fmtK(c.profitFTS)}` : '—'}
           </p>
           {c.pctFTS != null && (
             <p className="text-gray-500 text-[10px] mt-0.5">{c.pctFTS > 0 ? '+' : ''}{c.pctFTS.toFixed(1)}%</p>
@@ -462,13 +529,13 @@ function ItemCard({ row, lang, t }) {
           c.bestRec === 'BUY_TRADER_SELL_FLEA' ? 'border-blue-700/60 bg-blue-900/20' : 'border-tarkov-border bg-tarkov-bg/40'
         }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader \u2192 Flea</span>
+            <span className="text-[9px] text-gray-500 uppercase tracking-wide">Trader → Flea</span>
             {c.bestBuyTrader && (
               <img src={TRADER_META[c.bestBuyTrader]?.img} alt={c.bestBuyTrader} className="w-4 h-4 rounded-full object-cover border border-tarkov-border" onError={(e) => { e.target.style.display = 'none'; }} />
             )}
           </div>
           <p className={`text-sm font-bold leading-none ${c.profitBTF > 0 ? 'text-blue-300' : 'text-red-400'}`}>
-            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '\u2014'}
+            {c.profitBTF != null ? `${c.profitBTF > 0 ? '+' : ''}${fmtK(c.profitBTF)}` : '—'}
           </p>
           {c.pctBTF != null && (
             <p className="text-gray-500 text-[10px] mt-0.5">{c.pctBTF > 0 ? '+' : ''}{c.pctBTF.toFixed(1)}%</p>
@@ -503,9 +570,9 @@ function PaginationBar({ table, t, mobile }) {
           ))}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">\u2039</button>
+          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">‹</button>
           <span className="text-xs text-gray-400 px-1">{pageIndex + 1} / {table.getPageCount()}</span>
-          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">\u203A</button>
+          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 rounded border border-tarkov-border disabled:opacity-30 text-sm">›</button>
         </div>
       </div>
     );
@@ -513,7 +580,7 @@ function PaginationBar({ table, t, mobile }) {
 
   return (
     <div className="flex items-center justify-between flex-wrap gap-3 mt-3 text-xs text-gray-400">
-      <span>{from}\u2013{to} {t('paginationOf')} {total}</span>
+      <span>{from}–{to} {t('paginationOf')} {total}</span>
       <div className="flex items-center gap-1">
         <span className="text-gray-500">{t('paginationPerPage')}</span>
         {PAGE_SIZES.map((s) => (
@@ -524,11 +591,11 @@ function PaginationBar({ table, t, mobile }) {
         ))}
       </div>
       <div className="flex items-center gap-1">
-        <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u00AB</button>
-        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u2039</button>
+        <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">«</button>
+        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">‹</button>
         <span className="px-2">{t('paginationPage')} {pageIndex + 1} / {table.getPageCount()}</span>
-        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u203A</button>
-        <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">\u00BB</button>
+        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">›</button>
+        <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-2 py-0.5 rounded border border-tarkov-border disabled:opacity-30 hover:border-tarkov-gold transition-colors">»</button>
       </div>
     </div>
   );
@@ -543,7 +610,6 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const handleMobileSort = (id, desc) => setMobileSorting([{ id, desc }]);
 
   const columns = useMemo(() => [
-    // ── Dedicated copy column (always visible, leftmost) ──────────────────
     col.display({
       id: 'copy',
       header: '',
@@ -551,8 +617,8 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
         const row  = info.row.original;
         const name = getItemName(row, lang) || row.normalized_name || row.id;
         return (
-          <span className="flex items-center justify-center">
-            <CopyNameButton name={name} />
+          <span className="flex items-center justify-center overflow-visible">
+            <CopyNameButton name={name} toastLabel={t('copyToast')} />
           </span>
         );
       },
@@ -594,17 +660,17 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       sortingFn: (a, b) => (a.original._c.bestSellPrice ?? -Infinity) - (b.original._c.bestSellPrice ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitBTF, {
-      id: 'profit_btf', header: 'Trader\u2192Flea',
+      id: 'profit_btf', header: 'Trader→Flea',
       cell: (info) => <ProfitCell value={info.row.original._c.profitBTF} pct={info.row.original._c.pctBTF} isBest={info.row.original._c.bestRec === 'BUY_TRADER_SELL_FLEA'} />,
       sortingFn: (a, b) => (a.original._c.profitBTF ?? -Infinity) - (b.original._c.profitBTF ?? -Infinity),
     }),
     col.accessor((row) => row._c.profitFTS, {
-      id: 'profit_fts', header: 'Flea\u2192Trader',
+      id: 'profit_fts', header: 'Flea→Trader',
       cell: (info) => <ProfitCell value={info.row.original._c.profitFTS} pct={info.row.original._c.pctFTS} isBest={info.row.original._c.bestRec === 'BUY_FLEA_SELL_TRADER'} />,
       sortingFn: (a, b) => (a.original._c.profitFTS ?? -Infinity) - (b.original._c.profitFTS ?? -Infinity),
     }),
     col.accessor((row) => row._c.bestProfit, {
-      id: 'best_profit', header: '\u2605 Best Profit',
+      id: 'best_profit', header: '★ Best Profit',
       cell: (info) => <ProfitCell value={info.row.original._c.bestProfit} pct={info.row.original._c.bestPct} isBest={true} />,
       sortingFn: (a, b) => (a.original._c.bestProfit ?? -Infinity) - (b.original._c.bestProfit ?? -Infinity),
     }),
@@ -667,7 +733,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
                       header.column.getCanSort() ? 'cursor-pointer hover:bg-tarkov-border transition-colors' : ''
                     }`}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' ? ' \u2191' : header.column.getIsSorted() === 'desc' ? ' \u2193' : ''}
+                    {header.column.getIsSorted() === 'asc' ? ' ↑' : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
                   </th>
                 ))}
               </tr>
@@ -680,7 +746,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
               } hover:bg-tarkov-border transition-colors`}>
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id}
-                    style={cell.column.id === 'copy' ? { width: '36px', padding: '0 4px' } : {}}
+                    style={cell.column.id === 'copy' ? { width: '36px', padding: '0 4px', overflow: 'visible' } : {}}
                     className="px-3 py-2">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>

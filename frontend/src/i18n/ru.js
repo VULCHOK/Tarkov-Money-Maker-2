@@ -1,108 +1,78 @@
 /**
- * i18n — \u0420\u0443\u0441\u0441\u043a\u0438\u0439 (ru) \u2705 COMPLETE
+ * i18n — Русский (ru) ✅ COMPLETE
  */
 
 const ru = {
-  // App / modes
-  appTitle:        'Tarkov Money Maker 2',
-  modeBadgePvp:    '\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0439',
-  modeBadgePve:    '\u041a\u043e\u043e\u043f',
-  modeBadgeSeason: '\u0421\u0435\u0437\u043e\u043d 1',
-  loading:         '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430',
-
-  // Filters — Search
-  filterSearchLabel:       '\u041f\u043e\u0438\u0441\u043a',
-  filterSearchPlaceholder: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u0430, Enter \u0438\u043b\u0438 \u043d\u0430\u0436\u043c\u0438\u0442\u0435\u2026',
-  filterSearchAddTerm:     '\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0435\u0449\u0451 \u0442\u0435\u0440\u043c\u0438\u043d\u2026',
-  filterSearchAdd:         '\u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c',
-
-  // Filters — Profit
-  filterProfitLabel: '\u041c\u0438\u043d. \u043f\u0440\u0438\u0431\u044b\u043b\u044c',
-
-  // Filters — Player level
-  filterLevelLabel: '\u0423\u0440\u043e\u0432\u0435\u043d\u044c \u0438\u0433\u0440\u043e\u043a\u0430',
-
-  // Filters — Min offers
-  filterOffersLabel:    '\u041c\u0438\u043d. \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0439',
-  filterOffersDisabled: 'API \u043d\u0435 \u043f\u0440\u0435\u0434\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442 \u043a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0439 \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u0440\u0435\u0436\u0438\u043c\u0430. \u0424\u0438\u043b\u044c\u0442\u0440 \u043e\u0442\u043a\u043b\u044e\u0447\u0451\u043d.',
-
-  // Filters — Trader tooltip
-  traderEnable:  '\u0432\u043a\u043b\u044e\u0447\u0438\u0442\u044c',
-  traderDisable: '\u043e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c',
-
-  // Filters — Intel Center
-  intelNotBuilt: '\u041d\u0435 \u043f\u043e\u0441\u0442\u0440\u043e\u0435\u043d',
-  intelLevel1:   '\u0423\u0440\u043e\u0432\u0435\u043d\u044c 1',
-  intelLevel2:   '\u0423\u0440\u043e\u0432\u0435\u043d\u044c 2',
-  intelLevel3:   '-30% \u043d\u0430\u043b\u043e\u0433 \u043d\u0430 \u0431\u0430\u0440\u0430\u0445\u043e\u043b\u043a\u0435',
-
-  // ItemTable — columns
-  colItem:       '\u041f\u0440\u0435\u0434\u043c\u0435\u0442',
-  colBuyTrader:  '\u041a\u0443\u043f\u0438\u0442\u044c (\u0442\u043e\u0440\u0433\u043e\u0432\u0435\u0446)',
-  colSellTrader: '\u041f\u0440\u043e\u0434\u0430\u0442\u044c (\u0442\u043e\u0440\u0433\u043e\u0432\u0435\u0446)',
-  colAction:     '\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u0435',
-  colBestProfit: '\u2605 \u041b\u0443\u0447\u0448\u0430\u044f \u043f\u0440\u0438\u0431\u044b\u043b\u044c',
-  colTraderFlea: '\u0422\u043e\u0440\u0433\u043e\u0432\u0435\u0446\u2192\u0411\u0430\u0440\u0430\u0445\u043e\u043b\u043a\u0430',
-  colFleaTrader: '\u0411\u0430\u0440\u0430\u0445\u043e\u043b\u043a\u0430\u2192\u0422\u043e\u0440\u0433\u043e\u0432\u0435\u0446',
-  colFlea:       '\u0411\u0430\u0440\u0430\u0445\u043e\u043b\u043a\u0430',
-
-  // ItemTable — tooltips
-  tooltipBuyPrices:  '\u0426\u0435\u043d\u044b \u043f\u043e\u043a\u0443\u043f\u043a\u0438 \u0443 \u0442\u043e\u0440\u0433\u043e\u0432\u0446\u0435\u0432 (\u0432\u0430\u0448 \u0443\u0440\u043e\u0432\u0435\u043d\u044c)',
-  tooltipSellPrices: '\u0426\u0435\u043d\u044b \u0432\u044b\u043a\u0443\u043f\u0430 \u0443 \u0442\u043e\u0440\u0433\u043e\u0432\u0446\u0435\u0432',
-
-  // ItemTable — flea tooltip
-  flea24h:    '\u0411\u0430\u0440\u0430\u0445\u043e\u043b\u043a\u0430 \u2014 24\u0447',
-  fleaCur:    '\u0422\u0435\u043a\u0443\u0449\u0430\u044f',
-  fleaLow:    '\u041c\u0438\u043d. 24\u0447',
-  fleaAvg:    '\u0421\u0440\u0435\u0434\u043d\u044f\u044f 24\u0447',
-  fleaHigh:   '\u041c\u0430\u043a\u0441. 24\u0447',
-  fleaOffers: '\u041f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0439',
-
-  // ItemTable — recommendations
-  recFTS: '\u041a\u0443\u043f\u0438\u0442\u044c \u043d\u0430 \u0431\u0430\u0440\u0430\u0445\u043e\u043b\u043a\u0435 \u2192 \u041f\u0440\u043e\u0434\u0430\u0442\u044c \u0442\u043e\u0440\u0433\u043e\u0432\u0446\u0443',
-  recBTF: '\u041a\u0443\u043f\u0438\u0442\u044c \u0443 \u0442\u043e\u0440\u0433\u043e\u0432\u0446\u0430 \u2192 \u041f\u0440\u043e\u0434\u0430\u0442\u044c \u043d\u0430 \u0431\u0430\u0440\u0430\u0445\u043e\u043b\u043a\u0435',
-
-  // ItemTable — mobile card
-  cardBuy:    '\u041a\u0443\u043f\u0438\u0442\u044c',
-  cardSell:   '\u041f\u0440\u043e\u0434\u0430\u0442\u044c',
-  cardOffers: '\u043f\u0440\u0435\u0434\u043b.',
-
-  // ItemTable — pagination
-  paginationOf:      '\u0438\u0437',
-  paginationPerPage: '\u041d\u0430 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435:',
-  paginationPage:    '\u0421\u0442\u0440.',
-  paginationTapSort: '\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u0434\u043b\u044f \u0441\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u043a\u0438',
-
-  // ItemTable — empty state
-  noItems: '\u041f\u0440\u0438\u0431\u044b\u043b\u044c\u043d\u044b\u0445 \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u043e\u0432 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e. \u0421\u043d\u0438\u0437\u044c\u0442\u0435 \u043c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u0443\u044e \u043f\u0440\u0438\u0431\u044b\u043b\u044c \u0438\u043b\u0438 \u0432\u043a\u043b\u044e\u0447\u0438\u0442\u0435 \u0431\u043e\u043b\u044c\u0448\u0435 \u0442\u043e\u0440\u0433\u043e\u0432\u0446\u0435\u0432.',
-
-  // ApiStatus
-  apiStatusTitle:          '\u0421\u0442\u0430\u0442\u0443\u0441 \u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u0438',
-  apiStatusOnline:         'tarkov.dev \u041e\u043d\u043b\u0430\u0439\u043d',
-  apiStatusDegraded:       'tarkov.dev \u041d\u0435\u0441\u0442\u0430\u0431\u0438\u043b\u0435\u043d',
-  apiStatusOffline:        'tarkov.dev \u041e\u0444\u043b\u0430\u0439\u043d',
-  apiStatusChecking:       '\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430\u2026',
-  apiStatusGlobal:         '\u041e\u0431\u0449\u0438\u0439 \u0441\u0442\u0430\u0442\u0443\u0441',
-  apiStatusLastSync:       '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0441\u0438\u043d\u0445\u0440.',
-  apiStatusItems:          '\u0421\u0438\u043d\u0445\u0440. \u043f\u0440\u0435\u0434\u043c\u0435\u0442\u043e\u0432',
-  apiStatusItemsSub:       '\u0432\u0441\u0435\u0433\u043e \u043d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0445',
-  apiStatusSource:         '\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a API',
-  apiStatusSourceSub:      '\u043f\u0440\u043e\u0432\u0435\u0440\u044f\u0435\u0442\u0441\u044f \u043a\u0430\u0436\u0434\u044b\u0435 30\u0441',
-  apiStatusCheckedAt:      '\u041f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043e',
-  apiStatusModeStatus:     '\u0421\u0442\u0430\u0442\u0443\u0441',
-  apiStatusModeItems:      '\u041f\u0440\u0435\u0434\u043c\u0435\u0442\u044b',
-  apiStatusModeLastSync:   '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0441\u0438\u043d\u0445\u0440.',
-  apiStatusModeDuration:   '\u0414\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c',
-  apiStatusNever:          '\u043d\u0438\u043a\u043e\u0433\u0434\u0430',
-  apiStatusJustNow:        '\u0442\u043e\u043b\u044c\u043a\u043e \u0447\u0442\u043e',
-  apiStatusTimeAgoPrefix:  '',
-  apiStatusMinutesAgo:     ' \u043c\u0438\u043d. \u043d\u0430\u0437\u0430\u0434',
-  apiStatusHoursAgo:       ' \u0447. \u043d\u0430\u0437\u0430\u0434',
-  apiStatusRest:           'REST',
-
-  // ExportButtons
-  exportCSV:  '\u042d\u043a\u0441\u043f\u043e\u0440\u0442 \u0432 CSV',
-  exportJSON: '\u042d\u043a\u0441\u043f\u043e\u0440\u0442 \u0432 JSON',
+  appTitle: 'Tarkov Money Maker 2',
+  modeBadgePvp: 'Постоянный',
+  modeBadgePve: 'Кооп',
+  modeBadgeSeason: 'Сезон 1',
+  loading: 'Загрузка',
+  filterSearchLabel: 'Поиск',
+  filterSearchPlaceholder: 'Название предмета, Enter или нажмите…',
+  filterSearchAddTerm: 'Добавить ещё термин…',
+  filterSearchAdd: 'добавить',
+  filterProfitLabel: 'Мин. прибыль',
+  filterLevelLabel: 'Уровень игрока',
+  filterOffersLabel: 'Мин. предложений',
+  filterOffersDisabled: 'API не предоставляет количество предложений для этого режима. Фильтр отключён.',
+  traderEnable: 'включить',
+  traderDisable: 'отключить',
+  intelNotBuilt: 'Не построен',
+  intelLevel1: 'Уровень 1',
+  intelLevel2: 'Уровень 2',
+  intelLevel3: '-30% налог на барахолке',
+  colItem: 'Предмет',
+  colBuyTrader: 'Купить (торговец)',
+  colSellTrader: 'Продать (торговец)',
+  colAction: 'Действие',
+  colBestProfit: '★ Лучшая прибыль',
+  colTraderFlea: 'Торговец→Барахолка',
+  colFleaTrader: 'Барахолка→Торговец',
+  colFlea: 'Барахолка',
+  copyToast: 'Скопировано!',
+  tooltipBuyPrices: 'Цены покупки у торговцев (ваш уровень)',
+  tooltipSellPrices: 'Цены выкупа у торговцев',
+  flea24h: 'Барахолка — 24ч',
+  fleaCur: 'Текущая',
+  fleaLow: 'Мин. 24ч',
+  fleaAvg: 'Средняя 24ч',
+  fleaHigh: 'Макс. 24ч',
+  fleaOffers: 'Предложений',
+  recFTS: 'Купить на барахолке → Продать торговцу',
+  recBTF: 'Купить у торговца → Продать на барахолке',
+  cardBuy: 'Купить',
+  cardSell: 'Продать',
+  cardOffers: 'предл.',
+  paginationOf: 'из',
+  paginationPerPage: 'На странице:',
+  paginationPage: 'Стр.',
+  paginationTapSort: 'Нажмите для сортировки',
+  noItems: 'Прибыльных предметов не найдено. Снизьте минимальную прибыль или включите больше торговцев.',
+  apiStatusTitle: 'Статус синхронизации',
+  apiStatusOnline: 'tarkov.dev Онлайн',
+  apiStatusDegraded: 'tarkov.dev Нестабилен',
+  apiStatusOffline: 'tarkov.dev Офлайн',
+  apiStatusChecking: 'Проверка…',
+  apiStatusGlobal: 'Общий статус',
+  apiStatusLastSync: 'Последний синхр.',
+  apiStatusItems: 'Синхр. предметов',
+  apiStatusItemsSub: 'всего накопленных',
+  apiStatusSource: 'Источник API',
+  apiStatusSourceSub: 'проверяется каждые 30с',
+  apiStatusCheckedAt: 'Проверено',
+  apiStatusModeStatus: 'Статус',
+  apiStatusModeItems: 'Предметы',
+  apiStatusModeLastSync: 'Последний синхр.',
+  apiStatusModeDuration: 'Длительность',
+  apiStatusNever: 'никогда',
+  apiStatusJustNow: 'только что',
+  apiStatusTimeAgoPrefix: '',
+  apiStatusMinutesAgo: ' мин. назад',
+  apiStatusHoursAgo: ' ч. назад',
+  apiStatusRest: 'REST',
+  exportCSV: 'Экспорт в CSV',
+  exportJSON: 'Экспорт в JSON',
 };
 
 export default ru;
