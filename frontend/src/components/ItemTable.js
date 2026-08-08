@@ -187,6 +187,30 @@ function CopyNameButton({ name, toastLabel, mobile = false }) {
   );
 }
 
+/* ── Expand-All header button ── */
+function ExpandAllButton({ allExpanded, onToggle }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      aria-label={allExpanded ? 'Collapse all charts' : 'Expand all charts'}
+      title={allExpanded ? 'Collapse all charts' : 'Expand all 24h charts'}
+      className={`flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all duration-150 text-[10px] font-semibold select-none ${
+        allExpanded
+          ? 'border-tarkov-gold/60 text-tarkov-gold bg-tarkov-gold/10'
+          : 'border-tarkov-border text-gray-500 hover:border-tarkov-gold/50 hover:text-tarkov-gold hover:bg-tarkov-gold/5'
+      }`}
+    >
+      <svg
+        width="7" height="7" viewBox="0 0 9 9" fill="currentColor"
+        style={{ transition: 'transform 180ms ease', transform: allExpanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
+      >
+        <polygon points="2,1 8,4.5 2,8" />
+      </svg>
+      <span>All</span>
+    </button>
+  );
+}
+
 function TraderPricesTooltip({ pricesJson, highlight, label }) {
   const [open, setOpen] = useState(false);
   const { triggerRef, pos } = useSmartTooltip(open, 208);
@@ -618,16 +642,34 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const [mobileSorting, setMobileSorting] = useState([{ id: 'best_profit', desc: true }]);
   const [expandedRows, setExpandedRows]   = useState(new Set());
 
+  /* ── All-row IDs for the current page ── */
+  const allRowIds = useCallback((tableInstance) =>
+    tableInstance.getRowModel().rows.map((r) => r.original.id + '_' + (r.original.mode || 'regular')),
+  []);
+
   const toggleExpand = useCallback((rowId) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      if (next.has(rowId)) next.delete(rowId);
-      else next.add(rowId);
+      if (next.has(rowId)) next.delete(rowId); else next.add(rowId);
       return next;
     });
   }, []);
 
   const handleMobileSort = (id, desc) => setMobileSorting([{ id, desc }]);
+
+  /* ── tableRef so ExpandAllButton can read current page rows ── */
+  const tableRef = useRef(null);
+
+  const handleExpandAll = useCallback(() => {
+    if (!tableRef.current) return;
+    const ids = allRowIds(tableRef.current);
+    const allExpanded = ids.every((id) => expandedRows.has(id));
+    if (allExpanded) {
+      setExpandedRows((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; });
+    } else {
+      setExpandedRows((prev) => { const next = new Set(prev); ids.forEach((id) => next.add(id)); return next; });
+    }
+  }, [allRowIds, expandedRows]);
 
   const columns = useMemo(() => [
     /* ─── Col 0 : ExpandArrow + CopyNameButton ─── */
@@ -713,6 +755,9 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
     initialState: { sorting: [{ id: 'best_profit', desc: true }], pagination: { pageSize: 25, pageIndex: 0 } },
   });
 
+  /* keep tableRef in sync */
+  tableRef.current = table;
+
   const mobileTable = useReactTable({
     data: filtered, columns,
     getCoreRowModel: getCoreRowModel(),
@@ -736,6 +781,10 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
 
   const colCount = columns.length;
 
+  /* compute allExpanded for current page */
+  const pageIds      = desktopRows.map((r) => r.original.id + '_' + (r.original.mode || 'regular'));
+  const allExpanded  = pageIds.length > 0 && pageIds.every((id) => expandedRows.has(id));
+
   return (
     <div className="mt-4">
       {/* ── Mobile ── */}
@@ -757,12 +806,19 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
               <tr key={hg.id}>
                 {hg.headers.map((header) => (
                   <th key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
+                    onClick={header.column.id !== 'expand' ? header.column.getToggleSortingHandler() : undefined}
                     className={`px-3 py-2 text-left font-semibold text-tarkov-gold select-none whitespace-nowrap ${
                       header.column.getCanSort() ? 'cursor-pointer hover:bg-tarkov-border transition-colors' : ''
                     }`}>
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' ? ' \u2191' : header.column.getIsSorted() === 'desc' ? ' \u2193' : ''}
+                    {header.column.id === 'expand'
+                      ? <ExpandAllButton allExpanded={allExpanded} onToggle={handleExpandAll} />
+                      : (
+                        <>
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getIsSorted() === 'asc' ? ' \u2191' : header.column.getIsSorted() === 'desc' ? ' \u2193' : ''}
+                        </>
+                      )
+                    }
                   </th>
                 ))}
               </tr>
