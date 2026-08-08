@@ -10,9 +10,12 @@
  *   => return null, le graphique n'est pas rendu.
  *
  * Graphique SVG inline, sans dépendance externe.
+ *
+ * Fix: chaque instance utilise un id de gradient unique pour éviter les
+ * conflits quand plusieurs tooltips sont montés simultanément dans le DOM.
  */
 
-import React from 'react';
+import React, { useId } from 'react';
 
 const RUB = '\u20BD';
 
@@ -72,6 +75,11 @@ function buildDots(points, W, H, PAD) {
 }
 
 export function PriceChart({ item, t }) {
+  // useId génère un id unique par instance de composant — évite les conflits
+  // de <defs> entre plusieurs graphiques montés simultanément.
+  const uid = useId().replace(/:/g, '');
+  const gradId = `chartFill_${uid}`;
+
   if (item.last_offer_count == null) return null;
 
   const {
@@ -110,12 +118,12 @@ export function PriceChart({ item, t }) {
       {hasChart ? (
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible" aria-hidden="true">
           <defs>
-            <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%"   stopColor="#facc15" stopOpacity="0.18" />
               <stop offset="100%" stopColor="#facc15" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <path d={fillPath} fill="url(#chartFill)" />
+          <path d={fillPath} fill={`url(#${gradId})`} />
           <polyline
             points={polyline}
             fill="none" stroke="#facc15" strokeWidth="1.5"

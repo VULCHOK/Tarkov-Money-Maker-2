@@ -8,9 +8,13 @@
  *
  * Usage :
  *   <HistoryExpandRow itemId={id} mode={mode} colSpan={N} lang={lang} />
+ *
+ * Fix: la largeur du SVG est désormais mesurée dynamiquement via ResizeObserver
+ * sur le <td> conteneur, ce qui évite les problèmes avec la largeur fixe
+ * précédente (340 px) quand le tableau est plus étroit (zoom, petite fenêtre).
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useId } from 'react';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -38,10 +42,33 @@ function SvgTooltip({ tooltip }) {
   );
 }
 
+/* ── Hook : observe la largeur d'un élément DOM ── */
+function useElementWidth(ref, fallback = 340) {
+  const [width, setWidth] = useState(fallback);
+  useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w > 0) setWidth(w);
+      }
+    });
+    ro.observe(ref.current);
+    // Valeur initiale immédiate
+    const w = ref.current.getBoundingClientRect().width;
+    if (w > 0) setWidth(w);
+    return () => ro.disconnect();
+  }, [ref]);
+  return width;
+}
+
 /* ── Mini SVG sparkline ── */
 function Sparkline({ points, color, valueFormatter, label, height = 90, svgWidth }) {
   const [tooltip, setTooltip] = useState(null);
   const svgRef = useRef(null);
+  // useId pour des ids de gradient uniques par instance
+  const uid = useId().replace(/:/g, '');
+  const gradId = `sparkGrad_${uid}`;
 
   if (!points || points.length === 0) {
     return (
@@ -67,17 +94,14 @@ function Sparkline({ points, color, valueFormatter, label, height = 90, svgWidth
     .map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`)
     .join(' ');
 
-  // Zone remplie sous la courbe
   const areaD = `${pathD} L${toX(points.length - 1).toFixed(1)},${(PAD_T + H).toFixed(1)} L${PAD_L.toFixed(1)},${(PAD_T + H).toFixed(1)} Z`;
 
-  // Axes Y : 3 ticks
   const yTicks = [minVal, minVal + range / 2, maxVal];
 
   const handleMouseMove = (e) => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
     const mx   = e.clientX - rect.left;
-    // Trouver le point le plus proche
     const idx = Math.round(((mx - PAD_L) / W) * (points.length - 1));
     const clamped = Math.max(0, Math.min(points.length - 1, idx));
     const p = points[clamped];
@@ -91,8 +115,6 @@ function Sparkline({ points, color, valueFormatter, label, height = 90, svgWidth
       svgWidth: svgWidth,
     });
   };
-
-  const gradId = `grad-${label.replace(/\s/g, '')}`;
 
   return (
     <div>
@@ -112,7 +134,6 @@ function Sparkline({ points, color, valueFormatter, label, height = 90, svgWidth
           </linearGradient>
         </defs>
 
-        {/* Grille horizontale */}
         {yTicks.map((v, i) => (
           <g key={i}>
             <line
@@ -130,7 +151,6 @@ function Sparkline({ points, color, valueFormatter, label, height = 90, svgWidth
           </g>
         ))}
 
-        {/* Axe X : étiquettes heures — toutes les 6h */}
         {points.map((p, i) => {
           const ts = new Date(p.ts);
           if (ts.getMinutes() !== 0 || ts.getHours() % 6 !== 0) return null;
@@ -145,13 +165,9 @@ function Sparkline({ points, color, valueFormatter, label, height = 90, svgWidth
           );
         })}
 
-        {/* Zone remplie */}
         <path d={areaD} fill={`url(#${gradId})`} />
-
-        {/* Courbe */}
         <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
 
-        {/* Point sous curseur */}
         {tooltip && (
           <circle
             cx={tooltip.x} cy={tooltip.y} r="3.5"
@@ -167,10 +183,13 @@ function Sparkline({ points, color, valueFormatter, label, height = 90, svgWidth
 
 /* ── Ligne expansible complète ── */
 export function HistoryExpandRow({ itemId, mode, colSpan }) {
-  const [data,    setData]    = useState(null);   // null = pas encore chargé
+  const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
   const fetchedRef = useRef(false);
+  // Ref sur le <td> pour mesurer sa largeur réelle
+  const containerRef = useRef(null);
+  const containerWidth = useElementWidth(containerRef, 340);
 
   useEffect(() => {
     if (fetchedRef.current) return;
@@ -189,12 +208,13 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
   const offerPoints  = data?.points?.filter((p) => p.offer_count != null).map((p) => ({ ts: p.ts, value: p.offer_count })) ?? [];
   const hasData      = pricePoints.length > 0 || offerPoints.length > 0;
 
-  // Largeur fixe par graphique (en px) — la cellule fait toute la largeur
-  const CHART_W = 340;
+  // Chaque graphique prend ~45% de la largeur du conteneur (avec gap),
+  // avec un minimum de 200 px et un maximum de 500 px.
+  const CHART_W = Math.min(500, Math.max(200, Math.floor((containerWidth - 24) / 2)));
 
   return (
     <tr className="border-t border-tarkov-border/40">
-      <td colSpan={colSpan} className="px-4 py-3 bg-[#141311]">
+      <td ref={containerRef} colSpan={colSpan} className="px-4 py-3 bg-[#141311]">
         {loading && (
           <div className="flex items-center gap-2 py-2">
             <span className="inline-block w-3 h-3 rounded-full border-2 border-tarkov-gold border-t-transparent animate-spin" />
@@ -246,7 +266,6 @@ export function ExpandArrow({ expanded, onToggle }) {
       }`}
       style={{ flexShrink: 0 }}
     >
-      {/* Flèche : ▶ quand fermé, ▼ quand ouvert */}
       <svg
         width="9" height="9" viewBox="0 0 9 9" fill="currentColor"
         style={{ transition: 'transform 180ms ease', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
