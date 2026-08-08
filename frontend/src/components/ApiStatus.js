@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useT } from '../hooks/useT';
 
+// Literals instead of \uXXXX escapes — fixes display on Windows
 const MODE_LABELS = {
-  regular:      { label: 'PVP',         emoji: '\u2694\ufe0f' },
-  pve:          { label: 'PVE',         emoji: '\ud83e\udd16' },
-  'pvp-season': { label: 'Kord Breach', emoji: '\u2744\ufe0f' },
+  regular:      { label: 'PVP',         emoji: '⚔️' },
+  pve:          { label: 'PVE',         emoji: '🤖' },
+  'pvp-season': { label: 'Kord Breach', emoji: '❄️' },
 };
 
 function fmtTime(isoString, t) {
@@ -26,17 +27,12 @@ function fmtTime(isoString, t) {
 }
 
 function fmtDate(isoString, lang = 'en') {
-  if (!isoString) return '\u2014';
+  if (!isoString) return '—';
   return new Date(isoString).toLocaleString(lang, {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 }
 
-/* ── Sync countdown ────────────────────────────────────────────────────────
-   nextSyncIso  : ISO string of next_sync from /api/status/ (APScheduler)
-   fallbackIso  : ISO string of last_sync — used only when next_sync absent
-   fallbackSecs : scheduler interval in seconds for the fallback calculation
-──────────────────────────────────────────────────────────────────────────── */
 function SyncCountdown({ nextSyncIso, fallbackIso, fallbackSecs = 600 }) {
   const [remaining, setRemaining] = useState(null);
 
@@ -62,12 +58,15 @@ function SyncCountdown({ nextSyncIso, fallbackIso, fallbackSecs = 600 }) {
   const m = Math.floor(remaining / 60);
   const s = remaining % 60;
   const label = remaining === 0
-    ? 'sync\u2026'
+    ? 'sync…'
     : `${m}:${String(s).padStart(2, '0')}`;
 
   return (
-    <span className="text-[10px] text-gray-500 tabular-nums" title="Next data sync">
-      {'\u23f1'} {label}
+    <span
+      className="text-[10px] text-gray-500 tabular-nums"
+      title="Prochaine synchronisation des prix / Next price sync"
+    >
+      ⏱ {label}
     </span>
   );
 }
@@ -88,10 +87,24 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
     }
   }, []);
 
+  // Pause polling when tab is hidden — resume when visible again
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30_000);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchStatus, 30_000);
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchStatus();
+        interval = setInterval(fetchStatus, 30_000);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [fetchStatus]);
 
   useEffect(() => {
@@ -157,7 +170,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 text-xs">
                 {[{
                   label: t('apiStatusGlobal'),
-                  value: status.overall ?? '\u2014',
+                  value: status.overall ?? '—',
                   cls: status.overall === 'online' ? 'text-green-400' : status.overall === 'degraded' ? 'text-orange-400' : 'text-red-400',
                 }, {
                   label: t('apiStatusLastSync'),
@@ -165,11 +178,11 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                   sub:   fmtTime(status.last_sync, t),
                 }, {
                   label: t('apiStatusItems'),
-                  value: status.items_synced?.toLocaleString(lang) ?? '\u2014',
+                  value: status.items_synced?.toLocaleString(lang) ?? '—',
                   sub:   t('apiStatusItemsSub'),
                 }, {
                   label: t('apiStatusSource'),
-                  value: status.api_source_used ?? '\u2014',
+                  value: status.api_source_used ?? '—',
                   sub:   t('apiStatusSourceSub'),
                 }].map(({ label, value, sub, cls }) => (
                   <div key={label} className="bg-tarkov-bg rounded-lg p-3 border border-tarkov-border">
@@ -193,9 +206,9 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                     <div className="space-y-1.5 text-xs">
                       {[
                         [t('apiStatusModeStatus'),   modeData?.status ?? 'N/A', modeData?.status === 'success' ? 'text-green-400' : modeData?.status === 'error' ? 'text-red-400' : 'text-gray-500'],
-                        [t('apiStatusModeItems'),    modeData?.items_synced?.toLocaleString(lang) ?? '\u2014', 'text-white'],
+                        [t('apiStatusModeItems'),    modeData?.items_synced?.toLocaleString(lang) ?? '—', 'text-white'],
                         [t('apiStatusModeLastSync'), fmtTime(modeData?.last_sync, t), 'text-gray-300'],
-                        [t('apiStatusModeDuration'), modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '\u2014', 'text-gray-300'],
+                        [t('apiStatusModeDuration'), modeData?.elapsed_seconds != null ? `${modeData.elapsed_seconds}s` : '—', 'text-gray-300'],
                       ].map(([lbl, val, cls]) => (
                         <div key={lbl} className="flex justify-between gap-3">
                           <span className="text-gray-400">{lbl}</span>
@@ -203,7 +216,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                         </div>
                       ))}
                       {modeData?.error && (
-                        <div className="text-red-400 text-xs mt-1 break-all">&#9888; {modeData.error.slice(0, 80)}</div>
+                        <div className="text-red-400 text-xs mt-1 break-all">⚠ {modeData.error.slice(0, 80)}</div>
                       )}
                     </div>
                   </div>
@@ -216,7 +229,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                 <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border flex gap-2 items-center">
                   <span className="text-gray-400">{t('apiStatusRest')}</span>
                   <span className={status.sources.rest === 'online' ? 'text-green-400' : status.sources.rest === 'degraded' ? 'text-orange-400' : 'text-red-400'}>
-                    {status.sources.rest ?? '\u2014'}
+                    {status.sources.rest ?? '—'}
                   </span>
                 </div>
                 {lastChecked && (
