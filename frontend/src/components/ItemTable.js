@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import {
   useReactTable,
   getCoreRowModel,
@@ -37,6 +38,11 @@ const TRADER_META = {
 
 const PAGE_SIZES = [10, 25, 50];
 
+/* ── Portal helper ──────────────────────────────────────────────────────── */
+function Portal({ children }) {
+  return ReactDOM.createPortal(children, document.body);
+}
+
 function useSmartTooltip(open, tooltipWidth = 208) {
   const triggerRef = useRef(null);
   const [pos, setPos] = useState({ openUp: false, openLeft: false });
@@ -57,23 +63,58 @@ function tooltipCls(pos, extra = '') {
   return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-none`;
 }
 
-function CopyBurst({ label }) {
+/* ── CopyBurst rendered via portal at fixed screen coords ───────────────── */
+function CopyBurst({ label, anchorRef }) {
+  const [style, setStyle] = useState(null);
+
+  useEffect(() => {
+    if (!anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setStyle({
+      position: 'fixed',
+      top:  rect.top  + rect.height / 2,
+      left: rect.right + 8,
+      transform: 'translateY(-50%)',
+      pointerEvents: 'none',
+      zIndex: 9999,
+    });
+  }, [anchorRef]);
+
+  if (!style) return null;
+
   return (
-    <span className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap">
-      <span className="relative inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-green-500/15 px-2 py-1 shadow-lg animate-[copyBurst_900ms_ease-out_forwards]">
-        <span className="absolute inset-0 rounded-full animate-[copyGlow_900ms_ease-out_forwards]" />
-        <span className="relative text-[10px] font-extrabold uppercase tracking-[0.18em] text-green-300 drop-shadow-[0_0_8px_rgba(74,222,128,0.35)]">
-          + {label}
+    <Portal>
+      <span style={style}>
+        <style>{`
+          @keyframes copyBurst {
+            0%   { opacity: 0; transform: translateY(0) translateX(-6px) scale(0.75); }
+            18%  { opacity: 1; transform: translateY(-10px) translateX(0) scale(1.14); }
+            38%  { opacity: 1; transform: translateY(-14px) translateX(0) scale(0.96); }
+            62%  { opacity: 1; transform: translateY(-18px) translateX(2px) scale(1.02); }
+            100% { opacity: 0; transform: translateY(-28px) translateX(6px) scale(0.9); }
+          }
+          @keyframes copyGlow {
+            0%   { opacity: 0; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.0); }
+            30%  { opacity: 1; box-shadow: 0 0 0 8px rgba(74, 222, 128, 0.16); }
+            100% { opacity: 0; box-shadow: 0 0 0 18px rgba(74, 222, 128, 0.0); }
+          }
+        `}</style>
+        <span className="relative inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-green-500/15 px-2 py-1 shadow-lg animate-[copyBurst_900ms_ease-out_forwards]">
+          <span className="absolute inset-0 rounded-full animate-[copyGlow_900ms_ease-out_forwards]" />
+          <span className="relative text-[10px] font-extrabold uppercase tracking-[0.18em] text-green-300 drop-shadow-[0_0_8px_rgba(74,222,128,0.35)]">
+            + {label}
+          </span>
         </span>
       </span>
-    </span>
+    </Portal>
   );
 }
 
 /* ── Copy-name button ───────────────────────────────────────────────────── */
 function CopyNameButton({ name, toastLabel, mobile = false }) {
   const [copied, setCopied] = useState(false);
-  const timerRef = useRef(null);
+  const timerRef  = useRef(null);
+  const buttonRef = useRef(null);
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -121,18 +162,6 @@ function CopyNameButton({ name, toastLabel, mobile = false }) {
   return (
     <span className={`relative inline-flex ${mobile ? 'self-start' : 'items-center justify-center'}`}>
       <style>{`
-        @keyframes copyBurst {
-          0%   { opacity: 0; transform: translateY(-50%) translateX(-6px) scale(0.75); }
-          18%  { opacity: 1; transform: translateY(calc(-50% - 10px)) translateX(0) scale(1.14); }
-          38%  { opacity: 1; transform: translateY(calc(-50% - 14px)) translateX(0) scale(0.96); }
-          62%  { opacity: 1; transform: translateY(calc(-50% - 18px)) translateX(2px) scale(1.02); }
-          100% { opacity: 0; transform: translateY(calc(-50% - 28px)) translateX(6px) scale(0.9); }
-        }
-        @keyframes copyGlow {
-          0%   { opacity: 0; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.0); }
-          30%  { opacity: 1; box-shadow: 0 0 0 8px rgba(74, 222, 128, 0.16); }
-          100% { opacity: 0; box-shadow: 0 0 0 18px rgba(74, 222, 128, 0.0); }
-        }
         @keyframes copyButtonPop {
           0%   { transform: scale(1); }
           35%  { transform: scale(1.18); }
@@ -141,6 +170,7 @@ function CopyNameButton({ name, toastLabel, mobile = false }) {
         }
       `}</style>
       <button
+        ref={buttonRef}
         onClick={handleCopy}
         title={copied ? toastLabel : 'Copy name'}
         aria-label={copied ? toastLabel : 'Copy name'}
@@ -167,7 +197,7 @@ function CopyNameButton({ name, toastLabel, mobile = false }) {
           </svg>
         )}
       </button>
-      {copied && <CopyBurst label={toastLabel} />}
+      {copied && <CopyBurst label={toastLabel} anchorRef={buttonRef} />}
     </span>
   );
 }
@@ -617,7 +647,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
         const row  = info.row.original;
         const name = getItemName(row, lang) || row.normalized_name || row.id;
         return (
-          <span className="flex items-center justify-center overflow-visible">
+          <span className="flex items-center justify-center">
             <CopyNameButton name={name} toastLabel={t('copyToast')} />
           </span>
         );
@@ -746,7 +776,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
               } hover:bg-tarkov-border transition-colors`}>
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id}
-                    style={cell.column.id === 'copy' ? { width: '36px', padding: '0 4px', overflow: 'visible' } : {}}
+                    style={cell.column.id === 'copy' ? { width: '36px', padding: '0 4px' } : {}}
                     className="px-3 py-2">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
