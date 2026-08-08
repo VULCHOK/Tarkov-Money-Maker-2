@@ -75,6 +75,11 @@ const en = {
   apiStatusRest: 'REST',
   exportCSV: 'Export CSV',
   exportJSON: 'Export JSON',
+  histFleaPrice: 'Flea price — last 24h',
+  histOffers: 'Offers — last 24h',
+  histLoading: 'Loading history…',
+  histNoData: 'No history yet — data accumulates after each sync.',
+  histError: 'Server unreachable — history will be available once the backend is running.',
 };
 
 export default en;

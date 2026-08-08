@@ -75,6 +75,11 @@ const de = {
   apiStatusRest: 'REST',
   exportCSV: 'CSV exportieren',
   exportJSON: 'JSON exportieren',
+  histFleaPrice: 'Flea-Preis — letzte 24h',
+  histOffers: 'Angebote — letzte 24h',
+  histLoading: 'Verlauf wird geladen…',
+  histNoData: 'Noch keine Verlaufsdaten — werden nach jeder Sync gesammelt.',
+  histError: 'Server nicht erreichbar — Verlaufsdaten verfügbar, sobald das Backend läuft.',
 };
 
 export default de;

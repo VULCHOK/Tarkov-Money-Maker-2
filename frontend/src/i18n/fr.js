@@ -68,13 +68,18 @@ const fr = {
   apiStatusModeLastSync: 'Dernière sync',
   apiStatusModeDuration: 'Durée',
   apiStatusNever: 'jamais',
-  apiStatusJustNow: "\u00e0 l'instant",
+  apiStatusJustNow: 'à l\'instant',
   apiStatusTimeAgoPrefix: 'il y a',
   apiStatusMinutesAgo: 'min',
   apiStatusHoursAgo: 'h',
   apiStatusRest: 'REST',
   exportCSV: 'Exporter en CSV',
   exportJSON: 'Exporter en JSON',
+  histFleaPrice: 'Prix Flea — 24 dernières heures',
+  histOffers: 'Offres disponibles — 24 dernières heures',
+  histLoading: 'Chargement de l\'historique…',
+  histNoData: 'Pas encore de données historiques — elles s\'accumulent après chaque sync.',
+  histError: 'Serveur injoignable — les données historiques seront disponibles une fois le backend démarré.',
 };
 
 export default fr;

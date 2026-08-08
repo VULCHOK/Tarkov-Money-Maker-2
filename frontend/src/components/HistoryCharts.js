@@ -6,9 +6,9 @@ import React, { useState, useEffect, useRef, useId } from 'react';
 
 const API_BASE = process.env.REACT_APP_API_URL || '/api';
 
-const RUB = '\u20BD';
+const RUB = '₽';
 const fmtK = (n) => {
-  if (n == null) return '\u2014';
+  if (n == null) return '—';
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 1_000)     return `${(n / 1_000).toFixed(0)}k`;
   return `${n}`;
@@ -56,7 +56,7 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
       <div style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }} ref={wrapRef}>
         <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-1">{label}</p>
         <div className="flex items-center justify-center" style={{ height }}>
-          <span className="text-xs text-gray-600">\u2014</span>
+          <span className="text-xs text-gray-600">—</span>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
 }
 
 /* ── Ligne expansible complète ── */
-export function HistoryExpandRow({ itemId, mode, colSpan }) {
+export function HistoryExpandRow({ itemId, mode, colSpan, t }) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
@@ -170,21 +170,21 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
 
     fetch(url, { signal: controller.signal })
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} \u2014 ${r.statusText}`);
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${r.statusText}`);
         return r.json();
       })
       .then((json) => { setData(json); setLoading(false); })
       .catch((e) => {
         if (e.name === 'AbortError') return;
         const msg = e.message?.includes('Failed to fetch')
-          ? 'Serveur injoignable \u2014 les donn\u00e9es historiques seront disponibles une fois le backend d\u00e9marr\u00e9.'
+          ? t('histError')
           : e.message;
         setError(msg);
         setLoading(false);
       });
 
     return () => controller.abort();
-  }, [itemId, mode]);
+  }, [itemId, mode, t]);
 
   const pricePoints = data?.points?.filter((p) => p.flea_price  != null).map((p) => ({ ts: p.ts, value: p.flea_price  })) ?? [];
   const offerPoints = data?.points?.filter((p) => p.offer_count != null).map((p) => ({ ts: p.ts, value: p.offer_count })) ?? [];
@@ -196,31 +196,29 @@ export function HistoryExpandRow({ itemId, mode, colSpan }) {
         {loading && (
           <div className="flex items-center gap-2 py-2">
             <span className="inline-block w-3 h-3 rounded-full border-2 border-tarkov-gold border-t-transparent animate-spin" />
-            <span className="text-xs text-gray-500">Chargement historique\u2026</span>
+            <span className="text-xs text-gray-500">{t('histLoading')}</span>
           </div>
         )}
         {error && (
           <p className="text-xs text-yellow-600/80 py-1 italic">{error}</p>
         )}
         {!loading && !error && !hasData && (
-          <p className="text-xs text-gray-600 py-1">
-            Pas encore de donn\u00e9es historiques \u2014 elles s'accumulent apr\u00e8s chaque sync.
-          </p>
+          <p className="text-xs text-gray-600 py-1">{t('histNoData')}</p>
         )}
         {!loading && !error && hasData && (
           <div style={{ display: 'flex', gap: '16px', width: '100%', overflow: 'hidden' }}>
             <Sparkline
               points={pricePoints}
               color="#5ba8c4"
-              label={`Prix Flea \u2014 ${pricePoints.length} pts`}
+              label={t('histFleaPrice')}
               valueFormatter={(v) => `${fmtK(v)} ${RUB}`}
               height={110}
             />
             <Sparkline
               points={offerPoints}
               color="#7ab87a"
-              label={`Offres disponibles \u2014 ${offerPoints.length} pts`}
-              valueFormatter={(v) => `${v} offres`}
+              label={t('histOffers')}
+              valueFormatter={(v) => `${v}`}
               height={110}
             />
           </div>
@@ -235,8 +233,8 @@ export function ExpandArrow({ expanded, onToggle }) {
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      aria-label={expanded ? 'Masquer graphiques' : 'Afficher graphiques 24h'}
-      title={expanded ? 'Masquer graphiques' : 'Afficher les graphiques 24h'}
+      aria-label={expanded ? 'Hide charts' : 'Show 24h charts'}
+      title={expanded ? 'Hide charts' : 'Show 24h charts'}
       className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all duration-150 text-[10px] font-semibold select-none ${
         expanded
           ? 'border-tarkov-gold/60 text-tarkov-gold bg-tarkov-gold/10'
