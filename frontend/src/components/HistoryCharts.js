@@ -14,6 +14,16 @@ const fmtK = (n) => {
   return `${n}`;
 };
 
+/* ── Fallback t function so HistoryExpandRow never crashes if t prop is missing ── */
+const FALLBACK_STRINGS = {
+  histError:    'Failed to load history',
+  histLoading:  'Loading…',
+  histNoData:   'No data available',
+  histFleaPrice:'Flea price',
+  histOffers:   'Offers',
+};
+const fallbackT = (key) => FALLBACK_STRINGS[key] ?? key;
+
 /* ── Tooltip SVG inline ── */
 function SvgTooltip({ tooltip, svgWidth }) {
   if (!tooltip) return null;
@@ -154,7 +164,8 @@ function Sparkline({ points, color, valueFormatter, label, height = 110 }) {
 }
 
 /* ── Ligne expansible complète ── */
-export function HistoryExpandRow({ itemId, mode, colSpan, t }) {
+export function HistoryExpandRow({ itemId, mode, colSpan, t: tProp }) {
+  const t = tProp ?? fallbackT;
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
