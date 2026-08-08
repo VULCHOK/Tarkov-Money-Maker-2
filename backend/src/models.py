@@ -2,6 +2,7 @@
 models.py  –  SQLAlchemy ORM models
 
 Table `items`  —  PK = (id, mode)
+Table `item_history`  —  snapshot toutes les 10 min (flea_price + offer_count)
 Supporte 3 modes de jeu : regular (PVP), pve, pvp-season
 
 Noms localisés stockés en JSON :
@@ -12,7 +13,10 @@ Actuellement peuplé en EN + FR ; extensible à toutes les langues tarkov.dev.
 
 import json
 
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text, PrimaryKeyConstraint
+from sqlalchemy import (
+    Column, String, Integer, Float, DateTime, Text,
+    BigInteger, Index, PrimaryKeyConstraint,
+)
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -101,3 +105,24 @@ class Item(Base):
             return json.loads(self.trader_buy_prices or "{}")
         except Exception:
             return {}
+
+
+class ItemHistory(Base):
+    """
+    Snapshot toutes les ~10 min de flea_price et last_offer_count.
+    Conserve les 144 derniers points par (item_id, mode) = 24h à raison de
+    6 syncs/heure.  Le nettoyage des vieilles lignes se fait dans data_sync.py.
+    """
+    __tablename__ = "item_history"
+    __table_args__ = (
+        # Lookup rapide : historique d'un item dans un mode, trié par temps
+        Index("ix_item_history_item_mode_ts", "item_id", "mode", "ts"),
+    )
+
+    id          = Column(BigInteger, primary_key=True, autoincrement=True)
+    item_id     = Column(String(24), nullable=False)
+    mode        = Column(String(20), nullable=False, default="regular")
+    # Timestamp UTC du snapshot (seconde-précision suffit)
+    ts          = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    flea_price  = Column(Integer, nullable=True)
+    offer_count = Column(Integer, nullable=True)
