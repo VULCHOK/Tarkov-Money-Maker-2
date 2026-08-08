@@ -8,9 +8,6 @@ const MODE_LABELS = {
   'pvp-season': { label: 'Kord Breach', emoji: '\u2744\ufe0f' },
 };
 
-// Interval between backend syncs in seconds
-const SYNC_INTERVAL_S = 1800; // 30 min
-
 function fmtTime(isoString, t) {
   if (!isoString) return t('apiStatusNever');
   const d = new Date(isoString);
@@ -35,33 +32,44 @@ function fmtDate(isoString, lang = 'en') {
   });
 }
 
-/* ── Sync countdown displayed in the pill ──────────────────────────────── */
-function SyncCountdown({ lastSyncIso }) {
+/* ── Sync countdown ────────────────────────────────────────────────────────
+   nextSyncIso  : ISO string of next_sync from /api/status/ (APScheduler)
+   fallbackIso  : ISO string of last_sync — used only when next_sync absent
+   fallbackSecs : scheduler interval in seconds for the fallback calculation
+──────────────────────────────────────────────────────────────────────────── */
+function SyncCountdown({ nextSyncIso, fallbackIso, fallbackSecs = 600 }) {
   const [remaining, setRemaining] = useState(null);
 
   useEffect(() => {
-    if (!lastSyncIso) { setRemaining(null); return; }
+    // Prefer the authoritative next_sync from APScheduler.
+    // Fall back to last_sync + interval only when the backend doesn't expose it.
+    const targetIso = nextSyncIso
+      ?? (fallbackIso
+        ? new Date(new Date(fallbackIso).getTime() + fallbackSecs * 1000).toISOString()
+        : null);
+
+    if (!targetIso) { setRemaining(null); return; }
+
     const tick = () => {
-      const elapsed = Math.floor((Date.now() - new Date(lastSyncIso).getTime()) / 1000);
-      const rem = Math.max(0, SYNC_INTERVAL_S - elapsed);
+      const rem = Math.max(0, Math.floor((new Date(targetIso).getTime() - Date.now()) / 1000));
       setRemaining(rem);
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [lastSyncIso]);
+  }, [nextSyncIso, fallbackIso, fallbackSecs]);
 
   if (remaining === null) return null;
 
   const m = Math.floor(remaining / 60);
   const s = remaining % 60;
   const label = remaining === 0
-    ? 'sync…'
+    ? 'sync\u2026'
     : `${m}:${String(s).padStart(2, '0')}`;
 
   return (
     <span className="text-[10px] text-gray-500 tabular-nums" title="Next data sync">
-      ⏱ {label}
+      \u23f1 {label}
     </span>
   );
 }
@@ -105,7 +113,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
     }
   })();
 
-  // Best last_sync across all modes
+  const nextSyncIso = status?.next_sync ?? null;
   const lastSyncIso = status?.last_sync
     ?? Object.values(status?.modes ?? {}).map((m) => m?.last_sync).filter(Boolean).sort().at(-1)
     ?? null;
@@ -124,7 +132,7 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
           <span className={`relative inline-flex rounded-full h-2 w-2 ${dot.color}`} />
         </span>
         <span>{dot.label}</span>
-        <SyncCountdown lastSyncIso={lastSyncIso} />
+        <SyncCountdown nextSyncIso={nextSyncIso} fallbackIso={lastSyncIso} />
       </button>
 
       {open && (
@@ -218,12 +226,10 @@ export function ApiStatus({ pillBase = '', pillOff = '', lang = 'en' }) {
                     {t('apiStatusCheckedAt')} {fmtTime(lastChecked.toISOString(), t)}
                   </div>
                 )}
-                {lastSyncIso && (
-                  <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border flex items-center gap-2 text-gray-500">
-                    <span>{t('apiStatusNextSync') || 'Next sync'}</span>
-                    <SyncCountdown lastSyncIso={lastSyncIso} />
-                  </div>
-                )}
+                <div className="bg-tarkov-bg rounded px-3 py-2 border border-tarkov-border flex items-center gap-2 text-gray-500">
+                  <span>{t('apiStatusNextSync') || 'Next sync'}</span>
+                  <SyncCountdown nextSyncIso={nextSyncIso} fallbackIso={lastSyncIso} />
+                </div>
               </div>
             )}
           </div>
