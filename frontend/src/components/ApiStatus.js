@@ -41,8 +41,6 @@ function SyncCountdown({ nextSyncIso, fallbackIso, fallbackSecs = 600 }) {
   const [remaining, setRemaining] = useState(null);
 
   useEffect(() => {
-    // Prefer the authoritative next_sync from APScheduler.
-    // Fall back to last_sync + interval only when the backend doesn't expose it.
     const targetIso = nextSyncIso
       ?? (fallbackIso
         ? new Date(new Date(fallbackIso).getTime() + fallbackSecs * 1000).toISOString()
@@ -69,7 +67,7 @@ function SyncCountdown({ nextSyncIso, fallbackIso, fallbackSecs = 600 }) {
 
   return (
     <span className="text-[10px] text-gray-500 tabular-nums" title="Next data sync">
-      \u23f1 {label}
+      {'\u23f1'} {label}
     </span>
   );
 }
