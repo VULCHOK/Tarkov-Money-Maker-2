@@ -11,6 +11,7 @@ import {
 import { ALL_TRADERS } from './Filters';
 import { ActionCell } from './ActionCell';
 import { PriceChart } from './PriceChart';
+import { HistoryExpandRow, ExpandArrow } from './HistoryCharts';
 import { useT } from '../hooks/useT';
 import { getItemName } from '../App';
 
@@ -61,7 +62,6 @@ function useSmartTooltip(open, tooltipWidth = 208) {
 function tooltipCls(pos, extra = '') {
   const v = pos.openUp   ? 'bottom-full mb-1' : 'top-full mt-1';
   const h = pos.openLeft ? 'right-0'          : 'left-0';
-  // pointer-events-auto so the tooltip stays open when the mouse moves into it
   return `absolute z-50 ${v} ${h} ${extra} bg-tarkov-card border border-tarkov-border rounded shadow-xl py-1 pointer-events-auto`;
 }
 
@@ -322,15 +322,9 @@ function TraderBuyPricesTooltip({ pricesJson, highlight, label, traderFilters })
   );
 }
 
-/**
- * FleaPriceTooltip
- * Affiche le tooltip flea 24h + PriceChart.
- * PriceChart retourne null automatiquement si last_offer_count est absent (PVE/saison).
- */
 function FleaPriceTooltip({ item, t }) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef(null);
-  // Tooltip plus large pour accueillir le graphique
   const { triggerRef, pos } = useSmartTooltip(open, 232);
   const { flea_price, last_low_price, low24h_price, avg24h_price, high24h_price, last_offer_count } = item;
   const current = flea_price ?? last_low_price ?? null;
@@ -374,7 +368,6 @@ function FleaPriceTooltip({ item, t }) {
               </div>
             )}
           </div>
-          {/* Graphique 24h — masqué automatiquement si last_offer_count absent */}
           <PriceChart item={item} t={t} />
         </div>
       )}
@@ -664,10 +657,36 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const rows     = useMemo(() => items.map((item) => ({ ...item, _c: computeRow(item, traderFilters, feeDiscount) })), [items, traderFilters, feeDiscount]);
   const filtered = useMemo(() => rows.filter((r) => r._c.bestProfit != null && r._c.bestProfit > 0), [rows]);
   const [mobileSorting, setMobileSorting] = useState([{ id: 'best_profit', desc: true }]);
+  // Set d'IDs des lignes expansées
+  const [expandedRows, setExpandedRows] = useState(new Set());
+
+  const toggleExpand = useCallback((rowId) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  }, []);
 
   const handleMobileSort = (id, desc) => setMobileSorting([{ id, desc }]);
 
   const columns = useMemo(() => [
+    col.display({
+      id: 'expand',
+      header: '',
+      cell: (info) => {
+        const rowId = info.row.original.id + '_' + (info.row.original.mode || 'regular');
+        const expanded = expandedRows.has(rowId);
+        return (
+          <span className="flex items-center justify-center gap-0.5">
+            <ExpandArrow expanded={expanded} onToggle={() => toggleExpand(rowId)} />
+          </span>
+        );
+      },
+      size: 24,
+      enableSorting: false,
+    }),
     col.display({
       id: 'copy',
       header: '',
@@ -736,7 +755,7 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
       id: 'action', header: t('colAction'), enableSorting: false,
       cell: (info) => { const r = info.row.original; return <ActionCell rec={r._c.bestRec} traderName={r._c.bestActionTrader} profit={r._c.bestProfit} />; },
     }),
-  ], [lang, traderFilters, feeDiscount, t]);
+  ], [lang, traderFilters, feeDiscount, t, expandedRows, toggleExpand]);
 
   const table = useReactTable({
     data: filtered, columns,
@@ -767,6 +786,9 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
   const mFrom  = mTotal === 0 ? 0 : mpi * mps + 1;
   const mTo    = Math.min((mpi + 1) * mps, mTotal);
 
+  // Nombre total de colonnes pour le colSpan de la ligne expansée
+  const colCount = columns.length;
+
   return (
     <div className="mt-4">
       <div className="lg:hidden rounded-xl border border-tarkov-border overflow-hidden">
@@ -786,7 +808,11 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
               <tr key={hg.id}>
                 {hg.headers.map((header) => (
                   <th key={header.id} onClick={header.column.getToggleSortingHandler()}
-                    style={header.column.id === 'copy' ? { width: '36px', padding: '0 4px' } : {}}
+                    style={
+                      header.column.id === 'expand' ? { width: '24px', padding: '0 2px' } :
+                      header.column.id === 'copy'   ? { width: '36px', padding: '0 4px' } :
+                      {}
+                    }
                     className={`px-3 py-2 text-left font-semibold text-tarkov-gold select-none whitespace-nowrap ${
                       header.column.getCanSort() ? 'cursor-pointer hover:bg-tarkov-border transition-colors' : ''
                     }`}>
@@ -798,19 +824,37 @@ export function ItemTable({ items, lang, traderFilters, feeDiscount }) {
             ))}
           </thead>
           <tbody>
-            {desktopRows.map((row, i) => (
-              <tr key={row.id} className={`border-t border-tarkov-border ${
-                i % 2 === 0 ? 'bg-tarkov-bg' : 'bg-tarkov-card'
-              } hover:bg-tarkov-border transition-colors`}>
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id}
-                    style={cell.column.id === 'copy' ? { width: '36px', padding: '0 4px' } : {}}
-                    className="px-3 py-2">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {desktopRows.map((row, i) => {
+              const rowId   = row.original.id + '_' + (row.original.mode || 'regular');
+              const expanded = expandedRows.has(rowId);
+              return (
+                <React.Fragment key={row.id}>
+                  <tr className={`border-t border-tarkov-border ${
+                    i % 2 === 0 ? 'bg-tarkov-bg' : 'bg-tarkov-card'
+                  } hover:bg-tarkov-border transition-colors`}>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id}
+                        style={
+                          cell.column.id === 'expand' ? { width: '24px', padding: '0 2px' } :
+                          cell.column.id === 'copy'   ? { width: '36px', padding: '0 4px' } :
+                          {}
+                        }
+                        className="px-3 py-2">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                  {expanded && (
+                    <HistoryExpandRow
+                      key={rowId + '_history'}
+                      itemId={row.original.id}
+                      mode={row.original.mode || 'regular'}
+                      colSpan={colCount}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
